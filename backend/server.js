@@ -13,6 +13,7 @@ const allowedOrigins = [
   'http://localhost:5000',
   'https://rp-exotics-frontend.vercel.app',
   'https://rp-exotics-frontend.railway.app',
+  'https://your-app.up.railway.app', // Add your actual deployed frontend URL here
   process.env.FRONTEND_URL
 ].filter(Boolean);
 
