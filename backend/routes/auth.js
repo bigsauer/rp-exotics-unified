@@ -71,4 +71,26 @@ router.post('/logout', (req, res) => {
   res.json({ message: 'Logged out' });
 });
 
+// Registration route
+router.post('/register', async (req, res) => {
+  const { email, password } = req.body;
+  if (!email || !password) {
+    return res.status(400).json({ error: 'Email and password are required' });
+  }
+  try {
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return res.status(409).json({ error: 'User already exists' });
+    }
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const newUser = new User({ email, password: hashedPassword });
+    await newUser.save();
+    console.log('[AUTH][REGISTER] New user registered:', email);
+    res.status(201).json({ message: 'User registered successfully' });
+  } catch (err) {
+    console.error('[AUTH][REGISTER] Error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 module.exports = router; 
