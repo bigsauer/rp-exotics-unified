@@ -6,33 +6,10 @@ require('dotenv').config();
 
 const app = express();
 
-// CORS configuration to allow frontend to connect
-const allowedOrigins = [
-  'http://localhost:3000',
-  'http://localhost:3001',
-  'http://localhost:5000',
-  'https://rp-exotics-frontend.vercel.app',
-  'https://rp-exotics-frontend.railway.app',
-  'https://your-app.up.railway.app', // Add your actual deployed frontend URL here
-  process.env.FRONTEND_URL
-].filter(Boolean);
-
-function isAllowedOrigin(origin) {
-  if (!origin) return true;
-  if (allowedOrigins.includes(origin)) return true;
-  // Allow all Vercel preview URLs
-  if (/^https:\/\/[a-z0-9-]+\.vercel\.app$/.test(origin)) return true;
-  return false;
-}
-
+// Unified deployment: allow all origins in dev, restrict in prod
+const isProduction = process.env.NODE_ENV === 'production';
 app.use(cors({
-  origin: function (origin, callback) {
-    if (isAllowedOrigin(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
+  origin: isProduction ? undefined : true, // In production, same-origin requests only; in dev, allow all
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
