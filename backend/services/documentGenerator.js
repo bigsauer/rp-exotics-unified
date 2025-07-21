@@ -2,6 +2,16 @@ const PDFDocument = require('pdfkit');
 const fs = require('fs-extra');
 const path = require('path');
 
+const allowedOrigins = [
+  'http://localhost:3000',
+  'http://localhost:3001',
+  'http://localhost:5000',
+  'https://rp-exotics-frontend.vercel.app',
+  'https://rp-exotics-frontend.railway.app',
+  'https://my-app.up.railway.app',
+  process.env.FRONTEND_URL
+].filter(Boolean);
+
 class DocumentGenerator {
   constructor() {
     // Debug: Log the current working directory and __dirname

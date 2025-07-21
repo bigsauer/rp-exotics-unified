@@ -8,8 +8,31 @@ const app = express();
 
 // Unified deployment: allow all origins in dev, restrict in prod
 const isProduction = process.env.NODE_ENV === 'production';
+const allowedOrigins = [
+  'http://localhost:3000',
+  'http://localhost:3001',
+  'http://localhost:5000',
+  'https://rp-exotics-frontend.vercel.app',
+  'https://astonishing-chicken-production.up.railway.app',
+  process.env.FRONTEND_URL
+].filter(Boolean);
+
+function isAllowedOrigin(origin) {
+  if (!origin) return true;
+  if (allowedOrigins.includes(origin)) return true;
+  // Allow all Vercel preview URLs
+  if (/^https:\/\/[a-z0-9-]+\.vercel\.app$/.test(origin)) return true;
+  return false;
+}
+
 app.use(cors({
-  origin: isProduction ? undefined : true, // In production, same-origin requests only; in dev, allow all
+  origin: function (origin, callback) {
+    if (isAllowedOrigin(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
