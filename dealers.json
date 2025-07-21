@@ -1,0 +1,38 @@
+{"_id":{"$oid":"6873e2a4af418ec161bb4e54"},"name":"McLaren NJ / Suburban Exotics","company":"McLaren NJ / Suburban Exotics","contact":{"person":"Anthony Rumeo","phone":"","email":"anthony@squadrav.com"},"isActive":true}
+{"_id":{"$oid":"6873e2a4af418ec161bb4e55"},"name":"West Coast Exotics","company":"West Coast Exotics","contact":{"phone":"","email":""},"isActive":true,"status":"Active","updatedAt":{"$date":"2025-07-13T19:33:13.275Z"}}
+{"_id":{"$oid":"6873e2a4af418ec161bb4e56"},"name":"Left Lane Exotics","company":"Left Lane Exotics","contact":{"person":"Joe Humphrey","phone":"","email":""},"isActive":true}
+{"_id":{"$oid":"6873e2a4af418ec161bb4e57"},"name":"GMTV","company":"GMTV","contact":{"person":"Abdulla Abunasrah","phone":"8002491095","email":"abdulla.abunasrah@givemethevin.com"},"isActive":true}
+{"_id":{"$oid":"6873e2a4af418ec161bb4e58"},"name":"GMTV","company":"GMTV","contact":{"person":"Trajan Burton","phone":"","email":""},"isActive":true}
+{"_id":{"$oid":"6873e2a4af418ec161bb4e59"},"name":"Dupont Registry","company":"Dupont Registry","contact":{"person":"Chad Cunningham","phone":"","email":""},"isActive":true}
+{"_id":{"$oid":"6873e2a4af418ec161bb4e5a"},"name":"Tampa Auto Gallery","company":"Tampa Auto Gallery","contact":{"phone":"407-844-7122","email":""},"isActive":true,"status":"Active","updatedAt":{"$date":"2025-07-13T19:30:28.7Z"}}
+{"_id":{"$oid":"6873e2a4af418ec161bb4e5b"},"name":"Falcon Motor Group","company":"Falcon Motor Group","contact":{"person":"Eric Elbaz","phone":"","email":""},"isActive":true}
+{"_id":{"$oid":"6873e2a4af418ec161bb4e5c"},"name":"Auffenberg Ford","company":"Auffenberg Ford","contact":{"person":"Aaron Payne","phone":"","email":""},"isActive":true}
+{"_id":{"$oid":"6873e2a4af418ec161bb4e5d"},"name":"AutoPark Dallas","company":"AutoPark Dallas","contact":{"person":"Tristen Bergen","phone":"972-639-7707","email":"tristan@autoparkdallas.com"},"isActive":true}
+{"_id":{"$oid":"6873e2a4af418ec161bb4e5e"},"name":"P1 Motorwerks","company":"P1 Motorwerks","contact":{"person":"Jay Rampuria","phone":"","email":""},"isActive":true}
+{"_id":{"$oid":"6873e2a4af418ec161bb4e5f"},"name":"Velocity Motorcars","company":"Velocity Motorcars","contact":{"phone":"","email":""},"isActive":true,"status":"Active","updatedAt":{"$date":"2025-07-13T19:33:15.929Z"}}
+{"_id":{"$oid":"6873e2a4af418ec161bb4e60"},"name":"Vegas Auto Collection","company":"Vegas Auto Collection","contact":{"person":"Houston Crosta","phone":"","email":""},"isActive":true}
+{"_id":{"$oid":"6873e2a4af418ec161bb4e61"},"name":"Brooklyn Auto Sales","company":"Brooklyn Auto Sales","contact":{"person":"Adam Elazeh","phone":"(718) 825-4678","email":"brooklynautosales2@gmail.com"},"isActive":true}
+{"_id":{"$oid":"6873e2a4af418ec161bb4e62"},"name":"Bentley New Jersey","company":"Bentley New Jersey","contact":{"person":"Frank Gebba","phone":"","email":""},"isActive":true}
+{"_id":{"$oid":"6873e2a4af418ec161bb4e63"},"name":"Galpin Motors","company":"Galpin Motors","contact":{"person":"Adam Camasta","phone":"","email":""},"isActive":true}
+{"_id":{"$oid":"6873e2a4af418ec161bb4e64"},"name":"Recar","company":"Recar","contact":{"person":"Rodolfo Garza","phone":"","email":""},"isActive":true}
+{"_id":{"$oid":"6873e2a4af418ec161bb4e65"},"name":"Motorcars of Chicago","company":"Motorcars of Chicago","contact":{"person":"Waseem Rehan","phone":"","email":""},"isActive":true}
+{"_id":{"$oid":"6873e2a4af418ec161bb4e66"},"name":"JNBS Motorz","company":"JNBS Motorz","contact":{"person":"Jared Hoyt","phone":"","email":""},"isActive":true}
+{"_id":{"$oid":"6873e2a4af418ec161bb4e67"},"name":"Porsche St. Louis","company":"Porsche St. Louis","contact":{"person":"Sara Batchelor","phone":"","email":""},"isActive":true}
+{"_id":{"$oid":"6873e2a4af418ec161bb4e68"},"name":"Marshall Goldman","company":"Marshall Goldman","contact":{"person":"Danny Baker","phone":"","email":""},"isActive":true}
+{"_id":{"$oid":"6873e2a4af418ec161bb4e69"},"name":"Tactical Fleet","company":"Tactical Fleet","contact":{"person":"Chris Barta","phone":"","email":""},"isActive":true}
+{"_id":{"$oid":"6873e2a4af418ec161bb4e6a"},"name":"CLB Sports Cars","company":"CLB Sports Cars","contact":{"person":"Craig Becker","phone":"","email":""},"isActive":true}
+{"_id":{"$oid":"6873e2a4af418ec161bb4e6b"},"name":"Enthusiast Auto Sales","company":"Enthusiast Auto Sales","contact":{"person":"Alex Vaughn","phone":"","email":""},"isActive":true}
+{"_id":{"$oid":"6873e2a4af418ec161bb4e6c"},"name":"J & S Autohaus","company":"J & S Autohaus","contact":{"person":"George Saliba","phone":"","email":""},"isActive":true}
+{"_id":{"$oid":"6873e2a4af418ec161bb4e6d"},"name":"Avid Motorsports","company":"Avid Motorsports","contact":{"person":"Blake McCombs","phone":"","email":""},"isActive":true}
+{"_id":{"$oid":"6873e2a4af418ec161bb4e6e"},"name":"Dave Sinclair Ford","company":"Dave Sinclair Ford","contact":{"person":"Pinky Persons","phone":"","email":""},"isActive":true}
+{"_id":{"$oid":"6873e2a4af418ec161bb4e6f"},"name":"Jim Butler Maserati","company":"Jim Butler Maserati","contact":{"person":"Brett Estes","phone":"","email":""},"isActive":true}
+{"_id":{"$oid":"6873e2a4af418ec161bb4e70"},"name":"HBI Auto","company":"HBI Auto","contact":{"person":"Billy Wenk","phone":"","email":""},"isActive":true}
+{"_id":{"$oid":"6873e2a4af418ec161bb4e71"},"name":"1of1 MotorSports","company":"1of1 MotorSports","contact":{"person":"Scott Zankl","phone":"(561) 756-1933","email":"scott@1of1motorsports.com"},"isActive":true}
+{"_id":{"$oid":"6873e2a4af418ec161bb4e72"},"name":"1of1 MotorSports","company":"1of1 MotorSports","contact":{"person":"Tyler Zankl","phone":"561 405-0816","email":"tyler@1of1motorsports.com"},"isActive":true}
+{"_id":{"$oid":"6873e2a4af418ec161bb4e73"},"name":"Foreign Affairs Motorsports","company":"Foreign Affairs Motorsports","contact":{"person":"Amy Farnham","phone":"561-923-5233","email":"amyv4n@gmail.com"},"isActive":true}
+{"_id":{"$oid":"6873e2a4af418ec161bb4e74"},"name":"Republic Auto Group","company":"Republic Auto Group","contact":{"person":"Simon M","phone":"614-286-8891","email":"simon@republicautogroup.com"},"isActive":true}
+{"_id":{"$oid":"6873e2a4af418ec161bb4e75"},"name":"Ferrari Long Island","company":"Ferrari Long Island","contact":{"person":"","phone":"551-228-9864","email":"edefrancesco@ferrarili.com"},"isActive":true}
+{"_id":{"$oid":"6873e2a4af418ec161bb4e76"},"name":"Exotic Motorsports of OK","company":"Exotic Motorsports of OK","contact":{"person":"Eliud Villarreal","phone":"405-664-2073","email":"eliud@exoticmotorsportsok.com"},"isActive":true}
+{"_id":{"$oid":"6873e2a4af418ec161bb4e77"},"name":"Premier Auto Group of South Florida","company":"Premier Auto Group of South Florida","contact":{"person":"","phone":"","email":""},"isActive":true}
+{"_id":{"$oid":"6873e2a4af418ec161bb4e78"},"name":"Friendly Auto Sales","company":"Friendly Auto Sales","contact":{"person":"","phone":"479-899-7686","email":"qwkcollections@gmail.com"},"isActive":true}
+{"_id":{"$oid":"6873e2a4af418ec161bb4e79"},"name":"Foreign Cars Italia","company":"Foreign Cars Italia","contact":{"person":"Reade","phone":"336-688-0637","email":"rfulton@foreigncarsitali.com"},"isActive":true}
