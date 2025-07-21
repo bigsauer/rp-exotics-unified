@@ -4,19 +4,14 @@ FROM node:22
 # Set working directory
 WORKDIR /app
 
-# Copy package files and install dependencies
+# Copy package files first (for better Docker caching)
 COPY package.json package-lock.json ./
-RUN npm ci
 
-# Copy the rest of the code
+# Copy the rest of the code (including frontend/)
 COPY . .
 
-# Build the frontend
-WORKDIR /app/frontend
-RUN npm install && npm run build
-
-# Set working directory back to root
-WORKDIR /app
+# Install dependencies and run postinstall (which builds frontend)
+RUN npm ci
 
 # Start the backend server
 CMD ["node", "backend/server.js"] 
