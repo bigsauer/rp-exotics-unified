@@ -4,9 +4,11 @@ import {
   Car, Eye, Trash2
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from './AuthContext';
 
 const FinanceDashboard = () => {
   const navigate = useNavigate();
+  const { getAuthHeaders } = useAuth();
   const [vehicleRecords, setVehicleRecords] = useState([]);
   const [stats, setStats] = useState({});
   const [loading, setLoading] = useState(true);
@@ -22,14 +24,11 @@ const FinanceDashboard = () => {
     let isMounted = true;
     setLoading(true);
     const API_BASE = process.env.REACT_APP_API_URL;
-    const token = localStorage.getItem('token') || window.localStorage.getItem('token');
-    console.log('[DEBUG][FinanceDashboard] API_BASE:', API_BASE, 'token:', token);
+    console.log('[DEBUG][FinanceDashboard] API_BASE:', API_BASE);
     Promise.all([
       fetch(`${API_BASE}/api/documents/vehicle-records`, {
         credentials: 'include',
-        headers: {
-          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
-        }
+        headers: getAuthHeaders()
       })
         .then(res => {
           console.log('[DEBUG][FinanceDashboard] Vehicle records fetch response status:', res.status);
@@ -43,9 +42,7 @@ const FinanceDashboard = () => {
         .catch(err => { console.error('[DEBUG][FinanceDashboard] Error fetching vehicle records:', err); }),
       fetch(`${API_BASE}/api/documents/stats`, {
         credentials: 'include',
-        headers: {
-          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
-        }
+        headers: getAuthHeaders()
       })
         .then(res => {
           console.log('[DEBUG][FinanceDashboard] Stats fetch response status:', res.status);
@@ -59,9 +56,7 @@ const FinanceDashboard = () => {
         .catch(err => { console.error('[DEBUG][FinanceDashboard] Error fetching stats:', err); }),
       fetch(`${API_BASE}/api/deals`, {
         credentials: 'include',
-        headers: {
-          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
-        }
+        headers: getAuthHeaders()
       })
         .then(res => {
           console.log('[DEBUG][FinanceDashboard] Deals fetch response status:', res.status);
@@ -75,20 +70,17 @@ const FinanceDashboard = () => {
       if (isMounted) setLoading(false);
     });
     return () => { isMounted = false; };
-  }, []);
+  }, [getAuthHeaders]);
 
   const fetchData = async () => {
     try {
       setLoading(true);
       const API_BASE = process.env.REACT_APP_API_URL;
-      const token = localStorage.getItem('token') || window.localStorage.getItem('token');
       
       // Fetch vehicle records
       const recordsResponse = await fetch(`${API_BASE}/api/documents/vehicle-records`, {
         credentials: 'include',
-        headers: {
-          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
-        }
+        headers: getAuthHeaders()
       });
       console.log('[DEBUG][FinanceDashboard] Vehicle records fetch response status:', recordsResponse.status);
       const recordsData = await recordsResponse.json();
@@ -100,9 +92,7 @@ const FinanceDashboard = () => {
       // Fetch stats
       const statsResponse = await fetch(`${API_BASE}/api/documents/stats`, {
         credentials: 'include',
-        headers: {
-          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
-        }
+        headers: getAuthHeaders()
       });
       console.log('[DEBUG][FinanceDashboard] Stats fetch response status:', statsResponse.status);
       const statsData = await statsResponse.json();
@@ -121,14 +111,13 @@ const FinanceDashboard = () => {
   const handleStatusUpdate = async (recordId, documentIndex, status, notes = '') => {
     try {
       const API_BASE = process.env.REACT_APP_API_URL;
-      const token = localStorage.getItem('token') || window.localStorage.getItem('token');
       const url = `${API_BASE}/api/documents/vehicle-records/${recordId}/documents/${documentIndex}/status`;
-      console.log('[DEBUG][FinanceDashboard] Updating status via:', url, 'with token:', token);
+      console.log('[DEBUG][FinanceDashboard] Updating status via:', url);
       const response = await fetch(url, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
-          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+          ...getAuthHeaders()
         },
         body: JSON.stringify({ status, notes }),
         credentials: 'include'
@@ -151,14 +140,11 @@ const FinanceDashboard = () => {
   const downloadDocument = async (fileName) => {
     try {
       const API_BASE = process.env.REACT_APP_API_URL;
-      const token = localStorage.getItem('token') || window.localStorage.getItem('token');
       const url = `${API_BASE}/api/documents/download/${fileName}`;
-      console.log('[DEBUG][FinanceDashboard] Downloading document from:', url, 'with token:', token);
+      console.log('[DEBUG][FinanceDashboard] Downloading document from:', url);
       const response = await fetch(url, {
         credentials: 'include',
-        headers: {
-          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
-        }
+        headers: getAuthHeaders()
       });
       if (response.ok) {
         const blob = await response.blob();
@@ -186,15 +172,12 @@ const FinanceDashboard = () => {
 
     try {
       const API_BASE = process.env.REACT_APP_API_URL;
-      const token = localStorage.getItem('token') || window.localStorage.getItem('token');
       const url = `${API_BASE}/api/deals/${dealId}`;
-      console.log('[DEBUG][FinanceDashboard] Deleting deal via:', url, 'with token:', token);
+      console.log('[DEBUG][FinanceDashboard] Deleting deal via:', url);
       const response = await fetch(url, {
         method: 'DELETE',
         credentials: 'include',
-        headers: {
-          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
-        }
+        headers: getAuthHeaders()
       });
       console.log('[DEBUG][FinanceDashboard] Delete deal response status:', response.status);
 
