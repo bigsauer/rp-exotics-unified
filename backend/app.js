@@ -409,55 +409,7 @@ app.get('/api/debug/users', async (req, res) => {
 // Serve uploaded files
 app.use('/uploads', express.static('uploads'));
 
-// VIN Decode endpoint (keeping the existing one for compatibility)
-app.post('/api/deals/vin/decode', async (req, res) => {
-  try {
-    const { vin } = req.body;
-    
-    if (!vin || vin.length !== 17) {
-      return res.status(400).json({ 
-        error: 'Valid 17-character VIN required' 
-      });
-    }
-
-    // Using NHTSA free API
-    const response = await axios.get(
-      `https://vpic.nhtsa.dot.gov/api/vehicles/DecodeVin/${vin}?format=json`,
-      { timeout: 10000 }
-    );
-
-    if (response.data?.Results) {
-      const results = response.data.Results;
-      
-      const extractValue = (variable) => {
-        const result = results.find(r => r.Variable === variable);
-        return result?.Value && result.Value !== 'Not Applicable' ? result.Value : null;
-      };
-
-      const decodedData = {
-        year: extractValue('Model Year'),
-        make: extractValue('Make'),
-        model: extractValue('Model'),
-        trim: extractValue('Trim'),
-        bodyStyle: extractValue('Body Class'),
-        engine: extractValue('Engine Model'),
-        transmission: extractValue('Transmission Style'),
-        driveType: extractValue('Drive Type')
-      };
-
-      res.json({
-        success: true,
-        data: decodedData,
-        decodedAt: new Date()
-      });
-    } else {
-      res.status(400).json({ error: 'Unable to decode VIN' });
-    }
-  } catch (error) {
-    console.error('VIN decode error:', error);
-    res.status(500).json({ error: 'VIN decode service temporarily unavailable' });
-  }
-});
+// VIN Decode endpoint moved to /api/deals/vin/decode with authentication
 
 // Health check endpoint
 // app.get('/api/health', (req, res) => {
