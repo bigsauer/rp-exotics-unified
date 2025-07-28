@@ -21,6 +21,7 @@ import {
   Shield
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from './AuthContext';
 import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
@@ -54,13 +55,7 @@ const dealType2DisplayMap = {
 
 const DealStatusPage = () => {
   console.log('DealStatusPage rendered');
-  // If you use currentUser, add this:
-  // const { user: currentUser } = useAuth();
-  // console.log('DealStatusPage currentUser:', currentUser);
-  // if (!currentUser) {
-  //   console.log('DealStatusPage: currentUser is not set, not rendering component');
-  //   return null;
-  // }
+  const { getAuthHeaders } = useAuth();
   const [deals, setDeals] = useState([]);
   const [loading, setLoading] = useState(true);
   const [expandedDeal, setExpandedDeal] = useState(null);
@@ -98,13 +93,10 @@ const DealStatusPage = () => {
     try {
       setLoading(true);
       const url = `${API_BASE}/api/deals`;
-      const token = localStorage.getItem('token') || window.localStorage.getItem('token');
-      console.log('[DEBUG][DealStatusPage] Fetching deals from:', url, 'with token:', token);
+      console.log('[DEBUG][DealStatusPage] Fetching deals from:', url);
       const response = await fetch(url, {
         credentials: 'include',
-        headers: {
-          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
-        }
+        headers: getAuthHeaders()
       });
       console.log('[DEBUG][DealStatusPage] Deal fetch response status:', response.status);
       if (response.ok) {
@@ -160,12 +152,9 @@ const DealStatusPage = () => {
     setDeals(deals => deals.filter(d => d.id !== dealId));
     try {
       const url = `${API_BASE}/api/deals/${dealId}`;
-      const token = localStorage.getItem('token') || window.localStorage.getItem('token');
       const response = await fetch(url, {
         method: 'DELETE',
-        headers: {
-          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
-        },
+        headers: getAuthHeaders(),
         credentials: 'include'
       });
       if (!response.ok) throw new Error('Delete failed');
@@ -190,12 +179,11 @@ const DealStatusPage = () => {
     setEditDealId(null);
     try {
       const url = `${API_BASE}/api/deals/${dealId}`;
-      const token = localStorage.getItem('token') || window.localStorage.getItem('token');
       const response = await fetch(url, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
-          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+          ...getAuthHeaders()
         },
         body: JSON.stringify({ notes: editNotes }),
         credentials: 'include'
