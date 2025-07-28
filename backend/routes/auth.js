@@ -127,6 +127,11 @@ router.post('/register', async (req, res) => {
 
 
 
+// Test route to verify route registration
+router.get('/test-route', (req, res) => {
+  res.json({ message: 'Test route working' });
+});
+
 // In-memory storage for pending password reset requests
 const pendingPasswordResets = new Map();
 
