@@ -24,6 +24,14 @@ async function addUsers() {
       password: 'HDZ3204r!?',
       role: 'sales',
       isActive: true
+    },
+    {
+      firstName: 'Brennan',
+      lastName: 'Sauer',
+      email: 'brennan@rpexotics.com',
+      password: '123123',
+      role: 'admin',
+      isActive: true
     }
   ];
 
