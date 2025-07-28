@@ -216,13 +216,16 @@ router.post('/generate/:dealId', auth, async (req, res) => {
     let vehicleRecordResult;
     
     if (dealData.dealType === 'wholesale-flip') {
-      console.log(`[DOC GEN] 🎯 Generating 3 documents for wholesale flip buy/sell deal (parallel)`);
+      console.log(`[DOC GEN] 🎯 Generating documents for wholesale flip buy/sell deal based on seller type`);
       
       try {
-        // Fix seller type for wholesale flip deals - should be private for purchase contracts
+        // Use the actual seller type from the deal data
+        const sellerType = dealData.seller?.type || req.body.sellerType || 'private';
+        console.log(`[DOC GEN] 🎯 Seller type for wholesale flip: ${sellerType}`);
+        
         const correctedSellerData = {
           ...dealData.seller,
-          type: 'private', // Force seller type to private for wholesale flip deals
+          type: sellerType, // Use actual seller type, don't force to private
           name: dealData.seller?.name || 'N/A',
           contact: {
             address: dealData.seller?.contact?.address || {},
@@ -309,49 +312,102 @@ router.post('/generate/:dealId', auth, async (req, res) => {
           console.log('[DOC GEN PATCH] buyerType set on doc data:', req.body.buyerType);
         }
 
-        // Generate all documents in parallel for better performance
-        console.time('[PERF] generateAllDocuments');
-        const [buyerResult, sellerResult, vehicleRecordResult] = await Promise.all([
-          documentGenerator.generateDocument(buyerDocumentData, user),
-          documentGenerator.generateDocument(sellerDocumentData, user),
-          typeof documentGenerator.generateVehicleRecordPDF === 'function' 
-            ? documentGenerator.generateVehicleRecordPDF({
-                ...dealData,
-                seller: correctedSellerData,
-                buyer: correctedBuyerData,
-                generalNotes: req.body.generalNotes || dealData.generalNotes || dealData.notes,
-                vehicleDescription: req.body.vehicleDescription || dealData.vehicleDescription
-              }, user)
-            : Promise.resolve(null)
-        ]);
-        console.timeEnd('[PERF] generateAllDocuments');
+        // Generate documents based on seller type
+        console.time('[PERF] generateWholesaleFlipDocuments');
         
-        console.log(`[DOC GEN] Buyer document generated:`, buyerResult);
-        console.log(`[DOC GEN] Seller document generated:`, sellerResult);
-        if (vehicleRecordResult) {
-          console.log(`[DOC GEN] Vehicle Record PDF generated:`, vehicleRecordResult);
+        if (sellerType === 'dealer') {
+          console.log(`[DOC GEN] 🎯 Seller is DEALER - generating wholesale documents`);
+          
+          // For dealer seller: generate wholesale purchase agreement and wholesale BOS
+          const [sellerResult, buyerResult, vehicleRecordResult] = await Promise.all([
+            documentGenerator.generateDocument({
+              ...sellerDocumentData,
+              sellerType: 'dealer',
+              buyerType: 'private'
+            }, user),
+            documentGenerator.generateDocument({
+              ...buyerDocumentData,
+              sellerType: 'private',
+              buyerType: 'dealer'
+            }, user),
+            typeof documentGenerator.generateVehicleRecordPDF === 'function' 
+              ? documentGenerator.generateVehicleRecordPDF({
+                  ...dealData,
+                  seller: correctedSellerData,
+                  buyer: correctedBuyerData,
+                  generalNotes: req.body.generalNotes || dealData.generalNotes || dealData.notes,
+                  vehicleDescription: req.body.vehicleDescription || dealData.vehicleDescription
+                }, user)
+              : Promise.resolve(null)
+          ]);
+          
+          console.log(`[DOC GEN] Dealer seller document (wholesale purchase agreement):`, sellerResult);
+          console.log(`[DOC GEN] Private buyer document (wholesale BOS):`, buyerResult);
+          
+          documentResults.push({
+            ...sellerResult,
+            documentType: 'wholesale_purchase_agreement',
+            party: 'seller'
+          });
+          
+          documentResults.push({
+            ...buyerResult,
+            documentType: 'wholesale_bos',
+            party: 'buyer'
+          });
+          
+        } else {
+          console.log(`[DOC GEN] 🎯 Seller is PRIVATE PARTY - generating retail documents`);
+          
+          // For private party seller: generate retail private party purchase agreements
+          const [sellerResult, buyerResult, vehicleRecordResult] = await Promise.all([
+            documentGenerator.generateDocument({
+              ...sellerDocumentData,
+              sellerType: 'private',
+              buyerType: 'dealer'
+            }, user),
+            documentGenerator.generateDocument({
+              ...buyerDocumentData,
+              sellerType: 'dealer',
+              buyerType: 'private'
+            }, user),
+            typeof documentGenerator.generateVehicleRecordPDF === 'function' 
+              ? documentGenerator.generateVehicleRecordPDF({
+                  ...dealData,
+                  seller: correctedSellerData,
+                  buyer: correctedBuyerData,
+                  generalNotes: req.body.generalNotes || dealData.generalNotes || dealData.notes,
+                  vehicleDescription: req.body.vehicleDescription || dealData.vehicleDescription
+                }, user)
+              : Promise.resolve(null)
+          ]);
+          
+          console.log(`[DOC GEN] Private seller document (retail PP purchase agreement):`, sellerResult);
+          console.log(`[DOC GEN] Dealer buyer document (retail PP purchase agreement):`, buyerResult);
+          
+          documentResults.push({
+            ...sellerResult,
+            documentType: 'retail_pp_buy',
+            party: 'seller'
+          });
+          
+          documentResults.push({
+            ...buyerResult,
+            documentType: 'retail_pp_buy',
+            party: 'buyer'
+          });
         }
         
-        // Add results to documentResults array
-        documentResults.push({
-          ...buyerResult,
-          documentType: buyerResult.documentType,
-          party: 'buyer'
-        });
-        
-        documentResults.push({
-          ...sellerResult,
-          documentType: sellerResult.documentType,
-          party: 'seller'
-        });
-        
         if (vehicleRecordResult) {
+          console.log(`[DOC GEN] Vehicle Record PDF generated:`, vehicleRecordResult);
           documentResults.push({
             ...vehicleRecordResult,
             documentType: 'vehicle_record',
             party: 'vehicle'
           });
         }
+        
+        console.timeEnd('[PERF] generateWholesaleFlipDocuments');
         
       } catch (err) {
         console.error(`[DOC GEN] Error generating wholesale flip documents:`, err);

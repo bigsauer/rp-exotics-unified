@@ -2488,20 +2488,9 @@ class DocumentGenerator {
     console.log('[PDF GEN] - dealType === "wholesale-flip" && dealType2SubType === "buy-sell":', dealData.dealType === 'wholesale-flip' && dealData.dealType2SubType === 'buy-sell');
     console.log('[PDF GEN] - dealType === "wholesale":', dealData.dealType === 'wholesale');
     
-    // Check wholesale flip deal conditions - handle all wholesale flip sub-types
-    const isWholesaleFlipDeal = dealData.dealType === 'wholesale-flip';
-    const sellerIsDealer = isWholesaleFlipDeal && dealData.seller && dealData.seller.type === 'dealer';
-    const buyerIsDealer = isWholesaleFlipDeal && dealData.buyer && dealData.buyer.type === 'dealer';
-    
-    console.log('[PDF GEN] Wholesale Flip conditions:');
-    console.log('[PDF GEN] - isWholesaleFlipDeal:', isWholesaleFlipDeal);
-    console.log('[PDF GEN] - sellerIsDealer:', sellerIsDealer);
-    console.log('[PDF GEN] - buyerIsDealer:', buyerIsDealer);
     console.log('[PDF GEN] - dealData.seller:', dealData.seller);
     console.log('[PDF GEN] - dealData.buyer:', dealData.buyer);
     console.log('[PDF GEN] - dealData.sellerInfo:', dealData.sellerInfo);
-    console.log('[PDF GEN] - isBuyerDocument:', dealData.isBuyerDocument);
-    console.log('[PDF GEN] - isSellerDocument:', dealData.isSellerDocument);
     
     try {
       let documentResult;
@@ -2578,68 +2567,53 @@ class DocumentGenerator {
         };
       }
       
-          // Handle wholesale flip deals with separate buyer/seller documents
-    if (dealData.isBuyerDocument) {
-        console.log('[PDF GEN] 🎯 Generating buyer document for wholesale flip deal');
-        console.log('[PDF GEN] 🔍 Buyer type check:', { buyerType: dealData.buyer?.type });
-        if (dealData.dealType === 'wholesale-flip') {
-          if (dealData.buyer?.type === 'dealer') {
-            // Use the same BOS as standard wholesale D2D sale
-            console.log('[PDF GEN] -> Using generateWholesaleBOS for wholesale flip buyer (dealer)...');
-            documentResult = await this.generateWholesaleBOS(dealData, user);
-            console.log('[PDF GEN] <- generateWholesaleBOS complete:', documentResult.filePath);
-            console.log('[PDF GEN][DEBUG] Returning documentType: wholesale_bos for wholesale flip buyer (dealer)');
-            return {
-              ...documentResult,
-              documentType: 'wholesale_bos'
-            };
-          } else {
-            console.log('[PDF GEN] -> Using generateRetailPPBuy for wholesale flip buyer (private)...');
-            documentResult = await this.generateRetailPPBuy(dealData, user);
-            console.log('[PDF GEN] <- generateRetailPPBuy complete:', documentResult.filePath);
-            console.log('[PDF GEN][DEBUG] Returning documentType: retail_pp_buy for wholesale flip buyer (private)');
-            return {
-              ...documentResult,
-              documentType: 'retail_pp_buy'
-            };
-          }
+          // Handle wholesale flip deals based on seller type
+      if (dealData.dealType === 'wholesale-flip') {
+        console.log('[PDF GEN] 🎯 Generating document for wholesale flip deal');
+        console.log('[PDF GEN] 🔍 Seller type:', dealData.seller?.type);
+        console.log('[PDF GEN] 🔍 Buyer type:', dealData.buyer?.type);
+        console.log('[PDF GEN] 🔍 sellerType from data:', dealData.sellerType);
+        console.log('[PDF GEN] 🔍 buyerType from data:', dealData.buyerType);
+        
+        // Determine the actual types to use
+        const sellerType = dealData.sellerType || dealData.seller?.type || 'private';
+        const buyerType = dealData.buyerType || dealData.buyer?.type || 'private';
+        
+        console.log('[PDF GEN] 🔍 Final seller type:', sellerType);
+        console.log('[PDF GEN] 🔍 Final buyer type:', buyerType);
+        
+        // For wholesale flip deals, generate documents based on the party types
+        if (sellerType === 'dealer') {
+          // Seller is dealer - generate wholesale purchase agreement
+          console.log('[PDF GEN] -> Using generateWholesalePPBuy for dealer seller...');
+          documentResult = await this.generateWholesalePPBuy(dealData, user);
+          console.log('[PDF GEN] <- generateWholesalePPBuy complete:', documentResult.filePath);
+          console.log('[PDF GEN][DEBUG] Returning documentType: wholesale_purchase_agreement for dealer seller');
+          return {
+            ...documentResult,
+            documentType: 'wholesale_purchase_agreement'
+          };
+        } else if (buyerType === 'dealer') {
+          // Buyer is dealer - generate wholesale BOS
+          console.log('[PDF GEN] -> Using generateWholesaleBOS for dealer buyer...');
+          documentResult = await this.generateWholesaleBOS(dealData, user);
+          console.log('[PDF GEN] <- generateWholesaleBOS complete:', documentResult.filePath);
+          console.log('[PDF GEN][DEBUG] Returning documentType: wholesale_bos for dealer buyer');
+          return {
+            ...documentResult,
+            documentType: 'wholesale_bos'
+          };
+        } else {
+          // Both parties are private - generate retail private party purchase agreement
+          console.log('[PDF GEN] -> Using generateRetailPPBuy for private parties...');
+          documentResult = await this.generateRetailPPBuy(dealData, user);
+          console.log('[PDF GEN] <- generateRetailPPBuy complete:', documentResult.filePath);
+          console.log('[PDF GEN][DEBUG] Returning documentType: retail_pp_buy for private parties');
+          return {
+            ...documentResult,
+            documentType: 'retail_pp_buy'
+          };
         }
-        // ... fallback (should not be hit)
-        documentResult = await this.generateRetailPPBuy(dealData, user);
-        return {
-          ...documentResult,
-          documentType: 'retail_pp_buy'
-        };
-      } else if (dealData.isSellerDocument) {
-        console.log('[PDF GEN] 🎯 Generating seller document for wholesale flip deal');
-        console.log('[PDF GEN] 🔍 Seller type check:', { sellerType: dealData.seller?.type });
-        if (dealData.dealType === 'wholesale-flip') {
-          if (dealData.seller?.type === 'dealer') {
-            console.log('[PDF GEN] -> Using generateWholesalePPBuy for wholesale flip seller (dealer)...');
-            documentResult = await this.generateWholesalePPBuy(dealData, user);
-            console.log('[PDF GEN] <- generateWholesalePPBuy complete:', documentResult.filePath);
-            console.log('[PDF GEN][DEBUG] Returning documentType: wholesale_purchase_agreement for wholesale flip seller (dealer)');
-            return {
-              ...documentResult,
-              documentType: 'wholesale_purchase_agreement'
-            };
-          } else {
-            console.log('[PDF GEN] -> Using generateRetailPPBuy for wholesale flip seller (private)...');
-            documentResult = await this.generateRetailPPBuy(dealData, user);
-            console.log('[PDF GEN] <- generateRetailPPBuy complete:', documentResult.filePath);
-            console.log('[PDF GEN][DEBUG] Returning documentType: retail_pp_buy for wholesale flip seller (private)');
-            return {
-              ...documentResult,
-              documentType: 'retail_pp_buy'
-            };
-          }
-        }
-        // ... fallback (should not be hit)
-        documentResult = await this.generateRetailPPBuy(dealData, user);
-        return {
-          ...documentResult,
-          documentType: 'retail_pp_buy'
-        };
       } else if (dealData.dealType === 'retail' || dealData.dealType === 'retail-pp') {
         console.log('[PDF GEN] -> Calling generateRetailPPBuy...');
         documentResult = await this.generateRetailPPBuy(dealData, user);
@@ -2649,26 +2623,7 @@ class DocumentGenerator {
           ...documentResult,
           documentType: 'retail_pp_buy'
         };
-      } else if (isWholesaleFlipDeal && sellerIsDealer) {
-        // Buy/Sell deal with dealer seller - generate wholesale purchase contract
-        console.log('[PDF GEN] -> Calling generateWholesalePPBuy for buy/sell with dealer seller...');
-        documentResult = await this.generateWholesalePPBuy(dealData, user);
-        console.log('[PDF GEN] <- generateWholesalePPBuy complete:', documentResult.filePath);
-        console.log('[PDF GEN][DEBUG] Returning documentType: wholesale_purchase_agreement for buy/sell with dealer seller');
-        return {
-          ...documentResult,
-          documentType: 'wholesale_purchase_agreement'
-        };
-      } else if (isWholesaleFlipDeal && buyerIsDealer) {
-        // Buy/Sell deal with dealer buyer - generate wholesale BOS
-        console.log('[PDF GEN] -> Calling generateWholesaleBOS for buy/sell with dealer buyer...');
-        documentResult = await this.generateWholesaleBOS(dealData, user);
-        console.log('[PDF GEN] <- generateWholesaleBOS complete:', documentResult.filePath);
-        console.log('[PDF GEN][DEBUG] Returning documentType: wholesale_bos for buy/sell with dealer buyer');
-        return {
-          ...documentResult,
-          documentType: 'wholesale_bos'
-        };
+
       } else if (dealData.dealType === 'wholesale') {
         console.log('[PDF GEN] -> Calling generateBillOfSale (compact style for wholesale)...');
         documentResult = await this.generateBillOfSale(dealData, user);
