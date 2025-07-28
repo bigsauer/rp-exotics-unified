@@ -2199,9 +2199,10 @@ class DocumentGenerator {
     // --- Initialize buyer and buyerContact before any use ---
     let buyer = dealData.buyer || {};
     let buyerContact = buyer.contact || {};
+
+    console.log('[PDF GEN][DEBUG] Incoming dealData.buyer:', JSON.stringify(dealData.buyer, null, 2));
+    console.log('[PDF GEN][DEBUG] Incoming dealData.seller:', JSON.stringify(dealData.seller, null, 2));
     
-    // For wholesale D2D buy deals: RP Exotics is the buyer (purchasing dealer)
-    // For other wholesale D2D deals: the seller becomes the buyer (purchasing dealer)
     if (dealData.dealType === 'wholesale-d2d' && dealData.dealType2SubType === 'buy') {
       // For wholesale D2D buy: RP Exotics is the buyer (purchasing dealer)
       buyer = {
@@ -2222,12 +2223,25 @@ class DocumentGenerator {
       };
       buyerContact = buyer.contact || {};
       console.log('[PDF GEN] [BOS DEBUG] Wholesale D2D Buy: RP Exotics set as purchasing dealer');
+    } else if (dealData.dealType === 'wholesale-d2d' && dealData.dealType2SubType === 'sale') {
+      // For wholesale D2D sale: use the buyer as purchasing dealer
+      buyer = dealData.buyer || {};
+      buyerContact = buyer.contact || {};
+      console.log('[PDF GEN] [BOS DEBUG] Wholesale D2D Sale: Buyer set as purchasing dealer');
     } else if (dealData.dealType === 'wholesale-d2d') {
       // For other wholesale D2D deals: seller becomes the buyer (purchasing dealer)
       buyer = dealData.seller || {};
       buyerContact = buyer.contact || {};
       console.log('[PDF GEN] [BOS DEBUG] Wholesale D2D: Seller set as purchasing dealer');
+    } else {
+      // For all other deal types (including wholesale-flip): use the buyer as purchasing dealer
+      buyer = dealData.buyer || {};
+      buyerContact = buyer.contact || {};
+      console.log('[PDF GEN] [BOS DEBUG] Default: Buyer set as purchasing dealer');
     }
+
+    console.log('[PDF GEN][DEBUG] Final buyer used for purchasingDealer:', JSON.stringify(buyer, null, 2));
+    console.log('[PDF GEN][DEBUG] Final buyerContact used for purchasingDealer:', JSON.stringify(buyerContact, null, 2));
     
     // --- Now safe to use buyer and buyerContact ---
     console.log('[PDF GEN] [BOS DEBUG] buyer:', JSON.stringify(buyer, null, 2));
