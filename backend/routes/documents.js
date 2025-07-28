@@ -328,7 +328,10 @@ router.post('/generate/:dealId', auth, async (req, res) => {
             documentGenerator.generateDocument({
               ...buyerDocumentData,
               sellerType: 'private',
-              buyerType: 'dealer'
+              buyerType: 'dealer',
+              // Ensure the purchasing dealer (buyer) info is properly set for wholesale BOS
+              buyer: correctedBuyerData,
+              seller: correctedSellerData
             }, user)
           ]);
           
