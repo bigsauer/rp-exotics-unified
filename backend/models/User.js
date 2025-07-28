@@ -4,7 +4,12 @@ const bcrypt = require('bcryptjs');
 const userSchema = new mongoose.Schema({
   firstName: String,
   lastName: String,
-  email: { type: String, unique: true },
+  email: { 
+    type: String, 
+    unique: true,
+    lowercase: true,
+    trim: true
+  },
   passwordHash: String,
   role: String,
   permissions: Object,
@@ -12,6 +17,17 @@ const userSchema = new mongoose.Schema({
   isActive: Boolean,
   emailVerified: Boolean,
   // Add any other fields as needed
+});
+
+// Create case-insensitive index on email
+userSchema.index({ email: 1 }, { unique: true, collation: { locale: 'en', strength: 2 } });
+
+// Pre-save middleware to ensure email is lowercase
+userSchema.pre('save', function(next) {
+  if (this.email) {
+    this.email = this.email.toLowerCase().trim();
+  }
+  next();
 });
 
 userSchema.methods.comparePassword = function(password) {
