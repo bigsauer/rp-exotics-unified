@@ -2,6 +2,20 @@ const express = require('express');
 const router = express.Router();
 const Dealer = require('../models/Dealer');
 
+// Add global middleware for debugging
+router.use((req, res, next) => {
+  console.log(`[DEALERS DEBUG] ${req.method} ${req.originalUrl}`);
+  console.log('[DEALERS DEBUG] Headers:', JSON.stringify(req.headers, null, 2));
+  console.log('[DEALERS DEBUG] Query:', JSON.stringify(req.query, null, 2));
+  if (req.method !== 'GET') {
+    console.log('[DEALERS DEBUG] Body:', JSON.stringify(req.body, null, 2));
+  }
+  // Check DB connection
+  const mongoose = require('mongoose');
+  console.log('[DEALERS DEBUG] Mongoose connection state:', mongoose.connection.readyState);
+  next();
+});
+
 // GET /api/dealers/search - Search dealers for autocomplete (MUST BE BEFORE /:id route)
 router.get('/search', async (req, res) => {
   try {
@@ -18,7 +32,10 @@ router.get('/search', async (req, res) => {
         { 'contact.email': { $regex: q, $options: 'i' } },
         { 'contact.phone': { $regex: q, $options: 'i' } }
       ]
-    }).limit(10).sort({ name: 1 });
+    })
+      .limit(10)
+      .sort({ name: 1 })
+      .lean(); // .lean() added for speed
 
     // Format dealers for frontend
     const formattedDealers = dealers.map(dealer => {
@@ -128,7 +145,8 @@ router.get('/', async (req, res) => {
     const dealers = await Dealer.find(query)
       .sort(sort)
       .skip(skip)
-      .limit(parseInt(limit));
+      .limit(parseInt(limit))
+      .lean(); // .lean() added for speed
 
     const total = await Dealer.countDocuments(query);
 
@@ -160,6 +178,22 @@ router.get('/', async (req, res) => {
       createdBy: dealer.createdBy
     }));
 
+    if (transformedDealers.length === 0) {
+      console.warn('[DEALERS DEBUG] No dealers found for query:', JSON.stringify(query));
+      return res.json({
+        success: true,
+        data: [],
+        message: 'No dealers found for the given query.',
+        pagination: {
+          page: parseInt(page),
+          limit: parseInt(limit),
+          total: 0,
+          pages: 0
+        }
+      });
+    }
+
+    console.log(`[DEALERS DEBUG] Returning ${transformedDealers.length} dealers (total: ${total})`);
     res.json({
       success: true,
       data: transformedDealers,
@@ -171,15 +205,15 @@ router.get('/', async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Error getting dealers:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    console.error('[DEALERS DEBUG] Error getting dealers:', error);
+    res.status(500).json({ error: 'Internal server error', details: error.message });
   }
 });
 
 // GET /api/dealers/:id - Get dealer by ID
 router.get('/:id', async (req, res) => {
   try {
-    const dealer = await Dealer.findById(req.params.id);
+    const dealer = await Dealer.findById(req.params.id).lean(); // .lean() added for speed
     if (!dealer) {
       return res.status(404).json({ error: 'Dealer not found' });
     }

@@ -65,7 +65,7 @@ async function findOrCreateDealer(dealerInfo) {
         { 'contact.email': dealerInfo.email?.toLowerCase() },
         { 'contact.phone': dealerInfo.phone }
       ]
-    });
+    }).lean(); // .lean() added for speed
 
     if (existingDealer) {
       // Log before state
@@ -118,7 +118,7 @@ async function findOrCreateDealer(dealerInfo) {
       }
       if (updated) {
         try {
-          await existingDealer.save();
+          await Dealer.findByIdAndUpdate(existingDealer._id, existingDealer, { new: true, runValidators: true }).lean(); // .lean() added for speed
           console.log('[DEALER UPDATE] After:', JSON.stringify(existingDealer, null, 2));
         } catch (err) {
           console.error('[DEALER UPDATE] ❌ Error saving updated dealer:', err);
@@ -181,24 +181,44 @@ async function findOrCreateDealer(dealerInfo) {
   }
 }
 
+// Add global request logger for debugging
+router.use((req, res, next) => {
+  console.log(`[DEBUG][deals.js] ${req.method} ${req.originalUrl} - Body:`, req.body);
+  next();
+});
+
 // Test endpoint
 router.get('/test', (req, res) => {
   res.json({ message: 'Deals routes working!' });
 });
 
-// VIN Decode endpoint
-router.post('/vin/decode', async (req, res) => {
+// GET /api/deals - Return all deals (for frontend)
+router.get('/', authenticateToken, async (req, res) => {
   try {
+    // Use .lean() for faster read-only queries
+    const deals = await Deal.find().sort({ createdAt: -1 }).lean(); // .lean() added for speed
+    res.json({ success: true, deals, count: deals.length });
+  } catch (error) {
+    console.error('Get deals error:', error);
+    res.status(500).json({ error: 'Failed to retrieve deals' });
+  }
+});
+
+// VIN Decode endpoint
+router.post('/vin/decode', authenticateToken, async (req, res) => {
+  try {
+    console.log('[VIN DECODE] Request body:', req.body);
     const { vin } = req.body;
     
     if (!vin || vin.length !== 17) {
+      console.warn('[VIN DECODE] Invalid VIN:', vin);
       return res.status(400).json({ 
         error: 'Valid 17-character VIN required' 
       });
     }
 
     // Check cache first
-    const cached = await VinDecodeCache.findOne({ vin });
+    const cached = await VinDecodeCache.findOne({ vin }).lean(); // .lean() added for speed
     if (cached) {
       console.log('[VIN DECODE] Cache hit for VIN:', vin, 'Data:', cached.decodedData);
       return res.json({
@@ -287,7 +307,7 @@ router.get('/dealers/search', async (req, res) => {
     const dealers = await Dealer.find(
       { $text: { $search: q } },
       { score: { $meta: "textScore" } }
-    ).sort({ score: { $meta: "textScore" } }).limit(10);
+    ).sort({ score: { $meta: "textScore" } }).limit(10).lean(); // .lean() added for speed
     
     // Format dealers for frontend
     const formattedDealers = dealers.map(dealer => ({
@@ -308,7 +328,7 @@ router.get('/dealers/search', async (req, res) => {
 });
 
 // Enhanced Deals CRUD endpoints with MongoDB dealer auto-creation
-router.post('/deals', authenticateToken, async (req, res) => {
+router.post('/', authenticateToken, async (req, res) => {
   try {
     const dealData = req.body;
     
@@ -569,7 +589,7 @@ router.post('/deals', authenticateToken, async (req, res) => {
     console.log('[DEAL CREATION] 💾 Saving deal to database...');
     await newDeal.save();
     // Log the saved deal to confirm fields
-    const savedDeal = await Deal.findById(newDeal._id);
+    const savedDeal = await Deal.findById(newDeal._id).lean(); // .lean() added for speed
     console.log('[DEAL CREATION] ✅ Deal saved (fields check):', {
       id: savedDeal._id,
       color: savedDeal.color,
@@ -678,6 +698,24 @@ router.post('/deals', authenticateToken, async (req, res) => {
     await newDeal.save();
     console.log(`[DEAL CREATION] ✅ Deal updated with vehicleRecordId: ${vehicleRecord._id}`);
 
+    // Auto-populate required document placeholders
+    const DocumentType = require('../models/DocumentType');
+    const docTypes = await DocumentType.find({ isActive: true }).lean();
+    let updated = false;
+    for (const docType of docTypes) {
+      if (!newDeal.documents.some(doc => doc.type === docType.type)) {
+        newDeal.documents.push({
+          type: docType.type,
+          required: docType.required,
+          uploaded: false,
+          approved: false,
+          version: 1
+        });
+        updated = true;
+      }
+    }
+    if (updated) await newDeal.save();
+
     // === Helper: Normalize for robust dealer matching ===
     function normalizeName(name) {
       return (name || '').toLowerCase().replace(/\s+/g, ' ').trim();
@@ -746,7 +784,7 @@ router.post('/deals', authenticateToken, async (req, res) => {
       console.log('[DEBUG] Buyer DB query:', JSON.stringify(buyerQuery));
       // DB Results (only if type not set by frontend)
       if (!dealData.seller.type) {
-        const sellerDealerRecord = await Dealer.findOne(sellerQuery);
+        const sellerDealerRecord = await Dealer.findOne(sellerQuery).lean(); // .lean() added for speed
         console.log('[DEBUG] Seller DB result:', sellerDealerRecord ? JSON.stringify(sellerDealerRecord, null, 2) : 'null');
         if (sellerDealerRecord && (sellerDealerRecord.type === 'dealer' || sellerDealerRecord.type === 'Dealer')) {
           seller.type = 'dealer';
@@ -757,7 +795,7 @@ router.post('/deals', authenticateToken, async (req, res) => {
         }
       }
       if (!dealData.buyer.type) {
-        const buyerDealerRecord = await Dealer.findOne(buyerQuery);
+        const buyerDealerRecord = await Dealer.findOne(buyerQuery).lean(); // .lean() added for speed
         console.log('[DEBUG] Buyer DB result:', buyerDealerRecord ? JSON.stringify(buyerDealerRecord, null, 2) : 'null');
         if (buyerDealerRecord && (buyerDealerRecord.type === 'dealer' || buyerDealerRecord.type === 'Dealer')) {
           buyer.type = 'dealer';
@@ -796,6 +834,15 @@ router.post('/deals', authenticateToken, async (req, res) => {
     const buyerType = (buyer && buyer.type) ? String(buyer.type).toLowerCase() : '';
     const dealTypeStr = (newDeal.dealType || '').toLowerCase();
     console.log('[PDF GEN] seller.type:', sellerType, 'buyer.type:', buyerType, 'dealType:', dealTypeStr);
+    console.log('[PDF GEN] dealType2SubType:', dealData.dealType2SubType);
+    console.log('[PDF GEN] Full deal data for document generation:', {
+      dealType: newDeal.dealType,
+      dealType2SubType: dealData.dealType2SubType,
+      sellerType: sellerType,
+      buyerType: buyerType,
+      seller: seller,
+      buyer: buyer
+    });
     let pdfInfo = null;
     let purchaseContractPdfInfo = null;
     // Only use flip vehicle record template and wholesale purchase agreement for flip deals where both seller and buyer are dealers
@@ -871,6 +918,130 @@ router.post('/deals', authenticateToken, async (req, res) => {
       } catch (pdfErr) {
         console.error('[PDF GEN] Error generating Private Party Purchase Agreement PDF:', pdfErr);
       }
+    } else {
+      // Generate basic vehicle record for all other deal types
+      try {
+        const docGen = new DocumentGenerator();
+        pdfInfo = await docGen.generateStandardVehicleRecord({
+          ...dealData,
+          seller,
+          buyer,
+          financial,
+          stockNumber: newDeal.rpStockNumber,
+          dealType: newDeal.dealType,
+          dealType2SubType: dealData.dealType2SubType,
+          salesperson: newDeal.salesperson,
+          notes: newDeal.notes,
+          generalNotes: newDeal.generalNotes,
+        }, req.user);
+        console.log('[PDF GEN] Standard Vehicle Record PDF generated:', pdfInfo);
+      } catch (pdfErr) {
+        console.error('[PDF GEN] Error generating Standard Vehicle Record PDF:', pdfErr);
+      }
+    }
+
+    // Ensure at least one document is generated for every deal
+    if (!pdfInfo && !purchaseContractPdfInfo) {
+      console.log('[PDF GEN] ⚠️ No documents generated, creating fallback document...');
+      try {
+        const docGen = new DocumentGenerator();
+        pdfInfo = await docGen.generateStandardVehicleRecord({
+          ...dealData,
+          seller,
+          buyer,
+          financial,
+          stockNumber: newDeal.rpStockNumber,
+          dealType: newDeal.dealType,
+          dealType2SubType: dealData.dealType2SubType,
+          salesperson: newDeal.salesperson,
+          notes: newDeal.notes,
+          generalNotes: newDeal.generalNotes,
+        }, req.user);
+        console.log('[PDF GEN] Fallback Standard Vehicle Record PDF generated:', pdfInfo);
+      } catch (pdfErr) {
+        console.error('[PDF GEN] Error generating fallback Standard Vehicle Record PDF:', pdfErr);
+      }
+    }
+
+    // Save generated documents to vehicle record and deal
+    try {
+      console.log('[DOC SAVE] 💾 Saving generated documents...');
+      console.log('[DOC SAVE] pdfInfo:', pdfInfo);
+      console.log('[DOC SAVE] purchaseContractPdfInfo:', purchaseContractPdfInfo);
+      
+      // Save to vehicle record
+      if (pdfInfo) {
+        vehicleRecord.generatedDocuments.push({
+          type: 'vehicle_record',
+          fileName: pdfInfo.fileName,
+          filePath: pdfInfo.filePath,
+          generatedAt: new Date(),
+          generatedBy: req.user.id
+        });
+        console.log('[DOC SAVE] ✅ Vehicle record PDF saved to vehicle record');
+      } else {
+        console.log('[DOC SAVE] ⚠️ No vehicle record PDF generated');
+      }
+      
+      if (purchaseContractPdfInfo) {
+        vehicleRecord.generatedDocuments.push({
+          type: 'purchase_agreement',
+          fileName: purchaseContractPdfInfo.fileName,
+          filePath: purchaseContractPdfInfo.filePath,
+          generatedAt: new Date(),
+          generatedBy: req.user.id
+        });
+        console.log('[DOC SAVE] ✅ Purchase agreement PDF saved to vehicle record');
+      } else {
+        console.log('[DOC SAVE] ⚠️ No purchase agreement PDF generated');
+      }
+      
+      // Save vehicle record with documents
+      if (vehicleRecord.generatedDocuments.length > 0) {
+        await vehicleRecord.save();
+        console.log('[DOC SAVE] ✅ Vehicle record updated with generated documents');
+      }
+      
+      // Update deal documents array
+      if (pdfInfo) {
+        newDeal.documents.push({
+          type: 'vehicle_record',
+          documentId: `vehicle_record_${Date.now()}`,
+          fileName: pdfInfo.fileName,
+          filePath: pdfInfo.filePath,
+          uploaded: true,
+          uploadedAt: new Date(),
+          uploadedBy: req.user.id,
+          approved: false,
+          required: false,
+          version: 1
+        });
+      }
+      
+      if (purchaseContractPdfInfo) {
+        newDeal.documents.push({
+          type: 'purchase_agreement',
+          documentId: `purchase_agreement_${Date.now()}`,
+          fileName: purchaseContractPdfInfo.fileName,
+          filePath: purchaseContractPdfInfo.filePath,
+          uploaded: true,
+          uploadedAt: new Date(),
+          uploadedBy: req.user.id,
+          approved: false,
+          required: true,
+          version: 1
+        });
+      }
+      
+      // Save deal with documents
+      if (newDeal.documents.length > 0) {
+        await newDeal.save();
+        console.log('[DOC SAVE] ✅ Deal updated with generated documents');
+      }
+      
+    } catch (docSaveError) {
+      console.error('[DOC SAVE] ❌ Error saving generated documents:', docSaveError);
+      // Don't fail the deal creation if document saving fails
     }
 
     // Send deal receipt email to the user who created the deal
@@ -970,7 +1141,7 @@ router.get('/deals', authenticateToken, async (req, res) => {
       ];
     }
 
-    const deals = await Deal.find(query).sort({ createdAt: -1 });
+    const deals = await Deal.find(query).sort({ createdAt: -1 }).lean(); // .lean() added for speed
 
     res.json({ 
       success: true,
@@ -985,7 +1156,7 @@ router.get('/deals', authenticateToken, async (req, res) => {
 
 router.get('/deals/:id', authenticateToken, async (req, res) => {
   try {
-    const deal = await Deal.findById(req.params.id);
+    const deal = await Deal.findById(req.params.id).lean(); // .lean() added for speed
     
     if (!deal) {
       return res.status(404).json({ error: 'Deal not found' });
@@ -1054,7 +1225,7 @@ router.put('/deals/:id', authenticateToken, async (req, res) => {
         buyer: buyer || updateData.buyer
       },
       { new: true, runValidators: true }
-    );
+    ).lean(); // .lean() added for speed
 
     if (!updatedDeal) {
       return res.status(404).json({ error: 'Deal not found' });
@@ -1078,7 +1249,7 @@ router.delete('/deals/:id', authenticateToken, async (req, res) => {
       return res.status(403).json({ error: 'Insufficient permissions to delete deals' });
     }
 
-    const deletedDeal = await Deal.findByIdAndDelete(req.params.id);
+    const deletedDeal = await Deal.findByIdAndDelete(req.params.id).lean(); // .lean() added for speed
     
     if (!deletedDeal) {
       return res.status(404).json({ error: 'Deal not found' });
@@ -1087,7 +1258,7 @@ router.delete('/deals/:id', authenticateToken, async (req, res) => {
     // Also delete associated vehicle record if it exists
     if (deletedDeal.vehicleRecordId) {
       const VehicleRecord = require('../models/VehicleRecord');
-      await VehicleRecord.findByIdAndDelete(deletedDeal.vehicleRecordId);
+      await VehicleRecord.findByIdAndDelete(deletedDeal.vehicleRecordId).lean(); // .lean() added for speed
     }
 
     res.json({

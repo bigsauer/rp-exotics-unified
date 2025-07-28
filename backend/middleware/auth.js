@@ -28,7 +28,7 @@ const authenticateToken = async (req, res, next) => {
   }
 
   if (!token) {
-    console.warn('[AUTH] No token provided');
+    console.warn(`[AUTH] No token provided for ${req.method} ${req.originalUrl}`);
     return res.status(401).json({ error: 'Access token required' });
   }
 

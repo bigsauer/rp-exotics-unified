@@ -12,6 +12,18 @@ const StatusSyncService = require('../services/statusSyncService');
 router.use(authenticateToken);
 router.use(requireBackOfficeAccess);
 
+// Test route to verify router is working
+router.get('/test', (req, res) => {
+  console.log('[DEBUG][BackOffice] Test route hit');
+  res.json({ message: 'BackOffice router is working' });
+});
+
+// Debug middleware for all backOffice routes
+router.use((req, res, next) => {
+  console.log(`[DEBUG][BackOffice] ${req.method} ${req.originalUrl} - Route hit`);
+  next();
+});
+
 // Ensure uploads directory exists
 const uploadsDir = path.join(__dirname, '../uploads/documents');
 if (!fs.existsSync(uploadsDir)) {
@@ -89,7 +101,8 @@ router.get('/deals', async (req, res) => {
       .populate('seller.dealerId', 'name company')
       .sort({ updatedAt: -1 })
       .limit(parseInt(limit))
-      .skip((parseInt(page) - 1) * parseInt(limit));
+      .skip((parseInt(page) - 1) * parseInt(limit))
+      .lean(); // .lean() added for speed
 
     const total = await Deal.countDocuments(query);
 
@@ -141,7 +154,8 @@ router.get('/deals/:id', async (req, res) => {
       .populate('documents.uploadedBy', 'profile.displayName')
       .populate('documents.approvedBy', 'profile.displayName')
       .populate('workflowHistory.changedBy', 'profile.displayName')
-      .populate('activityLog.userId', 'profile.displayName');
+      .populate('activityLog.userId', 'profile.displayName')
+      .lean(); // .lean() added for speed
     if (!deal) {
       console.warn('[BACKOFFICE] Deal not found:', req.params.id);
       return res.status(404).json({ error: 'Deal not found' });
@@ -332,19 +346,48 @@ router.post('/deals/:id/documents/:documentType/upload',
 
 // Update deal stage
 router.put('/deals/:id/stage', async (req, res) => {
+  console.log('[DEBUG][UpdateStatus] Route hit!');
+  console.log('[DEBUG][UpdateStatus] Headers:', req.headers);
+  console.log('[DEBUG][UpdateStatus] User:', req.user);
+  console.log('[DEBUG][UpdateStatus] Authorization header:', req.headers.authorization);
+  console.log('[DEBUG][UpdateStatus] Request body:', req.body);
+  console.log('[DEBUG][UpdateStatus] Request params:', req.params);
   try {
     const { id } = req.params;
     const { stage, notes } = req.body;
 
+    console.log('[DEBUG][UpdateStatus] Stage from body:', stage);
+    console.log('[DEBUG][UpdateStatus] Notes from body:', notes);
+
+    if (!stage) {
+      console.log('[DEBUG][UpdateStatus] Stage is missing from request body');
+      return res.status(400).json({ error: 'Stage is required' });
+    }
+
     const validStages = [
+      // Wholesale stages
       'contract-received',
       'title-processing',
       'payment-approved',
       'funds-disbursed',
       'title-received',
-      'deal-complete'
+      'deal-complete',
+      // Retail stages
+      'vehicle-acquired',
+      'inspection-complete',
+      'photos-complete',
+      'listing-ready',
+      'listed-active',
+      'buyer-contract',
+      'financing-approved',
+      'delivery-scheduled',
+      // Auction stages
+      'transport-arranged',
+      'vehicle-arrived',
+      'ready-for-sale'
     ];
     if (!validStages.includes(stage)) {
+      console.log('[DEBUG][UpdateStatus] Invalid stage:', stage);
       return res.status(400).json({ error: 'Invalid stage' });
     }
 

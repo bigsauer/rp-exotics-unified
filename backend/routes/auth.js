@@ -132,4 +132,131 @@ router.get('/profile', authenticateToken, (req, res) => {
   res.json({ user: req.user });
 });
 
+// In-memory storage for pending password reset requests
+const pendingPasswordResets = new Map();
+
+// Forgot password request
+router.post('/forgot-password', async (req, res) => {
+  console.log('[DEBUG][AUTH] /forgot-password hit with body:', req.body);
+  const { email, newPassword } = req.body;
+  
+  if (!email || !newPassword) {
+    return res.status(400).json({ error: 'Email and new password are required' });
+  }
+
+  try {
+    // Check if user exists
+    const user = await User.findOne({ email: { $regex: new RegExp(`^${email}$`, 'i') } });
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Store the request in memory
+    const requestId = Date.now().toString();
+    const request = {
+      id: requestId,
+      userEmail: email,
+      newPassword: newPassword,
+      userName: `${user.firstName} ${user.lastName}`,
+      timestamp: new Date().toISOString()
+    };
+    pendingPasswordResets.set(requestId, request);
+
+    // Send email to admin
+    const emailService = require('../services/emailService');
+    await emailService.sendPasswordResetRequest({
+      userEmail: email,
+      newPassword: newPassword,
+      userName: `${user.firstName} ${user.lastName}`,
+      adminEmail: 'brennan@rpexotics.com'
+    });
+
+    console.log('[AUTH][FORGOT-PASSWORD] Password reset request sent for:', email);
+    res.json({ message: 'Password reset request sent successfully' });
+  } catch (err) {
+    console.error('[AUTH][FORGOT-PASSWORD] Error:', err);
+    res.status(500).json({ error: 'Failed to send password reset request' });
+  }
+});
+
+// Get pending password reset requests (admin only)
+router.get('/pending-password-resets', authenticateToken, (req, res) => {
+  if (req.user.role !== 'admin') {
+    return res.status(403).json({ error: 'Admin access required' });
+  }
+
+  const requests = Array.from(pendingPasswordResets.values());
+  res.json({ requests });
+});
+
+// Admin approve password reset (protected route)
+router.post('/approve-password-reset', authenticateToken, async (req, res) => {
+  const { userEmail, newPassword, approved } = req.body;
+  
+  // Check if current user is admin
+  if (req.user.role !== 'admin') {
+    return res.status(403).json({ error: 'Admin access required' });
+  }
+
+  if (!userEmail || !newPassword) {
+    return res.status(400).json({ error: 'User email and new password are required' });
+  }
+
+  try {
+    const user = await User.findOne({ email: { $regex: new RegExp(`^${userEmail}$`, 'i') } });
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    if (approved) {
+      // Hash the new password
+      const bcrypt = require('bcryptjs');
+      const hashedPassword = await bcrypt.hash(newPassword, 12);
+      
+      // Update user's password
+      user.passwordHash = hashedPassword;
+      await user.save();
+
+      // Send confirmation email to user
+      const emailService = require('../services/emailService');
+      await emailService.sendPasswordResetConfirmation({
+        userEmail: userEmail,
+        userName: `${user.firstName} ${user.lastName}`
+      });
+
+      // Remove from pending requests
+      for (const [id, request] of pendingPasswordResets.entries()) {
+        if (request.userEmail.toLowerCase() === userEmail.toLowerCase()) {
+          pendingPasswordResets.delete(id);
+          break;
+        }
+      }
+
+      console.log('[AUTH][APPROVE-PASSWORD-RESET] Password updated for:', userEmail);
+      res.json({ message: 'Password updated successfully' });
+    } else {
+      // Send rejection email to user
+      const emailService = require('../services/emailService');
+      await emailService.sendPasswordResetRejection({
+        userEmail: userEmail,
+        userName: `${user.firstName} ${user.lastName}`
+      });
+
+      // Remove from pending requests
+      for (const [id, request] of pendingPasswordResets.entries()) {
+        if (request.userEmail.toLowerCase() === userEmail.toLowerCase()) {
+          pendingPasswordResets.delete(id);
+          break;
+        }
+      }
+
+      console.log('[AUTH][APPROVE-PASSWORD-RESET] Password reset rejected for:', userEmail);
+      res.json({ message: 'Password reset request rejected' });
+    }
+  } catch (err) {
+    console.error('[AUTH][APPROVE-PASSWORD-RESET] Error:', err);
+    res.status(500).json({ error: 'Failed to process password reset request' });
+  }
+});
+
 module.exports = router; 

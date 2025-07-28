@@ -1,3 +1,4 @@
+// NOTE: This file (app.js) is legacy and should NOT be used for production or Railway deployment. Use server.js instead.
 const express = require('express');
 const { MongoClient, ObjectId } = require('mongodb');
 const mongoose = require('mongoose');
@@ -459,9 +460,9 @@ app.post('/api/deals/vin/decode', async (req, res) => {
 });
 
 // Health check endpoint
-app.get('/api/health', (req, res) => {
-  res.json({ status: 'OK' });
-});
+// app.get('/api/health', (req, res) => {
+//   res.json({ status: 'OK' });
+// });
 
 // =================== USER AUTHENTICATION ENDPOINTS ===================
 

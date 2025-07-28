@@ -346,6 +346,178 @@ const emailService = {
       console.error('[EMAIL][sendDealReceipt] Email service error:', error);
       return { success: false, error };
     }
+  },
+
+  // Send password reset request to admin
+  async sendPasswordResetRequest({ userEmail, newPassword, userName, adminEmail }) {
+    if (!checkEmailService()) {
+      return { success: false, error: 'Email service not configured' };
+    }
+    
+    try {
+      const { data, error } = await resend.emails.send({
+        from: 'RP Exotics <onboarding@resend.dev>',
+        to: [adminEmail],
+        subject: `Password Reset Request - ${userName}`,
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <div style="background: linear-gradient(135deg, #1f2937, #111827); color: white; padding: 20px; text-align: center;">
+              <h1 style="margin: 0; color: #10b981;">RP Exotics</h1>
+              <p style="margin: 10px 0 0 0; opacity: 0.8;">Password Reset Request</p>
+            </div>
+            
+            <div style="padding: 30px; background: white;">
+              <h2 style="color: #1f2937; margin-bottom: 20px;">Password Reset Request</h2>
+              
+              <div style="background: #fef3c7; padding: 20px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #f59e0b;">
+                <h3 style="color: #92400e; margin-top: 0;">User Information</h3>
+                <p><strong>Name:</strong> ${userName}</p>
+                <p><strong>Email:</strong> ${userEmail}</p>
+                <p><strong>Requested New Password:</strong> ${newPassword}</p>
+                <p><strong>Request Date:</strong> ${new Date().toLocaleString()}</p>
+              </div>
+              
+              <div style="background: #dbeafe; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+                <h3 style="color: #1e40af; margin-top: 0;">Action Required</h3>
+                <p>Please review this password reset request and approve or reject it through the admin panel.</p>
+                <p><strong>Note:</strong> The user has requested to change their password to: <code style="background: #f3f4f6; padding: 2px 6px; border-radius: 3px;">${newPassword}</code></p>
+              </div>
+              
+              <div style="text-align: center; margin-top: 30px;">
+                <p style="color: #6b7280; font-size: 14px;">This request will expire in 24 hours for security purposes.</p>
+              </div>
+            </div>
+            
+            <div style="background: #f9fafb; padding: 20px; text-align: center; color: #6b7280;">
+              <p style="margin: 0;">This is an automated message from RP Exotics Deal Management System</p>
+            </div>
+          </div>
+        `
+      });
+
+      if (error) {
+        console.error('Resend error:', error);
+        return { success: false, error };
+      }
+
+      console.log('Password reset request email sent successfully:', data);
+      return { success: true, data };
+    } catch (error) {
+      console.error('Email service error:', error);
+      return { success: false, error };
+    }
+  },
+
+  // Send password reset confirmation to user
+  async sendPasswordResetConfirmation({ userEmail, userName }) {
+    if (!checkEmailService()) {
+      return { success: false, error: 'Email service not configured' };
+    }
+    
+    try {
+      const { data, error } = await resend.emails.send({
+        from: 'RP Exotics <onboarding@resend.dev>',
+        to: [userEmail],
+        subject: 'Password Reset Approved - RP Exotics',
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <div style="background: linear-gradient(135deg, #1f2937, #111827); color: white; padding: 20px; text-align: center;">
+              <h1 style="margin: 0; color: #10b981;">RP Exotics</h1>
+              <p style="margin: 10px 0 0 0; opacity: 0.8;">Password Reset Confirmation</p>
+            </div>
+            
+            <div style="padding: 30px; background: white;">
+              <h2 style="color: #1f2937; margin-bottom: 20px;">Password Reset Approved</h2>
+              
+              <div style="background: #d1fae5; padding: 20px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #10b981;">
+                <h3 style="color: #065f46; margin-top: 0;">✅ Request Approved</h3>
+                <p>Hello ${userName},</p>
+                <p>Your password reset request has been approved by the administrator.</p>
+                <p>You can now log in to your account using your new password.</p>
+              </div>
+              
+              <div style="text-align: center; margin-top: 30px;">
+                <a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}" 
+                   style="background: #10b981; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
+                  Login to Your Account
+                </a>
+              </div>
+            </div>
+            
+            <div style="background: #f9fafb; padding: 20px; text-align: center; color: #6b7280;">
+              <p style="margin: 0;">This is an automated message from RP Exotics Deal Management System</p>
+            </div>
+          </div>
+        `
+      });
+
+      if (error) {
+        console.error('Resend error:', error);
+        return { success: false, error };
+      }
+
+      console.log('Password reset confirmation email sent successfully:', data);
+      return { success: true, data };
+    } catch (error) {
+      console.error('Email service error:', error);
+      return { success: false, error };
+    }
+  },
+
+  // Send password reset rejection to user
+  async sendPasswordResetRejection({ userEmail, userName }) {
+    if (!checkEmailService()) {
+      return { success: false, error: 'Email service not configured' };
+    }
+    
+    try {
+      const { data, error } = await resend.emails.send({
+        from: 'RP Exotics <onboarding@resend.dev>',
+        to: [userEmail],
+        subject: 'Password Reset Request Rejected - RP Exotics',
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <div style="background: linear-gradient(135deg, #1f2937, #111827); color: white; padding: 20px; text-align: center;">
+              <h1 style="margin: 0; color: #10b981;">RP Exotics</h1>
+              <p style="margin: 10px 0 0 0; opacity: 0.8;">Password Reset Update</p>
+            </div>
+            
+            <div style="padding: 30px; background: white;">
+              <h2 style="color: #1f2937; margin-bottom: 20px;">Password Reset Request Rejected</h2>
+              
+              <div style="background: #fee2e2; padding: 20px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #ef4444;">
+                <h3 style="color: #991b1b; margin-top: 0;">❌ Request Rejected</h3>
+                <p>Hello ${userName},</p>
+                <p>Your password reset request has been rejected by the administrator.</p>
+                <p>Please contact the administrator directly if you need assistance with your account.</p>
+              </div>
+              
+              <div style="text-align: center; margin-top: 30px;">
+                <a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}" 
+                   style="background: #6b7280; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
+                  Return to Login
+                </a>
+              </div>
+            </div>
+            
+            <div style="background: #f9fafb; padding: 20px; text-align: center; color: #6b7280;">
+              <p style="margin: 0;">This is an automated message from RP Exotics Deal Management System</p>
+            </div>
+          </div>
+        `
+      });
+
+      if (error) {
+        console.error('Resend error:', error);
+        return { success: false, error };
+      }
+
+      console.log('Password reset rejection email sent successfully:', data);
+      return { success: true, data };
+    } catch (error) {
+      console.error('Email service error:', error);
+      return { success: false, error };
+    }
   }
 };
 

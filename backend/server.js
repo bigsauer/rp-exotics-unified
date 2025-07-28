@@ -12,16 +12,30 @@ const allowedOrigins = [
   'http://localhost:3000',
   'http://localhost:3001',
   'http://localhost:5000',
+  'http://localhost:5001',
+  'http://localhost:8080',
+  'http://127.0.0.1:3000',
   'https://rp-exotics-frontend.vercel.app',
   'https://astonishing-chicken-production.up.railway.app',
+  'https://astonishing-chicken-production.up.railway.app', // Add your actual Railway backend URL if different
   process.env.FRONTEND_URL
 ].filter(Boolean);
 
 function isAllowedOrigin(origin) {
-  if (!origin) return true;
-  if (allowedOrigins.includes(origin)) return true;
-  // Allow all Vercel preview URLs
-  if (/^https:\/\/[a-z0-9-]+\.vercel\.app$/.test(origin)) return true;
+  console.log('[CORS DEBUG] Incoming origin:', origin);
+  if (!origin) {
+    console.log('[CORS DEBUG] No origin provided, allowing request');
+    return true; // Allow server-to-server/healthcheck and direct requests
+  }
+  if (allowedOrigins.includes(origin)) {
+    console.log('[CORS DEBUG] Origin allowed:', origin);
+    return true;
+  }
+  if (/^https:\/\/[a-z0-9-]+\.vercel\.app$/.test(origin)) {
+    console.log('[CORS DEBUG] Vercel preview origin allowed:', origin);
+    return true;
+  }
+  console.log('[CORS DEBUG] Origin NOT allowed:', origin);
   return false;
 }
 
@@ -38,11 +52,15 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
+app.options('*', cors()); // Explicitly handle all OPTIONS preflight requests
+
+app.use((req, res, next) => {
+  console.log(`[DEBUG][SERVER] ${req.method} ${req.originalUrl} - Headers:`, req.headers);
+  next();
+});
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-
-// Serve static files from the React app
-app.use(express.static(path.join(__dirname, '../frontend/build')));
 
 // Connect to MongoDB with better error handling
 const mongoUri = process.env.MONGODB_URI || process.env.MONGO_URL || 'mongodb://localhost:27017/rp-exotics';
@@ -78,25 +96,28 @@ mongoose.connect(mongoUri, {
 });
 
 // API routes (should come before the catch-all)
-app.use('/api', require('./routes/auth'));
-app.use('/api', require('./routes/backOffice'));
-app.use('/api', require('./routes/dealers'));
-app.use('/api', require('./routes/deals'));
-app.use('/api', require('./routes/documents'));
-app.use('/api', require('./routes/email'));
-app.use('/api', require('./routes/salesTracker'));
-app.use('/api', require('./routes/users'));
+app.use('/api/auth', require('./routes/auth'));
+app.use('/api/backOffice', require('./routes/backOffice'));
+app.use('/api/dealers', require('./routes/dealers'));
+console.log('[DEBUG][server.js] Registering /api/deals route...');
+app.use('/api/deals', require('./routes/deals'));
+app.use('/api/documents', require('./routes/documents'));
+app.use('/api/email', require('./routes/email'));
+app.use('/api/salesTracker', require('./routes/salesTracker'));
+app.use('/api/users', require('./routes/users'));
 
-// The catch-all handler: for any request that doesn't match an API route, send back React's index.html
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, '../frontend/build', 'index.html'));
+// Debug logging for all API requests
+app.use('/api', (req, res, next) => {
+  console.log(`[API DEBUG] ${req.method} ${req.originalUrl} - Auth: ${req.headers['authorization'] || 'none'} - Cookies: ${JSON.stringify(req.cookies || {})}`);
+  next();
 });
-
-// Serve uploaded files
-app.use('/uploads', express.static('uploads'));
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
+  console.log('[HEALTHCHECK] /api/health hit', {
+    ip: req.ip,
+    headers: req.headers
+  });
   const dbStatus = mongoose.connection.readyState === 1 ? 'connected' : 'disconnected';
   res.json({
     status: 'OK',
@@ -106,12 +127,23 @@ app.get('/api/health', (req, res) => {
   });
 });
 
+// Serve uploaded files
+app.use('/uploads', express.static('uploads'));
+
 // Test endpoint to verify frontend can connect
 app.get('/api/test', (req, res) => {
   res.json({
     message: 'Frontend successfully connected to backend!',
     timestamp: new Date().toISOString()
   });
+});
+
+// Add a fallback 404 JSON handler for all other routes
+app.use((req, res, next) => {
+  if (!req.originalUrl.startsWith('/api') && !req.originalUrl.startsWith('/uploads')) {
+    return res.status(404).json({ error: 'Not found' });
+  }
+  next();
 });
 
 const PORT = process.env.PORT || 5001;

@@ -1,139 +1,93 @@
-const mongoose = require('mongoose');
-const Deal = require('./models/Deal');
-const VehicleRecord = require('./models/VehicleRecord');
-const User = require('./models/User');
-const documentGenerator = require('./services/documentGenerator');
+const axios = require('axios');
 require('dotenv').config();
+
+const API_BASE_URL = process.env.API_BASE_URL || 'https://astonishing-chicken-production.up.railway.app';
 
 async function testDocumentGeneration() {
   try {
-    // Connect to MongoDB
-    await mongoose.connect(process.env.MONGODB_URI, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
+    console.log('🧪 Testing document generation...');
+    
+    // Login to get a token first
+    console.log('🔐 Logging in...');
+    const loginResponse = await axios.post(`${API_BASE_URL}/api/auth/login`, {
+      email: 'lynn@rpexotics.com',
+      password: 'titles123'
     });
-    console.log('✅ Connected to MongoDB');
-
-    // Create a test user
-    const testUser = new User({
-      firstName: 'Test',
-      lastName: 'User',
-      email: 'test@rpexotics.com',
-      role: 'admin',
-      isActive: true
+    
+    const token = loginResponse.data.token;
+    console.log('✅ Login successful');
+    
+    // First, get all deals to see what we have
+    console.log('📋 Fetching all deals...');
+    const dealsResponse = await axios.get(`${API_BASE_URL}/api/deals`, {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
     });
-    await testUser.save();
-    console.log('✅ Created test user');
-
-    // Create a test deal
-    const testDeal = new Deal({
-      vehicle: '2020 McLaren 720S',
-      vin: 'SBM12AA51LW123456',
-      year: 2020,
-      make: 'McLaren',
-      model: '720S',
-      stockNumber: 'RP2025001',
-      color: 'Orange',
-      mileage: 15000,
-      purchasePrice: 220000,
-      listPrice: 250000,
-      killPrice: 200000,
-      dealType: 'retail',
-      seller: {
-        name: 'John Smith',
-        type: 'private',
-        contact: {
-          address: '123 Main St, Anytown, USA',
-          phone: '555-123-4567',
-          email: 'john@example.com'
+    const deals = dealsResponse.data.deals || dealsResponse.data;
+    
+    console.log(`📊 Found ${deals.length} deals`);
+    
+    if (deals.length === 0) {
+      console.log('❌ No deals found. Please create a deal first.');
+      return;
+    }
+    
+    // Show the first few deals
+    console.log('\n📋 Available deals:');
+    deals.slice(0, 5).forEach((deal, index) => {
+      console.log(`${index + 1}. ${deal.vehicle || `${deal.year} ${deal.make} ${deal.model}`} (${deal.vin}) - ${deal.dealType || 'unknown'}`);
+    });
+    
+    // Use the first deal for testing
+    const testDeal = deals[0];
+    console.log(`\n🎯 Testing document generation for deal: ${testDeal.vehicle || `${testDeal.year} ${testDeal.make} ${testDeal.model}`}`);
+    console.log(`   VIN: ${testDeal.vin}`);
+    console.log(`   Deal Type: ${testDeal.dealType}`);
+    console.log(`   Deal ID: ${testDeal._id || testDeal.id}`);
+    
+    // Generate documents for the test deal
+    console.log('\n📄 Generating documents...');
+    const generateResponse = await axios.post(
+      `${API_BASE_URL}/api/documents/generate/${testDeal._id || testDeal.id}`,
+      {},
+      {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
         }
-      },
-      fundingSource: 'cash',
-      paymentMethod: 'check',
-      purchaseDate: new Date(),
-      currentStage: 'documentation',
-      createdBy: testUser._id
+      }
+    );
+    
+    console.log('✅ Document generation response:', generateResponse.data);
+    
+    // Check if documents were generated
+    console.log('\n📋 Checking generated documents...');
+    const dealResponse = await axios.get(`${API_BASE_URL}/api/backOffice/deals/${testDeal._id || testDeal.id}`, {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
     });
-    await testDeal.save();
-    console.log('✅ Created test deal');
-
-    // Test document generation
-    const dealData = {
-      year: testDeal.year,
-      make: testDeal.make,
-      model: testDeal.model,
-      vin: testDeal.vin,
-      stockNumber: testDeal.stockNumber,
-      color: testDeal.color,
-      mileage: testDeal.mileage,
-      purchasePrice: testDeal.purchasePrice,
-      listPrice: testDeal.listPrice,
-      dealType: testDeal.dealType,
-      dealType2: 'Buy',
-      sellerInfo: testDeal.seller,
-      commissionRate: 5
-    };
-
-    console.log('🔄 Generating document...');
-    const documentResult = await documentGenerator.generateDocument(dealData, testUser);
-    console.log('✅ Document generated:', documentResult);
-
-    // Create vehicle record
-    const vehicleRecord = new VehicleRecord({
-      vin: testDeal.vin,
-      year: testDeal.year,
-      make: testDeal.make,
-      model: testDeal.model,
-      stockNumber: testDeal.stockNumber,
-      color: testDeal.color,
-      exteriorColor: testDeal.exteriorColor,
-      interiorColor: testDeal.interiorColor,
-      mileage: testDeal.mileage,
-      dealId: testDeal._id,
-      dealType: testDeal.dealType,
-      dealType2: 'Buy',
-      purchasePrice: testDeal.purchasePrice,
-      listPrice: testDeal.listPrice,
-      commission: {
-        rate: 5,
-        amount: testDeal.purchasePrice * 0.05
-      },
-      generatedDocuments: [{
-        documentType: documentResult.documentType,
-        fileName: documentResult.fileName,
-        filePath: documentResult.filePath,
-        fileSize: documentResult.fileSize,
-        generatedBy: testUser._id,
-        documentNumber: documentResult.documentNumber,
-        status: 'draft'
-      }],
-      createdBy: testUser._id
-    });
-    await vehicleRecord.save();
-    console.log('✅ Created vehicle record:', vehicleRecord.recordId);
-
-    // Update deal with vehicle record reference
-    testDeal.vehicleRecordId = vehicleRecord._id;
-    await testDeal.save();
-    console.log('✅ Updated deal with vehicle record reference');
-
-    console.log('\n🎉 Test completed successfully!');
-    console.log('📄 Generated document:', documentResult.fileName);
-    console.log('🚗 Vehicle Record ID:', vehicleRecord.recordId);
-    console.log('📋 Document Number:', documentResult.documentNumber);
-
-    // Clean up test data
-    await Deal.findByIdAndDelete(testDeal._id);
-    await VehicleRecord.findByIdAndDelete(vehicleRecord._id);
-    await User.findByIdAndDelete(testUser._id);
-    console.log('🧹 Cleaned up test data');
-
+    
+    const dealWithDocs = dealResponse.data.deal;
+    console.log(`📄 Deal has ${dealWithDocs.documents ? dealWithDocs.documents.length : 0} documents`);
+    
+    if (dealWithDocs.documents && dealWithDocs.documents.length > 0) {
+      console.log('📋 Document details:');
+      dealWithDocs.documents.forEach((doc, index) => {
+        console.log(`  ${index + 1}. ${doc.type} - ${doc.fileName || 'No filename'} - Uploaded: ${doc.uploaded}`);
+      });
+    }
+    
+    console.log('\n🎉 Document generation test completed!');
+    
   } catch (error) {
-    console.error('❌ Test failed:', error);
-  } finally {
-    await mongoose.disconnect();
-    console.log('🔌 Disconnected from MongoDB');
+    console.error('❌ Error during document generation test:', error.response?.data || error.message);
+    if (error.response?.status) {
+      console.error(`   Status: ${error.response.status}`);
+    }
   }
 }
 
+// Run the test
 testDocumentGeneration(); 
