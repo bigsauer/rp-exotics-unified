@@ -215,8 +215,7 @@ router.post('/generate/:dealId', auth, async (req, res) => {
     let documentResults = [];
     let vehicleRecordResult;
     
-    if (dealData.dealType === 'wholesale-flip' && 
-        (dealData.dealType2SubType === 'buy-sell' || dealData.dealType2SubType === 'buy')) {
+    if (dealData.dealType === 'wholesale-flip') {
       console.log(`[DOC GEN] 🎯 Generating 3 documents for wholesale flip buy/sell deal (parallel)`);
       
       try {
