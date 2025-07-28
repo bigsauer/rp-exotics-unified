@@ -23,8 +23,10 @@ import {
   Settings,
   BarChart3
 } from 'lucide-react';
+import { useAuth } from './AuthContext';
 
 const AllDealsPage = () => {
+  const { getAuthHeaders } = useAuth();
   const [deals, setDeals] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -45,19 +47,12 @@ const AllDealsPage = () => {
 
   const API_BASE = process.env.REACT_APP_API_BASE || 'http://localhost:3000';
 
-  const getAuthHeaders = () => {
-    const token = localStorage.getItem('token') || sessionStorage.getItem('token');
-    return {
-      'Authorization': `Bearer ${token}`,
-      'Content-Type': 'application/json'
-    };
-  };
-
   // Fetch all deals
   const fetchDeals = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`/api/deals`, {
+      const response = await fetch(`${API_BASE}/api/deals`, {
+        credentials: 'include',
         headers: getAuthHeaders()
       });
       

@@ -7,7 +7,7 @@ import { useAuth } from './AuthContext';
 const BeautifulDarkLanding = () => {
   const [currentTime, setCurrentTime] = useState(new Date());
   const navigate = useNavigate();
-  const { user: currentUser, logout } = useAuth();
+  const { user: currentUser, logout, getAuthHeaders } = useAuth();
   const [dealerCount, setDealerCount] = useState(null);
   
   // System Health real statistics
@@ -59,15 +59,12 @@ const BeautifulDarkLanding = () => {
       try {
         const API_BASE = process.env.REACT_APP_API_URL;
         const url = `${API_BASE}/api/deals`;
-        const token = localStorage.getItem('token') || window.localStorage.getItem('token');
-        console.log('[DEBUG][Landing] Fetching system stats from:', url, 'with token:', token);
+        console.log('[DEBUG][Landing] Fetching system stats from:', url);
         // Measure API response time
         const startTime = performance.now();
         const response = await fetch(url, {
           credentials: 'include',
-          headers: {
-            ...(token ? { 'Authorization': `Bearer ${token}` } : {})
-          }
+          headers: getAuthHeaders()
         });
         const endTime = performance.now();
         const responseTime = Math.round(endTime - startTime);
@@ -184,13 +181,10 @@ const BeautifulDarkLanding = () => {
     if (currentUser?.role === 'finance') {
       const API_BASE = process.env.REACT_APP_API_URL;
       const url = `${API_BASE}/api/deals`;
-      const token = localStorage.getItem('token') || window.localStorage.getItem('token');
-      console.log('[DEBUG][Landing] Fetching deals for finance user from:', url, 'with token:', token);
+      console.log('[DEBUG][Landing] Fetching deals for finance user from:', url);
       fetch(url, {
         credentials: 'include',
-        headers: {
-          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
-        }
+        headers: getAuthHeaders()
       })
         .then(res => {
           console.log('[DEBUG][Landing] Finance deals fetch response status:', res.status);
