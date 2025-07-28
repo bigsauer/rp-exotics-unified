@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from './AuthContext';
 import { 
   Car, 
   FileText, 
@@ -32,6 +33,7 @@ import {
 
 const FinanceStatusDashboard = () => {
   const navigate = useNavigate();
+  const { getAuthHeaders } = useAuth();
   const [selectedDeal, setSelectedDeal] = useState(null);
   const [filterStatus, setFilterStatus] = useState('all');
   const [filterDealType, setFilterDealType] = useState('all');
@@ -86,13 +88,10 @@ const FinanceStatusDashboard = () => {
     try {
       setLoading(true);
       const url = `${API_BASE}/api/deals`;
-      const token = window.localStorage.getItem('token');
-      console.log('[DEBUG][FinanceStatusDashboard] Fetching deals from:', url, 'with token:', token);
+      console.log('[DEBUG][FinanceStatusDashboard] Fetching deals from:', url);
       const response = await fetch(url, {
         credentials: 'include',
-        headers: {
-          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
-        }
+        headers: getAuthHeaders()
       });
       console.log('[DEBUG][FinanceStatusDashboard] Deal fetch response status:', response.status);
       if (!response.ok) {
@@ -262,14 +261,13 @@ const FinanceStatusDashboard = () => {
 
   const updateDealStatus = async (dealId, newStage, notes = '', lienStatus, lienEta) => {
     try {
-      const token = window.localStorage.getItem('token');
       const url = `${API_BASE}/api/deals/${dealId}`;
-      console.log('[DEBUG][FinanceStatusDashboard] Updating deal status via:', url, 'with token:', token);
+      console.log('[DEBUG][FinanceStatusDashboard] Updating deal status via:', url);
       const response = await fetch(url, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+          ...getAuthHeaders()
         },
         body: JSON.stringify({
           currentStage: newStage,
