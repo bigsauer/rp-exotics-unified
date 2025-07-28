@@ -546,7 +546,10 @@ router.post('/generate/:dealId', auth, async (req, res) => {
           seller: rpExoticsSeller, // RP Exotics is the seller
           sellerInfo: rpExoticsSeller,
           buyer: purchasingDealer, // Purchasing dealer is the buyer
-          buyerInfo: purchasingDealer
+          buyerInfo: purchasingDealer,
+          // For wholesale D2D sale, the buyer should be the purchasing dealer
+          // The generateWholesaleBOS function will use this buyer data correctly
+          purchasingDealer: purchasingDealer
         };
         
         console.log('[DOC GEN] 🚩 saleDocumentData:', JSON.stringify(saleDocumentData, null, 2));
