@@ -2624,24 +2624,47 @@ class DocumentGenerator {
           documentType: 'retail_pp_buy'
         };
 
-      } else if (dealData.dealType === 'wholesale') {
-        console.log('[PDF GEN] -> Calling generateBillOfSale (compact style for wholesale)...');
-        documentResult = await this.generateBillOfSale(dealData, user);
-        console.log('[PDF GEN] <- generateBillOfSale complete:', documentResult.filePath);
-        console.log('[PDF GEN][DEBUG] Returning documentType: bill_of_sale for wholesale deal');
-        return {
-          ...documentResult,
-          documentType: 'bill_of_sale'
-        };
+              } else if (dealData.dealType === 'wholesale') {
+          console.log('[PDF GEN] -> Calling generateBillOfSale (compact style for wholesale)...');
+          documentResult = await this.generateBillOfSale(dealData, user);
+          console.log('[PDF GEN] <- generateBillOfSale complete:', documentResult.filePath);
+          console.log('[PDF GEN][DEBUG] Returning documentType: bill_of_sale for wholesale deal');
+          return {
+            ...documentResult,
+            documentType: 'bill_of_sale'
+          };
+        } else if (dealData.dealType === 'wholesale-pp') {
+          console.log('[PDF GEN] -> Calling generateWholesalePPBuy for wholesale-pp...');
+          documentResult = await this.generateWholesalePPBuy(dealData, user);
+          console.log('[PDF GEN] <- generateWholesalePPBuy complete:', documentResult.filePath);
+          console.log('[PDF GEN][DEBUG] Returning documentType: wholesale_purchase_agreement for wholesale-pp deal');
+          return {
+            ...documentResult,
+            documentType: 'wholesale_purchase_agreement'
+          };
+        } else if (dealData.dealType === 'consignment') {
+          console.log('[PDF GEN] -> Calling generateRetailPPBuy for consignment...');
+          documentResult = await this.generateRetailPPBuy(dealData, user);
+          console.log('[PDF GEN] <- generateRetailPPBuy complete:', documentResult.filePath);
+          console.log('[PDF GEN][DEBUG] Returning documentType: retail_pp_buy for consignment deal');
+          return {
+            ...documentResult,
+            documentType: 'retail_pp_buy'
+          };
+        } else if (dealData.dealType === 'auction') {
+          console.log('[PDF GEN] -> Calling generateRetailPPBuy for auction...');
+          documentResult = await this.generateRetailPPBuy(dealData, user);
+          console.log('[PDF GEN] <- generateRetailPPBuy complete:', documentResult.filePath);
+          console.log('[PDF GEN][DEBUG] Returning documentType: retail_pp_buy for auction deal');
+          return {
+            ...documentResult,
+            documentType: 'retail_pp_buy'
+          };
       } else {
-        console.log('[PDF GEN] -> Calling generateBillOfSale (default case)...');
-        documentResult = await this.generateBillOfSale(dealData, user);
-        console.log('[PDF GEN] <- generateBillOfSale complete:', documentResult.filePath);
-        console.log('[PDF GEN][DEBUG] Returning documentType: bill_of_sale for default case');
-        return {
-          ...documentResult,
-          documentType: 'bill_of_sale'
-        };
+        // No matching deal type found - this should not happen with proper deal types
+        console.error('[PDF GEN] ❌ No matching deal type found for:', dealData.dealType);
+        console.error('[PDF GEN] ❌ Available deal types: wholesale, wholesale-d2d, wholesale-pp, wholesale-flip, retail, retail-pp, consignment, auction');
+        throw new Error(`Unsupported deal type: ${dealData.dealType}`);
       }
     } catch (error) {
       console.error('[PDF GEN] ❌ Error in generateDocument:', error);

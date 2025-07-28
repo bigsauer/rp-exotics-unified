@@ -319,7 +319,7 @@ router.post('/generate/:dealId', auth, async (req, res) => {
           console.log(`[DOC GEN] 🎯 Seller is DEALER - generating wholesale documents`);
           
           // For dealer seller: generate wholesale purchase agreement and wholesale BOS
-          const [sellerResult, buyerResult, vehicleRecordResult] = await Promise.all([
+          const [sellerResult, buyerResult] = await Promise.all([
             documentGenerator.generateDocument({
               ...sellerDocumentData,
               sellerType: 'dealer',
@@ -329,16 +329,7 @@ router.post('/generate/:dealId', auth, async (req, res) => {
               ...buyerDocumentData,
               sellerType: 'private',
               buyerType: 'dealer'
-            }, user),
-            typeof documentGenerator.generateVehicleRecordPDF === 'function' 
-              ? documentGenerator.generateVehicleRecordPDF({
-                  ...dealData,
-                  seller: correctedSellerData,
-                  buyer: correctedBuyerData,
-                  generalNotes: req.body.generalNotes || dealData.generalNotes || dealData.notes,
-                  vehicleDescription: req.body.vehicleDescription || dealData.vehicleDescription
-                }, user)
-              : Promise.resolve(null)
+            }, user)
           ]);
           
           console.log(`[DOC GEN] Dealer seller document (wholesale purchase agreement):`, sellerResult);
@@ -360,7 +351,7 @@ router.post('/generate/:dealId', auth, async (req, res) => {
           console.log(`[DOC GEN] 🎯 Seller is PRIVATE PARTY - generating retail documents`);
           
           // For private party seller: generate retail private party purchase agreements
-          const [sellerResult, buyerResult, vehicleRecordResult] = await Promise.all([
+          const [sellerResult, buyerResult] = await Promise.all([
             documentGenerator.generateDocument({
               ...sellerDocumentData,
               sellerType: 'private',
@@ -370,16 +361,7 @@ router.post('/generate/:dealId', auth, async (req, res) => {
               ...buyerDocumentData,
               sellerType: 'dealer',
               buyerType: 'private'
-            }, user),
-            typeof documentGenerator.generateVehicleRecordPDF === 'function' 
-              ? documentGenerator.generateVehicleRecordPDF({
-                  ...dealData,
-                  seller: correctedSellerData,
-                  buyer: correctedBuyerData,
-                  generalNotes: req.body.generalNotes || dealData.generalNotes || dealData.notes,
-                  vehicleDescription: req.body.vehicleDescription || dealData.vehicleDescription
-                }, user)
-              : Promise.resolve(null)
+            }, user)
           ]);
           
           console.log(`[DOC GEN] Private seller document (retail PP purchase agreement):`, sellerResult);
@@ -398,14 +380,7 @@ router.post('/generate/:dealId', auth, async (req, res) => {
           });
         }
         
-        if (vehicleRecordResult) {
-          console.log(`[DOC GEN] Vehicle Record PDF generated:`, vehicleRecordResult);
-          documentResults.push({
-            ...vehicleRecordResult,
-            documentType: 'vehicle_record',
-            party: 'vehicle'
-          });
-        }
+
         
         console.timeEnd('[PERF] generateWholesaleFlipDocuments');
         
@@ -490,26 +465,12 @@ router.post('/generate/:dealId', auth, async (req, res) => {
           console.log('[DOC GEN PATCH] buyerType set on doc data:', req.body.buyerType);
         }
 
-        // Generate seller document and vehicle record in parallel
+        // Generate seller document only
         console.time('[PERF] generateWholesaleD2DBuyDocuments');
-        const [sellerResult, vehicleRecordResult] = await Promise.all([
-          documentGenerator.generateDocument(sellerDocumentData, user),
-          typeof documentGenerator.generateVehicleRecordPDF === 'function' 
-            ? documentGenerator.generateVehicleRecordPDF({
-                ...dealData,
-                seller: sellingDealer,
-                buyer: rpExoticsBuyer,
-                generalNotes: req.body.generalNotes || dealData.generalNotes || dealData.notes,
-                vehicleDescription: req.body.vehicleDescription || dealData.vehicleDescription
-              }, user)
-            : Promise.resolve(null)
-        ]);
+        const sellerResult = await documentGenerator.generateDocument(sellerDocumentData, user);
         console.timeEnd('[PERF] generateWholesaleD2DBuyDocuments');
         
         console.log(`[DOC GEN] Seller document generated (wholesale purchase agreement):`, sellerResult);
-        if (vehicleRecordResult) {
-          console.log(`[DOC GEN] Vehicle Record PDF generated:`, vehicleRecordResult);
-        }
         
         // Add seller document to results
         documentResults.push({
@@ -517,15 +478,6 @@ router.post('/generate/:dealId', auth, async (req, res) => {
           documentType: sellerResult.documentType,
           party: 'seller'
         });
-        
-        // Add vehicle record to results if it was generated
-        if (vehicleRecordResult) {
-          documentResults.push({
-            ...vehicleRecordResult,
-            documentType: 'vehicle_record',
-            party: 'vehicle'
-          });
-        }
         
       } catch (err) {
         console.error(`[DOC GEN] Error generating wholesale D2D buy seller document:`, err);
@@ -611,7 +563,7 @@ router.post('/generate/:dealId', auth, async (req, res) => {
           console.log('[DOC GEN PATCH] buyerType set on doc data:', req.body.buyerType);
         }
 
-        // Generate sale document and vehicle record in parallel
+        // Generate sale document only
         console.time('[PERF] generateWholesaleD2DSaleDocuments');
         console.log(`[DOC GEN] 🚀 Calling documentGenerator.generateDocument for wholesale D2D sale with data:`, {
           dealType: saleDocumentData.dealType,
@@ -619,18 +571,7 @@ router.post('/generate/:dealId', auth, async (req, res) => {
           seller: saleDocumentData.seller?.name,
           buyer: saleDocumentData.buyer?.name
         });
-        const [saleResult, vehicleRecordResult] = await Promise.all([
-          documentGenerator.generateDocument(saleDocumentData, user),
-          typeof documentGenerator.generateVehicleRecordPDF === 'function' 
-            ? documentGenerator.generateVehicleRecordPDF({
-                ...dealData,
-                seller: rpExoticsSeller,
-                buyer: purchasingDealer,
-                generalNotes: req.body.generalNotes || dealData.generalNotes || dealData.notes,
-                vehicleDescription: req.body.vehicleDescription || dealData.vehicleDescription
-              }, user)
-            : Promise.resolve(null)
-        ]);
+        const saleResult = await documentGenerator.generateDocument(saleDocumentData, user);
         console.timeEnd('[PERF] generateWholesaleD2DSaleDocuments');
         console.log(`[DOC GEN] ✅ documentGenerator.generateDocument completed for wholesale D2D sale`);
         
@@ -644,15 +585,6 @@ router.post('/generate/:dealId', auth, async (req, res) => {
           documentType: saleResult.documentType,
           party: 'seller'
         });
-        
-        // Add vehicle record to results if it was generated
-        if (vehicleRecordResult) {
-          documentResults.push({
-            ...vehicleRecordResult,
-            documentType: 'vehicle_record',
-            party: 'vehicle'
-          });
-        }
         
       } catch (err) {
         console.error(`[DOC GEN] Error generating wholesale D2D sale document:`, err);
@@ -672,10 +604,8 @@ router.post('/generate/:dealId', auth, async (req, res) => {
       }
     }
 
-    // Generate the Vehicle Record PDF (if function exists) - skip for wholesale flip and wholesale D2D deals since they already generate it
-    if (typeof documentGenerator.generateVehicleRecordPDF === 'function' && 
-        dealData.dealType !== 'wholesale-flip' && 
-        !(dealData.dealType === 'wholesale-d2d' && (dealData.dealType2SubType === 'buy' || dealData.dealType2SubType === 'sale'))) {
+    // Generate the Vehicle Record PDF for ALL deals (if function exists)
+    if (typeof documentGenerator.generateVehicleRecordPDF === 'function') {
       try {
         console.time('[PERF] generateVehicleRecordPDF');
         vehicleRecordResult = await documentGenerator.generateVehicleRecordPDF(dealData, user);
