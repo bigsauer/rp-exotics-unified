@@ -125,12 +125,7 @@ router.post('/register', async (req, res) => {
   }
 });
 
-router.get('/profile', authenticateToken, (req, res) => {
-  if (!req.user) {
-    return res.status(401).json({ error: 'Not authenticated' });
-  }
-  res.json({ user: req.user });
-});
+
 
 // In-memory storage for pending password reset requests
 const pendingPasswordResets = new Map();
