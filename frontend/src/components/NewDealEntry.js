@@ -126,15 +126,11 @@ const NewDealEntry = ({ setDeals }) => {
 
   useEffect(() => {
     // Fetch document types from backend
-    const API_BASE = process.env.REACT_APP_API_URL;
-    const token = localStorage.getItem('token') || window.localStorage.getItem('token');
     const url = `${API_BASE}/api/backoffice/document-types`;
     console.log('[DEBUG][NewDealEntry] Fetching document types from:', url);
     fetch(url, {
       credentials: 'include',
-      headers: {
-        ...(token ? { 'Authorization': `Bearer ${token}` } : {})
-      }
+      headers: getAuthHeaders()
     })
       .then(res => res.json())
       .then(data => {
@@ -145,7 +141,7 @@ const NewDealEntry = ({ setDeals }) => {
       .catch(() => {
         // setDocumentTypes([]); // This line was removed
       });
-  }, []);
+  }, [getAuthHeaders]);
 
   // Helper function to format currency input
   const formatCurrency = (value) => {
