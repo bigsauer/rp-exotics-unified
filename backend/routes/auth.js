@@ -19,7 +19,7 @@ router.post('/login', async (req, res) => {
   const { email, password, rememberMe } = req.body;
   console.log('[AUTH][LOGIN] Received email:', email);
   try {
-    const user = await User.findOne({ email: email.toLowerCase().trim() });
+    const user = await User.findOne({ email: { $regex: new RegExp(`^${email}$`, 'i') } });
     console.log('[DEBUG][AUTH] User lookup result:', user);
     if (!user) {
       console.log('[AUTH][LOGIN] User not found for email:', email);
@@ -107,7 +107,7 @@ router.post('/register', async (req, res) => {
     return res.status(400).json({ error: 'Email and password are required' });
   }
   try {
-    const existingUser = await User.findOne({ email: email.toLowerCase().trim() });
+    const existingUser = await User.findOne({ email: { $regex: new RegExp(`^${email}$`, 'i') } });
     if (existingUser) {
       return res.status(409).json({ error: 'User already exists' });
     }
