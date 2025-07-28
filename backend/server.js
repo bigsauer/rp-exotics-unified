@@ -130,6 +130,11 @@ app.get('/api/health', (req, res) => {
 // Serve uploaded files
 app.use('/uploads', express.static('uploads'));
 
+// Serve admin interface
+app.get('/admin', (req, res) => {
+  res.sendFile(path.join(__dirname, 'admin.html'));
+});
+
 // Test endpoint to verify frontend can connect
 app.get('/api/test', (req, res) => {
   res.json({

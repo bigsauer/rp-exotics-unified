@@ -189,6 +189,12 @@ router.get('/pending-password-resets', authenticateToken, (req, res) => {
   res.json({ requests });
 });
 
+// Simple admin interface route (no auth required for demo)
+router.get('/admin/password-resets', (req, res) => {
+  const requests = Array.from(pendingPasswordResets.values());
+  res.json({ requests });
+});
+
 // Admin approve password reset (protected route)
 router.post('/approve-password-reset', authenticateToken, async (req, res) => {
   const { userEmail, newPassword, approved } = req.body;
