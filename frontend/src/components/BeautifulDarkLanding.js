@@ -31,19 +31,24 @@ const BeautifulDarkLanding = () => {
 
   // Fetch dealer count
   useEffect(() => {
-    fetch(`/api/dealers`, { credentials: 'include' })
+    const API_BASE = process.env.REACT_APP_API_URL;
+    const url = `${API_BASE}/api/dealers`;
+    console.log('[DEBUG][Landing] Fetching dealer count from:', url);
+    fetch(url, { credentials: 'include' })
       .then(res => {
+        console.log('[DEBUG][Landing] Dealer count fetch response status:', res.status);
         if (!res.ok) {
           throw new Error('Failed to fetch dealers');
         }
         return res.json();
       })
       .then(data => {
+        console.log('[DEBUG][Landing] Dealer count fetch JSON:', data);
         const count = (data.data || data.dealers || []).length;
         setDealerCount(count);
       })
       .catch((error) => {
-        console.error('Error fetching dealer count:', error);
+        console.error('[DEBUG][Landing] Error fetching dealer count:', error);
         setDealerCount(0);
       });
   }, []);
@@ -52,11 +57,21 @@ const BeautifulDarkLanding = () => {
   useEffect(() => {
     const fetchSystemStats = async () => {
       try {
+        const API_BASE = process.env.REACT_APP_API_URL;
+        const url = `${API_BASE}/api/deals`;
+        const token = localStorage.getItem('token') || window.localStorage.getItem('token');
+        console.log('[DEBUG][Landing] Fetching system stats from:', url, 'with token:', token);
         // Measure API response time
         const startTime = performance.now();
-        const response = await fetch(`/api/deals`, { credentials: 'include' });
+        const response = await fetch(url, {
+          credentials: 'include',
+          headers: {
+            ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+          }
+        });
         const endTime = performance.now();
         const responseTime = Math.round(endTime - startTime);
+        console.log('[DEBUG][Landing] System stats fetch response status:', response.status);
         
         if (response.ok) {
           const data = await response.json();
@@ -97,7 +112,7 @@ const BeautifulDarkLanding = () => {
           }));
         }
       } catch (error) {
-        console.error('Error fetching system stats:', error);
+        console.error('[DEBUG][Landing] Error fetching system stats:', error);
         setSystemHealth(prev => ({
           ...prev,
           apiResponse: { time: 0, status: 'error' }
@@ -108,7 +123,9 @@ const BeautifulDarkLanding = () => {
     // Fetch database health (simulated - would need backend endpoint)
     const fetchDatabaseHealth = async () => {
       try {
-        // Simulate database health check
+        const API_BASE = process.env.REACT_APP_API_URL;
+        const url = `${API_BASE}/api/deals`; // Simulate a health check endpoint
+        console.log('[DEBUG][Landing] Fetching database health from:', url);
         const dbHealth = Math.random() * 5 + 95; // 95-100%
         setSystemHealth(prev => ({
           ...prev,
@@ -118,7 +135,7 @@ const BeautifulDarkLanding = () => {
           }
         }));
       } catch (error) {
-        console.error('Error fetching database health:', error);
+        console.error('[DEBUG][Landing] Error fetching database health:', error);
         setSystemHealth(prev => ({
           ...prev,
           database: { percentage: 0, status: 'error' }
@@ -129,7 +146,9 @@ const BeautifulDarkLanding = () => {
     // Fetch uptime (simulated - would need backend endpoint)
     const fetchUptime = async () => {
       try {
-        // Simulate uptime calculation
+        const API_BASE = process.env.REACT_APP_API_URL;
+        const url = `${API_BASE}/api/deals`; // Simulate a uptime endpoint
+        console.log('[DEBUG][Landing] Fetching uptime from:', url);
         const uptime = Math.random() * 0.5 + 99.5; // 99.5-100%
         setSystemHealth(prev => ({
           ...prev,
@@ -139,7 +158,7 @@ const BeautifulDarkLanding = () => {
           }
         }));
       } catch (error) {
-        console.error('Error fetching uptime:', error);
+        console.error('[DEBUG][Landing] Error fetching uptime:', error);
         setSystemHealth(prev => ({
           ...prev,
           uptime: { percentage: 0, status: 'error' }
@@ -163,8 +182,20 @@ const BeautifulDarkLanding = () => {
 
   useEffect(() => {
     if (currentUser?.role === 'finance') {
-      fetch(`/api/deals`, { credentials: 'include' })
-        .then(res => res.json())
+      const API_BASE = process.env.REACT_APP_API_URL;
+      const url = `${API_BASE}/api/deals`;
+      const token = localStorage.getItem('token') || window.localStorage.getItem('token');
+      console.log('[DEBUG][Landing] Fetching deals for finance user from:', url, 'with token:', token);
+      fetch(url, {
+        credentials: 'include',
+        headers: {
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        }
+      })
+        .then(res => {
+          console.log('[DEBUG][Landing] Finance deals fetch response status:', res.status);
+          return res.json();
+        })
         .then(data => {
           // The original code had setAllDeals(data.deals || data.data || []),
           // but allDeals is no longer imported.
@@ -439,6 +470,9 @@ const BeautifulDarkLanding = () => {
 
   // Filter deals based on role
   const getDealsForRole = () => {
+    const API_BASE = process.env.REACT_APP_API_URL;
+    const url = `${API_BASE}/api/deals`;
+    console.log('[DEBUG][Landing] Fetching deals for role from:', url);
     const allDeals = [
       {
         id: 1,

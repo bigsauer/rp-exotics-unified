@@ -41,6 +41,7 @@ const FinanceStatusDashboard = () => {
   const [loading, setLoading] = useState(true);
 
   const API_BASE = process.env.REACT_APP_API_URL;
+  console.log('[DEBUG][FinanceStatusDashboard] API_BASE at top:', API_BASE);
 
   // Deal status workflow stages
   const dealStages = {
@@ -77,25 +78,30 @@ const FinanceStatusDashboard = () => {
 
   // Fetch deals from backend
   useEffect(() => {
+    console.log('[DEBUG][FinanceStatusDashboard] API_BASE:', API_BASE);
     fetchDeals();
   }, []);
 
   const fetchDeals = async () => {
     try {
       setLoading(true);
+      const url = `${API_BASE}/api/deals`;
       const token = window.localStorage.getItem('token');
-      const response = await fetch(`/api/deals`, {
+      console.log('[DEBUG][FinanceStatusDashboard] Fetching deals from:', url, 'with token:', token);
+      const response = await fetch(url, {
         credentials: 'include',
         headers: {
-          'Authorization': token ? `Bearer ${token}` : ''
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
         }
       });
-      
+      console.log('[DEBUG][FinanceStatusDashboard] Deal fetch response status:', response.status);
       if (!response.ok) {
+        const text = await response.text();
+        console.error('[DEBUG][FinanceStatusDashboard] Deal fetch failed:', response.status, text);
         throw new Error('Failed to fetch deals');
       }
-      
       const data = await response.json();
+      console.log('[DEBUG][FinanceStatusDashboard] Deal fetch JSON response:', data);
       const dealsData = data.deals || data.data || [];
       
       // Transform backend data to match frontend format
@@ -129,7 +135,7 @@ const FinanceStatusDashboard = () => {
       
       setDeals(transformedDeals);
     } catch (error) {
-      console.error('Error fetching deals:', error);
+      console.error('[DEBUG][FinanceStatusDashboard] Error fetching deals:', error);
       // Fallback to sample data if API fails
       setDeals([
         {
@@ -257,11 +263,13 @@ const FinanceStatusDashboard = () => {
   const updateDealStatus = async (dealId, newStage, notes = '', lienStatus, lienEta) => {
     try {
       const token = window.localStorage.getItem('token');
-      const response = await fetch(`/api/deals/${dealId}`, {
+      const url = `${API_BASE}/api/deals/${dealId}`;
+      console.log('[DEBUG][FinanceStatusDashboard] Updating deal status via:', url, 'with token:', token);
+      const response = await fetch(url, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': token ? `Bearer ${token}` : ''
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
         },
         body: JSON.stringify({
           currentStage: newStage,
@@ -273,8 +281,10 @@ const FinanceStatusDashboard = () => {
         }),
         credentials: 'include'
       });
-
+      console.log('[DEBUG][FinanceStatusDashboard] Update deal status response status:', response.status);
       if (!response.ok) {
+        const text = await response.text();
+        console.error('[DEBUG][FinanceStatusDashboard] Update deal status failed:', response.status, text);
         throw new Error('Failed to update deal status');
       }
 
@@ -296,7 +306,7 @@ const FinanceStatusDashboard = () => {
       ));
       setEditingDeal(null);
     } catch (error) {
-      console.error('Error updating deal status:', error);
+      console.error('[DEBUG][FinanceStatusDashboard] Error updating deal status:', error);
       alert('Failed to update deal status. Please try again.');
     }
   };

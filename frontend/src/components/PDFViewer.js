@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import { useAuth } from './AuthContext';
 
 const PDFViewer = () => {
   const { fileName } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
+  const { getAuthHeaders } = useAuth();
   const [pdfUrl, setPdfUrl] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -24,11 +26,10 @@ const PDFViewer = () => {
         setLoading(true);
         console.log('[PDFViewer] Fetching PDF from:', viewUrl);
         
+        const headers = { ...getAuthHeaders() };
         const response = await fetch(viewUrl, { 
           credentials: 'include',
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token') || ''}`
-          }
+          headers
         });
         
         if (!response.ok) {

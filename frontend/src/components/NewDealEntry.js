@@ -11,7 +11,11 @@ import { useNavigate } from 'react-router-dom';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
-const NewDealEntry = () => {
+// --- Optimistic Rendering for Deal Submission ---
+// Assume setDeals is available via props or context. If not, add a callback prop or context usage as needed.
+// Add a new prop: setDeals (function to update deals list)
+
+const NewDealEntry = ({ setDeals }) => {
   const { user: currentUser, getAuthHeaders } = useAuth();
   const navigate = useNavigate();
 
@@ -122,15 +126,24 @@ const NewDealEntry = () => {
 
   useEffect(() => {
     // Fetch document types from backend
-    fetch(`/api/backoffice/document-types`, { credentials: 'include' })
+    const API_BASE = process.env.REACT_APP_API_URL;
+    const token = localStorage.getItem('token') || window.localStorage.getItem('token');
+    const url = `${API_BASE}/api/backoffice/document-types`;
+    console.log('[DEBUG][NewDealEntry] Fetching document types from:', url);
+    fetch(url, {
+      credentials: 'include',
+      headers: {
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+      }
+    })
       .then(res => res.json())
       .then(data => {
         if (data.success && Array.isArray(data.data)) {
-          // setDocumentTypes(data.data); // This line is removed
+          // setDocumentTypes(data.data); // This line was removed
         }
       })
       .catch(() => {
-        // setDocumentTypes([]); // This line is removed
+        // setDocumentTypes([]); // This line was removed
       });
   }, []);
 
@@ -259,14 +272,15 @@ const NewDealEntry = () => {
     setVinDecoding(true);
     try {
       const headers = { ...getAuthHeaders(), 'Content-Type': 'application/json' };
-      console.log('[VIN DECODE] Sending request with headers:', headers);
-      const response = await fetch(`/api/deals/vin/decode`, {
+      const url = `${API_BASE}/api/deals/vin/decode`;
+      console.log('[DEBUG][NewDealEntry] VIN decode fetch from:', url);
+      const response = await fetch(url, {
         method: 'POST',
         headers,
         body: JSON.stringify({ vin }),
         credentials: 'include'
       });
-      console.log('[VIN DECODE] Response status:', response.status);
+      console.log('[DEBUG][NewDealEntry] VIN decode response status:', response.status);
       const data = await response.json();
       console.log('[VIN DECODE] Response data:', data);
       if (data.success && data.data) {
@@ -298,7 +312,9 @@ const NewDealEntry = () => {
     }
     // setSearchingDealers(true); // Removed unused state
     try {
-      const response = await fetch(`/api/dealers/search?q=${encodeURIComponent(query)}`, { credentials: 'include' });
+      const url = `${API_BASE}/api/dealers/search?q=${encodeURIComponent(query)}`;
+      console.log('[DEBUG][NewDealEntry] Dealer search fetch from:', url);
+      const response = await fetch(url, { credentials: 'include' });
       const data = await response.json();
       setDealerSuggestions(data.dealers || []);
       console.log('[DEALER SEARCH] Suggestions:', data.dealers || []);
@@ -315,7 +331,9 @@ const NewDealEntry = () => {
       return;
     }
     try {
-      const response = await fetch(`/api/dealers/search?q=${encodeURIComponent(query)}`, { credentials: 'include' });
+      const url = `${API_BASE}/api/dealers/search?q=${encodeURIComponent(query)}`;
+      console.log('[DEBUG][NewDealEntry] Dealer buyer search fetch from:', url);
+      const response = await fetch(url, { credentials: 'include' });
       const data = await response.json();
       setDealerBuyerSuggestions(data.dealers || []);
     } catch (error) {
@@ -531,6 +549,10 @@ const NewDealEntry = () => {
     return Object.keys(errors).length === 0;
   };
 
+  // --- Optimistic Rendering for Deal Submission ---
+  // Assume setDeals is available via props or context. If not, add a callback prop or context usage as needed.
+  // Add a new prop: setDeals (function to update deals list)
+
   const handleSave = async (isDraft = false) => {
     if (!currentUser) {
       alert('You must be logged in to submit a deal.');
@@ -541,9 +563,22 @@ const NewDealEntry = () => {
       console.log('[DEAL SUBMIT] Validation errors:', formErrors);
       return;
     }
-    
     setSaving(true);
-    
+
+    // --- Optimistic UI: Add temp deal to UI immediately ---
+    const tempId = 'temp-' + Date.now();
+    const optimisticDeal = {
+      ...formData,
+      id: tempId,
+      status: 'pending',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      // Add any other fields your deals list expects
+    };
+    if (setDeals) {
+      setDeals(deals => [optimisticDeal, ...deals]);
+    }
+
     try {
       // Debug: log formData before building dealData
       console.log('[DEAL SUBMIT] formData:', formData);
@@ -625,7 +660,7 @@ const NewDealEntry = () => {
       console.log('[DEBUG] dealData.currentStage (final):', dealData.currentStage);
       console.log('[DEBUG] Full dealData:', dealData);
       // Create deal (this would be your existing deal creation endpoint)
-      const dealResponse = await fetch(`/api/deals`, {
+      const dealResponse = await fetch(`${API_BASE}/api/deals`, {
         method: 'POST',
         headers: buildHeaders(),
         body: JSON.stringify(dealData),
@@ -635,89 +670,14 @@ const NewDealEntry = () => {
       console.log('[DEAL SUBMIT] Backend response status:', dealResponse.status);
       const dealResult = await dealResponse.json().catch(() => ({}));
       console.log('[DEAL SUBMIT] Backend response JSON:', dealResult);
-      if (!dealResponse.ok) {
-        console.log('[DEAL SUBMIT] Backend error response:', dealResult);
-        throw new Error('Failed to create deal');
+      if (!dealResponse.ok || !dealResult.success || !dealResult.deal) {
+        throw new Error(dealResult.error || 'Failed to create deal');
       }
-
-      const dealId = dealResult.deal._id;
-
-      // Debug: Log what we're sending for document generation
-      console.log('[DEAL SUBMIT] 🚀 Sending document generation request with:');
-      console.log('[DEAL SUBMIT] 🚀 - dealType2SubType from formData:', formData.dealType2SubType);
-      console.log('[DEAL SUBMIT] 🚀 - dealType2 from formData:', formData.dealType2SubType);
-
-      // Generate document and create vehicle record
-      const documentResponse = await fetch(`/api/documents/generate/${dealId}`, {
-        method: 'POST',
-        headers: buildHeaders(),
-        body: JSON.stringify({
-          dealType2: formData.dealType2SubType,
-          dealType2SubType: formData.dealType2SubType, // Explicitly send dealType2SubType
-          commissionRate: parseFloat(formData.commissionRate) || 0,
-          stockNumber: formData.rpStockNumber,
-          wholesalePrice: parseFloat(formData.wholesalePrice) || 0,
-          generalNotes: formData.generalNotes,
-          vehicleDescription: formData.vehicleDescription,
-          buyerName: formData.buyerName,
-          buyerType: formData.buyerType,
-          buyerAddress: formData.buyerAddress,
-          buyerPhone: formData.buyerPhone,
-          buyerEmail: formData.buyerEmail,
-          buyerLicenseNumber: formData.buyerLicenseNumber,
-          buyerTier: formData.buyerTier,
-          sellerType: formData.sellerType
-        }),
-        credentials: 'include' // Ensure cookies/session are sent for authentication
-      });
-
-      if (!documentResponse.ok) {
-        const err = await documentResponse.json().catch(() => ({}));
-        throw new Error(err.error || 'Failed to generate document');
+      // --- Optimistic UI: Replace temp deal with real deal ---
+      if (setDeals) {
+        setDeals(deals => deals.map(d => d.id === tempId ? dealResult.deal : d));
       }
-
-      const documentResult = await documentResponse.json();
-      
-      // --- UPLOAD USER DOCUMENTS ---
-      if (formData.documents && formData.documents.length > 0) {
-        for (let i = 0; i < formData.documents.length; i++) {
-          const file = formData.documents[i];
-          const noteObj = documentNotes.find(sel => sel.fileIndex === i);
-          const note = noteObj ? noteObj.note : '';
-          const documentType = 'extra_doc';
-          const form = new FormData();
-          form.append('document', file);
-          if (note) form.append('notes', note);
-          try {
-            const uploadRes = await fetch(`/api/backoffice/deals/${dealId}/documents/${documentType}/upload`, {
-              method: 'POST',
-              headers: {
-                'Authorization': getAuthHeaders()['Authorization']
-              },
-              body: form,
-              credentials: 'include'
-            });
-            if (!uploadRes.ok) {
-              const err = await uploadRes.json().catch(() => ({}));
-              toast.error(`Failed to upload ${file.name}: ${err.error || uploadRes.statusText}`);
-            } else {
-              toast.success(`Uploaded ${file.name}`);
-            }
-          } catch (err) {
-            toast.error(`Error uploading ${file.name}: ${err.message}`);
-          }
-        }
-      }
-      // --- END UPLOAD USER DOCUMENTS ---
-      
-      console.log('Deal created and document generated:', documentResult);
-      
-      // Show success message with document info
-      const successMessage = isDraft 
-        ? 'Draft saved successfully!' 
-        : `Deal submitted successfully!\n\nYour deal has been sent to the back office for processing. You will be notified when the deal is complete.`;
-      
-      toast.success(successMessage);
+      toast.success('Deal submitted successfully!');
       
       // Optionally redirect to a success page or clear form
       if (!isDraft) {
@@ -775,6 +735,10 @@ const NewDealEntry = () => {
       }
       
     } catch (error) {
+      // --- Optimistic UI: Remove temp deal on failure ---
+      if (setDeals) {
+        setDeals(deals => deals.filter(d => d.id !== tempId));
+      }
       if (error.message.includes('401') || error.message.includes('not authorized')) {
         alert('Session expired or not authorized. Please log in again.');
         navigate('/login');

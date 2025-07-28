@@ -1,17 +1,17 @@
 # Use the official Node.js image
 FROM node:22
 
-# Set working directory
+# Set working directory for the app
 WORKDIR /app
 
-# Copy package files first (for better Docker caching)
-COPY package.json package-lock.json ./
-
-# Copy the rest of the code (including frontend/)
+# Copy all files into the image
 COPY . .
 
-# Install dependencies and run postinstall (which builds frontend)
+# Set working directory to backend for dependency install
+WORKDIR /app/backend
+
+# Install backend dependencies
 RUN npm ci
 
 # Start the backend server
-CMD ["node", "backend/server.js"] 
+CMD ["node", "server.js"] 

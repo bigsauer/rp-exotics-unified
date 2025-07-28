@@ -1,42 +1,44 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { CheckCircle, Clock, X, Save, Shield } from 'lucide-react';
+import { useAuth } from './AuthContext';
 
 const dealStages = {
   wholesale: [
-    { id: 'contract_received', label: 'Contract Received', description: 'Initial paperwork received' },
-    { id: 'title_processing', label: 'Title Processing', description: 'Title documentation in progress' },
-    { id: 'payment_approved', label: 'Payment Approved', description: 'Payment authorization completed' },
-    { id: 'funds_disbursed', label: 'Funds Disbursed', description: 'Payment sent to seller' },
-    { id: 'title_received', label: 'Title Received', description: 'Clean title in hand' },
-    { id: 'deal_complete', label: 'Deal Complete', description: 'All documentation finalized' }
+    { id: 'contract-received', label: 'Contract Received', description: 'Initial paperwork received' },
+    { id: 'title-processing', label: 'Title Processing', description: 'Title documentation in progress' },
+    { id: 'payment-approved', label: 'Payment Approved', description: 'Payment authorization completed' },
+    { id: 'funds-disbursed', label: 'Funds Disbursed', description: 'Payment sent to seller' },
+    { id: 'title-received', label: 'Title Received', description: 'Clean title in hand' },
+    { id: 'deal-complete', label: 'Deal Complete', description: 'All documentation finalized' }
   ],
-  retail: [
-    { id: 'vehicle_acquired', label: 'Vehicle Acquired', description: 'Vehicle purchased and in inventory' },
-    { id: 'title_processing', label: 'Title Processing', description: 'Title work in progress' },
-    { id: 'inspection_complete', label: 'Inspection Complete', description: 'Vehicle inspection finalized' },
-    { id: 'photos_complete', label: 'Photos Complete', description: 'Professional photos taken' },
-    { id: 'listing_ready', label: 'Ready to List', description: 'Vehicle ready for sale' },
-    { id: 'listed_active', label: 'Listed & Active', description: 'Vehicle actively marketed' },
-    { id: 'buyer_contract', label: 'Buyer Contract', description: 'Sale contract executed' },
-    { id: 'financing_approved', label: 'Financing Approved', description: 'Buyer financing completed' },
-    { id: 'delivery_scheduled', label: 'Delivery Scheduled', description: 'Delivery appointment set' },
-    { id: 'deal_complete', label: 'Deal Complete', description: 'Vehicle delivered, payment received' }
-  ],
-  auction: [
-    { id: 'vehicle_acquired', label: 'Vehicle Acquired', description: 'Won at auction' },
-    { id: 'transport_arranged', label: 'Transport Arranged', description: 'Shipping scheduled' },
-    { id: 'vehicle_arrived', label: 'Vehicle Arrived', description: 'Vehicle delivered to RP' },
-    { id: 'title_processing', label: 'Title Processing', description: 'Title documentation' },
-    { id: 'inspection_complete', label: 'Inspection Complete', description: 'Condition verified' },
-    { id: 'ready_for_sale', label: 'Ready for Sale', description: 'Ready to list or wholesale' },
-    { id: 'deal_complete', label: 'Deal Complete', description: 'Final sale completed' }
-  ]
+      retail: [
+      { id: 'vehicle-acquired', label: 'Vehicle Acquired', description: 'Vehicle purchased and in inventory' },
+      { id: 'title-processing', label: 'Title Processing', description: 'Title work in progress' },
+      { id: 'inspection-complete', label: 'Inspection Complete', description: 'Vehicle inspection finalized' },
+      { id: 'photos-complete', label: 'Photos Complete', description: 'Professional photos taken' },
+      { id: 'listing-ready', label: 'Ready to List', description: 'Vehicle ready for sale' },
+      { id: 'listed-active', label: 'Listed & Active', description: 'Vehicle actively marketed' },
+      { id: 'buyer-contract', label: 'Buyer Contract', description: 'Sale contract executed' },
+      { id: 'financing-approved', label: 'Financing Approved', description: 'Buyer financing completed' },
+      { id: 'delivery-scheduled', label: 'Delivery Scheduled', description: 'Delivery appointment set' },
+      { id: 'deal-complete', label: 'Deal Complete', description: 'Vehicle delivered, payment received' }
+    ],
+      auction: [
+      { id: 'vehicle-acquired', label: 'Vehicle Acquired', description: 'Won at auction' },
+      { id: 'transport-arranged', label: 'Transport Arranged', description: 'Shipping scheduled' },
+      { id: 'vehicle-arrived', label: 'Vehicle Arrived', description: 'Vehicle delivered to RP' },
+      { id: 'title-processing', label: 'Title Processing', description: 'Title documentation' },
+      { id: 'inspection-complete', label: 'Inspection Complete', description: 'Condition verified' },
+      { id: 'ready-for-sale', label: 'Ready for Sale', description: 'Ready to list or wholesale' },
+      { id: 'deal-complete', label: 'Deal Complete', description: 'Final sale completed' }
+    ]
 };
 
 export default function FinanceDealStatusUpdatePage() {
   const { dealId } = useParams();
   const navigate = useNavigate();
+  const { getAuthHeaders } = useAuth();
   const [deal, setDeal] = useState(null);
   const [selectedStage, setSelectedStage] = useState('');
   const [notes, setNotes] = useState('');
@@ -46,20 +48,22 @@ export default function FinanceDealStatusUpdatePage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
 
+  const API_BASE = process.env.REACT_APP_API_URL;
+
   useEffect(() => {
     async function fetchDeal() {
       setLoading(true);
       try {
-        const token = window.localStorage.getItem('token');
-        const res = await fetch(`/api/deals/${dealId}`, {
+        const headers = { ...getAuthHeaders() };
+        const res = await fetch(`${API_BASE}/api/backOffice/deals/${dealId}`, {
           credentials: 'include',
-          headers: { 'Authorization': token ? `Bearer ${token}` : '' }
+          headers
         });
         if (!res.ok) throw new Error('Deal not found');
         const data = await res.json();
         const d = data.deal || data.data || data;
         setDeal(d);
-        setSelectedStage(d.currentStage || 'contract_received');
+        setSelectedStage(d.currentStage || 'contract-received');
         setNotes(d.notes || d.generalNotes || '');
         setLienStatus(d.titleInfo?.lienStatus || 'none');
         setLienEta(d.titleInfo?.lienEta ? new Date(d.titleInfo.lienEta).toISOString().split('T')[0] : '');
@@ -75,16 +79,14 @@ export default function FinanceDealStatusUpdatePage() {
   const handleUpdate = async () => {
     setSaving(true);
     try {
-      const token = window.localStorage.getItem('token');
-      const res = await fetch(`/api/deals/${dealId}`, {
+      const headers = { ...getAuthHeaders(), 'Content-Type': 'application/json' };
+      const res = await fetch(`${API_BASE}/api/backOffice/deals/${dealId}/stage`, {
         method: 'PUT',
-        credentials: 'include',
-        headers: { 'Authorization': token ? `Bearer ${token}` : '', 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({
-          currentStage: selectedStage,
+          stage: selectedStage,
           notes,
-          updatedAt: new Date(),
-          ...(deal.dealType === 'retail-pp' && selectedStage === 'title_processing' ? { lienStatus, lienEta } : {})
+          ...(deal.dealType === 'retail-pp' && selectedStage === 'title-processing' ? { lienStatus, lienEta } : {})
         })
       });
       if (!res.ok) throw new Error('Failed to update deal status');
@@ -96,8 +98,47 @@ export default function FinanceDealStatusUpdatePage() {
     }
   };
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center text-white">Loading...</div>;
-  if (error) return <div className="min-h-screen flex items-center justify-center text-red-400">{error}</div>;
+  if (loading || saving) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black flex flex-col items-center justify-center p-8">
+        <div className="bg-gray-900 border border-white/20 rounded-2xl p-8 max-w-md w-full text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+          <h3 className="text-xl font-bold text-white mb-2">
+            {saving ? 'Updating Deal Status' : 'Loading Deal Information'}
+          </h3>
+          <p className="text-gray-400">
+            {saving ? 'Please wait while we update the deal status...' : 'Please wait while we load the deal details...'}
+          </p>
+          {saving && (
+            <div className="mt-4">
+              <div className="bg-gray-800 rounded-full h-2 overflow-hidden">
+                <div className="bg-blue-500 h-2 rounded-full animate-pulse" style={{ width: '60%' }}></div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black flex flex-col items-center justify-center p-8">
+        <div className="bg-gray-900 border border-red-500/20 rounded-2xl p-8 max-w-md w-full text-center">
+          <div className="text-red-500 mb-4">
+            <X className="h-12 w-12 mx-auto" />
+          </div>
+          <h3 className="text-xl font-bold text-white mb-2">Error Loading Deal</h3>
+          <p className="text-red-400 mb-4">{error}</p>
+          <button 
+            onClick={() => navigate('/finance/deals')}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            Back to Deals
+          </button>
+        </div>
+      </div>
+    );
+  }
   if (!deal) return null;
 
   // Debug: log seller info

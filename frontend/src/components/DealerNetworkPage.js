@@ -12,8 +12,275 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from './AuthContext';
 
 const DealerNetworkPage = () => {
+  // All hooks must be at the top level
   const navigate = useNavigate();
   const { user: currentUser } = useAuth();
+  // MAXIMUM DEBUGGING
+  console.log('All process.env variables:', process.env);
+  console.log('window.location:', window.location.href);
+  const API_BASE = process.env.REACT_APP_API_URL;
+  console.log('DealerNetworkPage API_BASE:', API_BASE);
+  if (!API_BASE) {
+    alert('REACT_APP_API_URL is not set! API requests will fail. Please set this variable in your Vercel project settings and redeploy.');
+  }
+
+  // Helper to ensure all API calls use the correct backend URL
+  function getApiUrl(path) {
+    console.log('[DEBUG] getApiUrl called with path:', path);
+    if (!API_BASE) {
+      throw new Error('REACT_APP_API_URL is not set!');
+    }
+    const url = `${API_BASE}${path.startsWith('/') ? '' : '/'}${path}`;
+    console.log('[DEBUG] Constructed API URL:', url);
+    if (!url.startsWith('https://astonishing-chicken-production.up.railway.app')) {
+      console.error('[DEBUG] API call is NOT going to the backend! URL:', url);
+      alert('API call is NOT going to the backend! Check your environment variable and redeploy.');
+    }
+    return url;
+  }
+
+  // All useState hooks at the top
+  const [dealers, setDealers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedFilters, setSelectedFilters] = useState({
+    region: 'all',
+    dealerType: 'all',
+    status: 'all',
+    rating: 'all'
+  });
+  const [viewMode, setViewMode] = useState('grid'); // 'grid' or 'list'
+  const [showAddDealer, setShowAddDealer] = useState(false);
+  const [editDealer, setEditDealer] = useState(null);
+  const [editFormData, setEditFormData] = useState({});
+  const [deleteConfirm, setDeleteConfirm] = useState(null);
+  const [successMessage, setSuccessMessage] = useState('');
+  const [addFormData, setAddFormData] = useState({
+    dealerName: '',
+    contactPerson: '',
+    contact: { phone: '', email: '' },
+    licenseNumber: '',
+    status: 'Active',
+    fullAddress: ''
+  });
+  const [addingDealer, setAddingDealer] = useState(false);
+
+  // All useEffect hooks at the top
+  useEffect(() => {
+    console.log('[DEBUG] DealerNetworkPage useEffect running');
+    console.log('[DEBUG] API_BASE:', API_BASE);
+    const loadDealers = async () => {
+      setLoading(true);
+      setError('');
+      try {
+        const url = getApiUrl('/api/dealers');
+        console.log('[DEBUG] Fetching dealers from:', url);
+        const fetchOptions = {};
+        console.log('[DEBUG] Fetch options:', fetchOptions);
+        const response = await fetch(url, fetchOptions);
+        const contentType = response.headers.get('content-type');
+        console.log('[DEBUG] Dealer fetch response status:', response.status, 'content-type:', contentType);
+        let data;
+        if (!response.ok) {
+          const text = await response.text();
+          console.error('[DEBUG] Dealer fetch failed:', response.status, text);
+          setError(`Dealer fetch failed: ${response.status} ${text}`);
+          setLoading(false);
+          return;
+        }
+        try {
+          data = await response.json();
+          console.log('[DEBUG] Dealer fetch JSON response:', data);
+        } catch (jsonErr) {
+          const text = await response.text();
+          console.error('[DEBUG] Dealer fetch response is not JSON:', text);
+          setError('Dealer fetch response is not JSON. Raw response: ' + text.slice(0, 300));
+          setLoading(false);
+          return;
+        }
+        setDealers(data.data || data.dealers || []);
+        setLoading(false);
+      } catch (error) {
+        console.error('[DEBUG] Error loading dealers:', error);
+        setError('Error loading dealers: ' + error.message);
+        setLoading(false);
+      }
+    };
+    loadDealers();
+  }, [API_BASE, currentUser]);
+
+  const handleEditDealer = async (dealerId, dealerData) => {
+    // Map form data to backend schema
+    const body = {
+      name: editFormData.dealerName,
+      company: editFormData.dealerName,
+      licenseNumber: editFormData.licenseNumber || '',
+      contact: {
+        person: editFormData.contactPerson || '',
+        phone: editFormData.contact?.phone || '',
+        email: editFormData.contact?.email || '',
+        address: parseAddress(editFormData.fullAddress)
+      },
+      status: editFormData.status || 'Active',
+    };
+    console.log('Sending dealer update body:', body);
+    try {
+      const response = await fetch(`${API_BASE}/api/dealers/${dealerId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include', // Ensure cookies/session are sent
+        body: JSON.stringify(body),
+      });
+      const updated = await response.json();
+      if (updated && updated.success && updated.data) {
+        setDealers(prev => prev.map(d => d.id === dealerId ? updated.data : d));
+        setEditDealer(null);
+        setEditFormData({});
+        setSuccessMessage('Dealer updated successfully!');
+        setTimeout(() => setSuccessMessage(''), 2000);
+        console.log('Updated dealer:', updated.data);
+      } else {
+        setSuccessMessage('Failed to update dealer.');
+        setTimeout(() => setSuccessMessage(''), 2000);
+        console.error('Update response:', updated);
+      }
+    } catch (error) {
+      setSuccessMessage('Error updating dealer.');
+      setTimeout(() => setSuccessMessage(''), 2000);
+      console.error('Error updating dealer:', error);
+    }
+  };
+
+  const openEditModal = (dealer) => {
+    setEditDealer(dealer);
+    setEditFormData({
+      dealerName: dealer.company || dealer.name || '',
+      contactPerson: dealer.contact?.person || '',
+      contact: dealer.contact || {},
+      licenseNumber: dealer.licenseNumber || '',
+      status: dealer.status || 'Active',
+      fullAddress: joinAddress(dealer.contact?.address)
+    });
+  };
+
+  const handleEditSubmit = (e) => {
+    e.preventDefault();
+    if (editDealer) {
+      handleEditDealer(editDealer.id, editFormData);
+    }
+  };
+
+  const handleDeleteDealer = async (dealerId) => {
+    try {
+      const response = await fetch(`${API_BASE}/api/dealers/${dealerId}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (response.ok) {
+        setDealers(prev => prev.filter(d => d.id !== dealerId));
+        setDeleteConfirm(null);
+      } else {
+        console.error('Error deleting dealer:', response.statusText);
+        alert('Failed to delete dealer. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error deleting dealer:', error);
+      alert('Failed to delete dealer. Please try again.');
+    }
+  };
+
+  const handleAddDealer = async (e) => {
+    e.preventDefault();
+    setAddingDealer(true);
+    setSuccessMessage('');
+    // Map form data to backend schema
+    const body = {
+      name: addFormData.dealerName,
+      company: addFormData.dealerName,
+      licenseNumber: addFormData.licenseNumber || '',
+      type: 'Dealer',
+      contact: {
+        person: addFormData.contactPerson || '',
+        phone: addFormData.contact?.phone || '',
+        email: addFormData.contact?.email || '',
+        address: parseAddress(addFormData.fullAddress)
+      },
+      status: addFormData.status || 'Active',
+    };
+    try {
+      const response = await fetch(`${API_BASE}/api/dealers`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(body),
+      });
+      const result = await response.json();
+      if (response.ok && result.success && result.data) {
+        setDealers(prev => [result.data, ...prev]);
+        setShowAddDealer(false);
+        setAddFormData({ dealerName: '', contactPerson: '', contact: { phone: '', email: '' }, licenseNumber: '', status: 'Active', fullAddress: '' });
+        setSuccessMessage('Dealer added successfully!');
+        setTimeout(() => setSuccessMessage(''), 2000);
+      } else {
+        setSuccessMessage(result.error || 'Failed to add dealer.');
+        setTimeout(() => setSuccessMessage(''), 2000);
+      }
+    } catch (error) {
+      setSuccessMessage('Error adding dealer.');
+      setTimeout(() => setSuccessMessage(''), 2000);
+    } finally {
+      setAddingDealer(false);
+    }
+  };
+
+  const filteredDealers = dealers.filter(dealer => {
+    const matchesSearch = (dealer.name?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
+                         (dealer.company?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
+                         (dealer.contact?.person?.toLowerCase() || '').includes(searchQuery.toLowerCase());
+    
+    const matchesRegion = selectedFilters.region === 'all' || dealer.location?.includes(selectedFilters.region);
+    const matchesType = selectedFilters.dealerType === 'all' || dealer.type === selectedFilters.dealerType;
+    const matchesStatus = selectedFilters.status === 'all' || dealer.status === selectedFilters.status;
+
+    return matchesSearch && matchesRegion && matchesType && matchesStatus;
+  });
+
+  const getStatusColor = (status) => {
+    switch(status) {
+      case 'Active': return 'bg-green-500/20 text-green-400';
+      case 'Inactive': return 'bg-red-500/20 text-red-400';
+      case 'Pending': return 'bg-yellow-500/20 text-yellow-400';
+      default: return 'bg-gray-500/20 text-gray-400';
+    }
+  };
+
+  // Add a helper to join address parts into a single line
+  function joinAddress(address) {
+    if (!address) return '';
+    const { street, city, state, zip } = address;
+    return [street, city, state, zip].filter(Boolean).join(', ');
+  }
+  // Add a helper to parse a single line address into parts
+  function parseAddress(full) {
+    if (!full) return { street: '', city: '', state: '', zip: '' };
+    const parts = full.split(',').map(s => s.trim());
+    return {
+      street: parts[0] || '',
+      city: parts[1] || '',
+      state: parts[2] || '',
+      zip: parts[3] || ''
+    };
+  }
+
+  if (!currentUser) {
+    return null;
+  }
 
   const permissions = {
     admin: {
@@ -80,224 +347,23 @@ const DealerNetworkPage = () => {
   const userDisplayName = getUserDisplayName();
   const userPermissions = permissions[currentUser?.role] || permissions.viewer;
 
-  const [dealers, setDealers] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedFilters, setSelectedFilters] = useState({
-    region: 'all',
-    dealerType: 'all',
-    status: 'all',
-    rating: 'all'
-  });
-  const [viewMode, setViewMode] = useState('grid'); // 'grid' or 'list'
-  const [showAddDealer, setShowAddDealer] = useState(false);
-  const [editDealer, setEditDealer] = useState(null);
-  const [editFormData, setEditFormData] = useState({});
-  const [deleteConfirm, setDeleteConfirm] = useState(null);
-  const [successMessage, setSuccessMessage] = useState('');
-  const [addFormData, setAddFormData] = useState({
-    dealerName: '',
-    contactPerson: '',
-    contact: { phone: '', email: '' },
-    licenseNumber: '',
-    status: 'Active',
-    fullAddress: ''
-  });
-  const [addingDealer, setAddingDealer] = useState(false);
-
-  const API_BASE = process.env.REACT_APP_API_URL;
-
-  // Load dealers from MongoDB
-  useEffect(() => {
-    const loadDealers = async () => {
-      setLoading(true);
-      try {
-        const response = await fetch(`/api/dealers`);
-        const data = await response.json();
-        setDealers(data.data || data.dealers || []);
-        setLoading(false);
-      } catch (error) {
-        console.error('Error loading dealers:', error);
-        setLoading(false);
-      }
-    };
-    loadDealers();
-  }, []);
-
-  const handleEditDealer = async (dealerId, dealerData) => {
-    // Map form data to backend schema
-    const body = {
-      name: editFormData.dealerName,
-      company: editFormData.dealerName,
-      licenseNumber: editFormData.licenseNumber || '',
-      contact: {
-        person: editFormData.contactPerson || '',
-        phone: editFormData.contact?.phone || '',
-        email: editFormData.contact?.email || '',
-        address: parseAddress(editFormData.fullAddress)
-      },
-      status: editFormData.status || 'Active',
-    };
-    console.log('Sending dealer update body:', body);
-    try {
-      const response = await fetch(`/api/dealers/${dealerId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include', // Ensure cookies/session are sent
-        body: JSON.stringify(body),
-      });
-      const updated = await response.json();
-      if (updated && updated.success && updated.data) {
-        setDealers(prev => prev.map(d => d.id === dealerId ? updated.data : d));
-        setEditDealer(null);
-        setEditFormData({});
-        setSuccessMessage('Dealer updated successfully!');
-        setTimeout(() => setSuccessMessage(''), 2000);
-        console.log('Updated dealer:', updated.data);
-      } else {
-        setSuccessMessage('Failed to update dealer.');
-        setTimeout(() => setSuccessMessage(''), 2000);
-        console.error('Update response:', updated);
-      }
-    } catch (error) {
-      setSuccessMessage('Error updating dealer.');
-      setTimeout(() => setSuccessMessage(''), 2000);
-      console.error('Error updating dealer:', error);
-    }
-  };
-
-  const openEditModal = (dealer) => {
-    setEditDealer(dealer);
-    setEditFormData({
-      dealerName: dealer.company || dealer.name || '',
-      contactPerson: dealer.contact?.person || '',
-      contact: dealer.contact || {},
-      licenseNumber: dealer.licenseNumber || '',
-      status: dealer.status || 'Active',
-      fullAddress: joinAddress(dealer.contact?.address)
-    });
-  };
-
-  const handleEditSubmit = (e) => {
-    e.preventDefault();
-    if (editDealer) {
-      handleEditDealer(editDealer.id, editFormData);
-    }
-  };
-
-  const handleDeleteDealer = async (dealerId) => {
-    try {
-      const response = await fetch(`/api/dealers/${dealerId}`, {
-        method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-      
-      if (response.ok) {
-        setDealers(prev => prev.filter(d => d.id !== dealerId));
-        setDeleteConfirm(null);
-      } else {
-        console.error('Error deleting dealer:', response.statusText);
-        alert('Failed to delete dealer. Please try again.');
-      }
-    } catch (error) {
-      console.error('Error deleting dealer:', error);
-      alert('Failed to delete dealer. Please try again.');
-    }
-  };
-
-  const handleAddDealer = async (e) => {
-    e.preventDefault();
-    setAddingDealer(true);
-    setSuccessMessage('');
-    // Map form data to backend schema
-    const body = {
-      name: addFormData.dealerName,
-      company: addFormData.dealerName,
-      licenseNumber: addFormData.licenseNumber || '',
-      type: 'Dealer',
-      contact: {
-        person: addFormData.contactPerson || '',
-        phone: addFormData.contact?.phone || '',
-        email: addFormData.contact?.email || '',
-        address: parseAddress(addFormData.fullAddress)
-      },
-      status: addFormData.status || 'Active',
-    };
-    try {
-      const response = await fetch(`/api/dealers`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify(body),
-      });
-      const result = await response.json();
-      if (response.ok && result.success && result.data) {
-        setDealers(prev => [result.data, ...prev]);
-        setShowAddDealer(false);
-        setAddFormData({ dealerName: '', contactPerson: '', contact: { phone: '', email: '' }, licenseNumber: '', status: 'Active', fullAddress: '' });
-        setSuccessMessage('Dealer added successfully!');
-        setTimeout(() => setSuccessMessage(''), 2000);
-      } else {
-        setSuccessMessage(result.error || 'Failed to add dealer.');
-        setTimeout(() => setSuccessMessage(''), 2000);
-      }
-    } catch (error) {
-      setSuccessMessage('Error adding dealer.');
-      setTimeout(() => setSuccessMessage(''), 2000);
-    } finally {
-      setAddingDealer(false);
-    }
-  };
-
-  const filteredDealers = dealers.filter(dealer => {
-    const matchesSearch = (dealer.name?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
-                         (dealer.company?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
-                         (dealer.contact?.person?.toLowerCase() || '').includes(searchQuery.toLowerCase());
-    
-    const matchesRegion = selectedFilters.region === 'all' || dealer.location?.includes(selectedFilters.region);
-    const matchesType = selectedFilters.dealerType === 'all' || dealer.type === selectedFilters.dealerType;
-    const matchesStatus = selectedFilters.status === 'all' || dealer.status === selectedFilters.status;
-
-    return matchesSearch && matchesRegion && matchesType && matchesStatus;
-  });
-
-  const getStatusColor = (status) => {
-    switch(status) {
-      case 'Active': return 'bg-green-500/20 text-green-400';
-      case 'Inactive': return 'bg-red-500/20 text-red-400';
-      case 'Pending': return 'bg-yellow-500/20 text-yellow-400';
-      default: return 'bg-gray-500/20 text-gray-400';
-    }
-  };
-
-  // Add a helper to join address parts into a single line
-  function joinAddress(address) {
-    if (!address) return '';
-    const { street, city, state, zip } = address;
-    return [street, city, state, zip].filter(Boolean).join(', ');
-  }
-  // Add a helper to parse a single line address into parts
-  function parseAddress(full) {
-    if (!full) return { street: '', city: '', state: '', zip: '' };
-    const parts = full.split(',').map(s => s.trim());
-    return {
-      street: parts[0] || '',
-      city: parts[1] || '',
-      state: parts[2] || '',
-      zip: parts[3] || ''
-    };
-  }
-
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
           <p className="text-white text-lg">Loading dealer network...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-red-400 text-lg font-bold mb-4">Error loading dealers</p>
+          <pre className="bg-black/60 text-red-200 p-4 rounded-lg max-w-xl mx-auto overflow-x-auto text-left" style={{whiteSpace: 'pre-wrap'}}>{error}</pre>
         </div>
       </div>
     );

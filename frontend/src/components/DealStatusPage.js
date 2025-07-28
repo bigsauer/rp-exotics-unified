@@ -21,6 +21,8 @@ import {
   Shield
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 const statusDisplayMap = {
   'contract-received': 'Initial Contact',
@@ -51,6 +53,14 @@ const dealType2DisplayMap = {
 };
 
 const DealStatusPage = () => {
+  console.log('DealStatusPage rendered');
+  // If you use currentUser, add this:
+  // const { user: currentUser } = useAuth();
+  // console.log('DealStatusPage currentUser:', currentUser);
+  // if (!currentUser) {
+  //   console.log('DealStatusPage: currentUser is not set, not rendering component');
+  //   return null;
+  // }
   const [deals, setDeals] = useState([]);
   const [loading, setLoading] = useState(true);
   const [expandedDeal, setExpandedDeal] = useState(null);
@@ -60,8 +70,14 @@ const DealStatusPage = () => {
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [lastSync, setLastSync] = useState(null);
   const navigate = useNavigate();
+  const [editDealId, setEditDealId] = useState(null);
+  const [editNotes, setEditNotes] = useState('');
+
+  const API_BASE = process.env.REACT_APP_API_URL;
 
   useEffect(() => {
+    console.log('[DEBUG][DealStatusPage] useEffect running');
+    console.log('[DEBUG][DealStatusPage] API_BASE:', API_BASE);
     fetchDeals();
     
     // Set up auto-refresh every 30 seconds if enabled
@@ -81,11 +97,19 @@ const DealStatusPage = () => {
   const fetchDeals = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`/api/deals`, {
-        credentials: 'include'
+      const url = `${API_BASE}/api/deals`;
+      const token = localStorage.getItem('token') || window.localStorage.getItem('token');
+      console.log('[DEBUG][DealStatusPage] Fetching deals from:', url, 'with token:', token);
+      const response = await fetch(url, {
+        credentials: 'include',
+        headers: {
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        }
       });
+      console.log('[DEBUG][DealStatusPage] Deal fetch response status:', response.status);
       if (response.ok) {
         const data = await response.json();
+        console.log('[DEBUG][DealStatusPage] Deal fetch JSON response:', data);
         const dealsData = data.deals || data.data || [];
         
         // Transform backend data to match frontend format
@@ -119,12 +143,76 @@ const DealStatusPage = () => {
         }));
         
         setDeals(transformedDeals);
+      } else {
+        const text = await response.text();
+        console.error('[DEBUG][DealStatusPage] Deal fetch failed:', response.status, text);
       }
     } catch (error) {
-      console.error('Error fetching deals:', error);
+      console.error('[DEBUG][DealStatusPage] Error fetching deals:', error);
     } finally {
       setLoading(false);
     }
+  };
+
+  // --- Optimistic Delete Handler ---
+  const handleDeleteDeal = async (dealId) => {
+    const prevDeals = deals;
+    setDeals(deals => deals.filter(d => d.id !== dealId));
+    try {
+      const url = `${API_BASE}/api/deals/${dealId}`;
+      const token = localStorage.getItem('token') || window.localStorage.getItem('token');
+      const response = await fetch(url, {
+        method: 'DELETE',
+        headers: {
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        },
+        credentials: 'include'
+      });
+      if (!response.ok) throw new Error('Delete failed');
+      toast.success('Deal deleted!');
+    } catch (err) {
+      setDeals(prevDeals);
+      toast.error('Failed to delete deal!');
+    }
+  };
+
+  // --- Optimistic Edit Handler (notes field as example) ---
+  const handleEditDeal = (deal) => {
+    setEditDealId(deal.id);
+    setEditNotes(deal.notes || '');
+  };
+  const handleEditNotesChange = (e) => {
+    setEditNotes(e.target.value);
+  };
+  const handleSaveEdit = async (dealId) => {
+    const prevDeals = deals;
+    setDeals(deals => deals.map(d => d.id === dealId ? { ...d, notes: editNotes } : d));
+    setEditDealId(null);
+    try {
+      const url = `${API_BASE}/api/deals/${dealId}`;
+      const token = localStorage.getItem('token') || window.localStorage.getItem('token');
+      const response = await fetch(url, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify({ notes: editNotes }),
+        credentials: 'include'
+      });
+      const data = await response.json();
+      if (!response.ok || !data.success) throw new Error(data.error || 'Update failed');
+      // Optionally update with backend response
+      setDeals(deals => deals.map(d => d.id === dealId ? { ...d, ...data.deal } : d));
+      toast.success('Deal updated!');
+    } catch (err) {
+      setDeals(prevDeals);
+      toast.error('Failed to update deal!');
+    }
+  };
+  const handleCancelEdit = () => {
+    setEditDealId(null);
+    setEditNotes('');
   };
 
   const getStageInfo = (currentStage) => {
@@ -367,6 +455,22 @@ const DealStatusPage = () => {
                           </>
                         )}
                       </button>
+                      {/* Optimistic Edit Button */}
+                      <button
+                        onClick={() => handleEditDeal(deal)}
+                        className="bg-yellow-600 hover:bg-yellow-700 text-white px-3 py-2 rounded-lg flex items-center space-x-2 transition-colors"
+                      >
+                        <Edit3 className="h-4 w-4" />
+                        <span>Edit Notes</span>
+                      </button>
+                      {/* Optimistic Delete Button */}
+                      <button
+                        onClick={() => handleDeleteDeal(deal.id)}
+                        className="bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded-lg flex items-center space-x-2 transition-colors"
+                      >
+                        <XCircle className="h-4 w-4" />
+                        <span>Delete</span>
+                      </button>
                     </div>
                   </div>
 
@@ -528,11 +632,33 @@ const DealStatusPage = () => {
                   )}
 
                   {/* Notes */}
-                  {deal.notes && (
+                  {deal.notes && editDealId !== deal.id && (
                     <div className="bg-orange-500/10 border border-orange-500/30 rounded-lg p-3">
                       <div className="flex items-start space-x-2">
                         <AlertCircle className="h-4 w-4 text-orange-400 mt-0.5 flex-shrink-0" />
                         <p className="text-orange-300 text-sm">{deal.notes}</p>
+                      </div>
+                    </div>
+                  )}
+                  {/* Inline Edit Notes UI */}
+                  {editDealId === deal.id && (
+                    <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-3 mt-2">
+                      <div className="flex flex-col space-y-2">
+                        <textarea
+                          className="w-full rounded p-2 text-sm text-gray-900"
+                          value={editNotes}
+                          onChange={handleEditNotesChange}
+                        />
+                        <div className="flex space-x-2">
+                          <button
+                            onClick={() => handleSaveEdit(deal.id)}
+                            className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded"
+                          >Save</button>
+                          <button
+                            onClick={handleCancelEdit}
+                            className="bg-gray-600 hover:bg-gray-700 text-white px-3 py-1 rounded"
+                          >Cancel</button>
+                        </div>
                       </div>
                     </div>
                   )}

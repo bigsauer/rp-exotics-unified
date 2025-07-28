@@ -2,10 +2,12 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import { useAuth } from './AuthContext';
 
 const FinanceDealDetails = () => {
   const { dealId } = useParams();
   const navigate = useNavigate();
+  const { getAuthHeaders } = useAuth();
   const [documents, setDocuments] = useState([]);
   const [deal, setDeal] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -17,15 +19,34 @@ const FinanceDealDetails = () => {
 
   const API_BASE = process.env.REACT_APP_API_URL;
 
+  // Add this helper function near the top of the file
+  function getDocumentUrl(doc, API_BASE) {
+    if (!doc) return '';
+    // If filePath is absolute, extract the filename and build the web path
+    if (doc.filePath && doc.filePath.startsWith('/uploads/')) {
+      return `${API_BASE}${doc.filePath}`;
+    }
+    if (doc.filePath && doc.filePath.includes('/uploads/documents/')) {
+      // Handles both absolute and relative
+      const idx = doc.filePath.indexOf('/uploads/documents/');
+      return `${API_BASE}${doc.filePath.slice(idx)}`;
+    }
+    if (doc.filePath && (doc.filePath.includes('Desktop') || doc.filePath.includes('rp-exotics-unified'))) {
+      // Extract filename from absolute path
+      const fileName = doc.fileName || doc.filePath.split('/').pop();
+      return `${API_BASE}/uploads/documents/${fileName}`;
+    }
+    if (doc.downloadUrl) return doc.downloadUrl;
+    if (doc.fileName) return `${API_BASE}/api/documents/download/${doc.fileName}`;
+    return '';
+  }
+
   useEffect(() => {
     setLoading(true);
-    const token = window.localStorage.getItem('token');
-    console.log('[FinanceDealDetails] Using Authorization token:', token);
-    fetch(`/api/backoffice/deals/${dealId}`, {
+    const headers = { ...getAuthHeaders() };
+    fetch(`${API_BASE ? API_BASE : ''}/api/backoffice/deals/${dealId}`, {
       credentials: 'include',
-      headers: {
-        'Authorization': token ? `Bearer ${token}` : ''
-      }
+      headers
     })
       .then(res => {
         if (!res.ok) throw new Error('Deal not found');
@@ -72,6 +93,39 @@ const FinanceDealDetails = () => {
     console.log('[FinanceDealDetails] documents state changed:', documents);
   }, [documents]);
 
+  const handleGenerateDocuments = async () => {
+    try {
+      setSaving(true);
+      
+      console.log('[FinanceDealDetails] Generating documents for deal:', dealId);
+      
+      const headers = { ...getAuthHeaders(), 'Content-Type': 'application/json' };
+      const response = await fetch(`${API_BASE}/api/documents/generate/${dealId}`, {
+        method: 'POST',
+        headers
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to generate documents');
+      }
+      
+      const result = await response.json();
+      console.log('[FinanceDealDetails] Document generation result:', result);
+      
+      toast.success('Documents generated successfully!');
+      
+      // Refresh the page to show the new documents
+      window.location.reload();
+      
+    } catch (error) {
+      console.error('[FinanceDealDetails] Error generating documents:', error);
+      toast.error(error.message || 'Failed to generate documents');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const handleEditToggle = () => {
     if (!isEditing) {
       // Initialize edit data with current deal values
@@ -117,14 +171,11 @@ const FinanceDealDetails = () => {
   const handleSave = async () => {
     setSaving(true);
     try {
-      const token = window.localStorage.getItem('token');
+      const headers = { ...getAuthHeaders(), 'Content-Type': 'application/json' };
       const response = await fetch(`/api/backoffice/deals/${dealId}/update-and-regenerate`, {
         method: 'PUT',
         credentials: 'include',
-        headers: {
-          'Authorization': token ? `Bearer ${token}` : '',
-          'Content-Type': 'application/json'
-        },
+        headers,
         body: JSON.stringify({
           ...editData,
           regenerateDocuments
@@ -149,11 +200,10 @@ const FinanceDealDetails = () => {
       // Clear documents state before fetching new data
       setDocuments([]);
       // Refresh the deal data
+      const dealHeaders = { ...getAuthHeaders() };
       const dealResponse = await fetch(`/api/backoffice/deals/${dealId}`, {
         credentials: 'include',
-        headers: {
-          'Authorization': token ? `Bearer ${token}` : ''
-        }
+        headers: dealHeaders
       });
       
       if (dealResponse.ok) {
@@ -277,7 +327,7 @@ const FinanceDealDetails = () => {
       console.log('extra_doc view URL:', viewUrl);
       
       // Navigate to the route without fileName for extra_doc files
-      const navigateUrl = `${API_BASE}/deals/${dealId}/documents/view`;
+      const navigateUrl = `/deals/${dealId}/documents/view`;
       console.log('Navigating to:', navigateUrl);
       navigate(navigateUrl, { 
         state: { viewUrl } 
@@ -287,7 +337,7 @@ const FinanceDealDetails = () => {
       viewUrl = `${API_BASE}/api/documents/download/${doc.fileName || doc.name}`;
       console.log('generated document view URL:', viewUrl);
       
-      const navigateUrl = `${API_BASE}/deals/${dealId}/documents/${encodeURIComponent(doc.fileName || doc.name)}/view`;
+      const navigateUrl = `/deals/${dealId}/documents/${encodeURIComponent(doc.fileName || doc.name)}/view`;
       console.log('Navigating to:', navigateUrl);
       navigate(navigateUrl, { 
         state: { viewUrl } 
@@ -680,12 +730,21 @@ const FinanceDealDetails = () => {
       <div className="w-full max-w-6xl">
         <div className="flex justify-between items-center mb-8">
           <h1 className="text-3xl font-bold text-white">Deal Documents</h1>
-          <button
-            onClick={handleEditToggle}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            {isEditing ? 'Cancel Edit' : 'Edit Deal'}
-          </button>
+          <div className="flex gap-3">
+            <button
+              onClick={handleGenerateDocuments}
+              disabled={saving}
+              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {saving ? 'Generating...' : 'Generate Documents'}
+            </button>
+            <button
+              onClick={handleEditToggle}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              {isEditing ? 'Cancel Edit' : 'Edit Deal'}
+            </button>
+          </div>
         </div>
 
         {/* Deal Summary */}
@@ -887,7 +946,7 @@ const FinanceDealDetails = () => {
                     View
                   </button>
                   <a
-                    href={doc.filePath || doc.downloadUrl || `${API_BASE}/api/documents/download/${doc.fileName}`}
+                    href={getDocumentUrl(doc, API_BASE)}
                     download
                     style={{
                       padding: '10px 22px',

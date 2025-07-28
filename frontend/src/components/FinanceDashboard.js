@@ -21,25 +21,52 @@ const FinanceDashboard = () => {
   useEffect(() => {
     let isMounted = true;
     setLoading(true);
+    const API_BASE = process.env.REACT_APP_API_URL;
+    const token = localStorage.getItem('token') || window.localStorage.getItem('token');
+    console.log('[DEBUG][FinanceDashboard] API_BASE:', API_BASE, 'token:', token);
     Promise.all([
-      fetch(`/api/documents/vehicle-records`, { credentials: 'include' })
-        .then(res => res.json())
+      fetch(`${API_BASE}/api/documents/vehicle-records`, {
+        credentials: 'include',
+        headers: {
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        }
+      })
+        .then(res => {
+          console.log('[DEBUG][FinanceDashboard] Vehicle records fetch response status:', res.status);
+          return res.json();
+        })
         .then(recordsData => {
           if (isMounted && recordsData.success) {
             setVehicleRecords(recordsData.data);
           }
         })
-        .catch(err => { console.error('Error fetching vehicle records:', err); }),
-      fetch(`/api/documents/stats`, { credentials: 'include' })
-        .then(res => res.json())
+        .catch(err => { console.error('[DEBUG][FinanceDashboard] Error fetching vehicle records:', err); }),
+      fetch(`${API_BASE}/api/documents/stats`, {
+        credentials: 'include',
+        headers: {
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        }
+      })
+        .then(res => {
+          console.log('[DEBUG][FinanceDashboard] Stats fetch response status:', res.status);
+          return res.json();
+        })
         .then(statsData => {
           if (isMounted && statsData.success) {
             setStats(statsData.stats);
           }
         })
-        .catch(err => { console.error('Error fetching stats:', err); }),
-      fetch(`/api/deals`, { credentials: 'include' })
-        .then(res => res.json())
+        .catch(err => { console.error('[DEBUG][FinanceDashboard] Error fetching stats:', err); }),
+      fetch(`${API_BASE}/api/deals`, {
+        credentials: 'include',
+        headers: {
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        }
+      })
+        .then(res => {
+          console.log('[DEBUG][FinanceDashboard] Deals fetch response status:', res.status);
+          return res.json();
+        })
         .then(data => {
           if (isMounted) setSubmittedDeals(data.deals || data.data || []);
         })
@@ -53,9 +80,17 @@ const FinanceDashboard = () => {
   const fetchData = async () => {
     try {
       setLoading(true);
+      const API_BASE = process.env.REACT_APP_API_URL;
+      const token = localStorage.getItem('token') || window.localStorage.getItem('token');
       
       // Fetch vehicle records
-      const recordsResponse = await fetch(`/api/documents/vehicle-records`, { credentials: 'include' });
+      const recordsResponse = await fetch(`${API_BASE}/api/documents/vehicle-records`, {
+        credentials: 'include',
+        headers: {
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        }
+      });
+      console.log('[DEBUG][FinanceDashboard] Vehicle records fetch response status:', recordsResponse.status);
       const recordsData = await recordsResponse.json();
       
       if (recordsData.success) {
@@ -63,7 +98,13 @@ const FinanceDashboard = () => {
       }
 
       // Fetch stats
-      const statsResponse = await fetch(`/api/documents/stats`, { credentials: 'include' });
+      const statsResponse = await fetch(`${API_BASE}/api/documents/stats`, {
+        credentials: 'include',
+        headers: {
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        }
+      });
+      console.log('[DEBUG][FinanceDashboard] Stats fetch response status:', statsResponse.status);
       const statsData = await statsResponse.json();
       
       if (statsData.success) {
@@ -71,7 +112,7 @@ const FinanceDashboard = () => {
       }
 
     } catch (error) {
-      console.error('Error fetching data:', error);
+      console.error('[DEBUG][FinanceDashboard] Error fetching data:', error);
     } finally {
       setLoading(false);
     }
@@ -79,12 +120,20 @@ const FinanceDashboard = () => {
 
   const handleStatusUpdate = async (recordId, documentIndex, status, notes = '') => {
     try {
-      const response = await fetch(`/api/documents/vehicle-records/${recordId}/documents/${documentIndex}/status`, {
+      const API_BASE = process.env.REACT_APP_API_URL;
+      const token = localStorage.getItem('token') || window.localStorage.getItem('token');
+      const url = `${API_BASE}/api/documents/vehicle-records/${recordId}/documents/${documentIndex}/status`;
+      console.log('[DEBUG][FinanceDashboard] Updating status via:', url, 'with token:', token);
+      const response = await fetch(url, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        },
         body: JSON.stringify({ status, notes }),
         credentials: 'include'
       });
+      console.log('[DEBUG][FinanceDashboard] Status update response status:', response.status);
 
       if (response.ok) {
         // Refresh data
@@ -94,29 +143,38 @@ const FinanceDashboard = () => {
         throw new Error('Failed to update status');
       }
     } catch (error) {
-      console.error('Error updating status:', error);
+      console.error('[DEBUG][FinanceDashboard] Error updating status:', error);
       alert('Error updating status');
     }
   };
 
   const downloadDocument = async (fileName) => {
     try {
-      const response = await fetch(`/api/documents/download/${fileName}`, { credentials: 'include' });
+      const API_BASE = process.env.REACT_APP_API_URL;
+      const token = localStorage.getItem('token') || window.localStorage.getItem('token');
+      const url = `${API_BASE}/api/documents/download/${fileName}`;
+      console.log('[DEBUG][FinanceDashboard] Downloading document from:', url, 'with token:', token);
+      const response = await fetch(url, {
+        credentials: 'include',
+        headers: {
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        }
+      });
       if (response.ok) {
         const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
+        const urlObj = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
-        a.href = url;
+        a.href = urlObj;
         a.download = fileName;
         document.body.appendChild(a);
         a.click();
-        window.URL.revokeObjectURL(url);
+        window.URL.revokeObjectURL(urlObj);
         document.body.removeChild(a);
       } else {
         throw new Error('Failed to download document');
       }
     } catch (error) {
-      console.error('Error downloading document:', error);
+      console.error('[DEBUG][FinanceDashboard] Error downloading document:', error);
       alert('Error downloading document');
     }
   };
@@ -127,10 +185,18 @@ const FinanceDashboard = () => {
     }
 
     try {
-      const response = await fetch(`/api/deals/${dealId}`, {
+      const API_BASE = process.env.REACT_APP_API_URL;
+      const token = localStorage.getItem('token') || window.localStorage.getItem('token');
+      const url = `${API_BASE}/api/deals/${dealId}`;
+      console.log('[DEBUG][FinanceDashboard] Deleting deal via:', url, 'with token:', token);
+      const response = await fetch(url, {
         method: 'DELETE',
-        credentials: 'include'
+        credentials: 'include',
+        headers: {
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        }
       });
+      console.log('[DEBUG][FinanceDashboard] Delete deal response status:', response.status);
 
       if (response.ok) {
         // Refresh data
@@ -141,7 +207,7 @@ const FinanceDashboard = () => {
         throw new Error(errorData.error || 'Failed to delete deal');
       }
     } catch (error) {
-      console.error('Error deleting deal:', error);
+      console.error('[DEBUG][FinanceDashboard] Error deleting deal:', error);
       alert(`Error deleting deal: ${error.message}`);
     }
   };
