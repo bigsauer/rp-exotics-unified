@@ -2237,6 +2237,29 @@ class DocumentGenerator {
       // For all other deal types (including wholesale-flip): use the buyer as purchasing dealer
       buyer = dealData.buyer || {};
       buyerContact = buyer.contact || {};
+      
+      // Handle incomplete buyer data for wholesale-flip deals
+      if (dealData.dealType === 'wholesale-flip' && (!buyer.name || !buyer.contact)) {
+        console.log('[PDF GEN] [BOS DEBUG] Incomplete buyer data detected, using default RP Exotics as purchasing dealer');
+        buyer = {
+          name: 'RP Exotics',
+          type: 'dealer',
+          licenseNumber: 'D4865',
+          tier: 'Tier 1',
+          contact: {
+            address: {
+              street: '1155 N Warson Rd',
+              city: 'Saint Louis',
+              state: 'MO',
+              zip: '63132'
+            },
+            phone: '(314) 970-2427',
+            email: 'titling@rpexotics.com'
+          }
+        };
+        buyerContact = buyer.contact || {};
+      }
+      
       console.log('[PDF GEN] [BOS DEBUG] Default: Buyer set as purchasing dealer');
     }
 
