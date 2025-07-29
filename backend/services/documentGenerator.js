@@ -407,17 +407,27 @@ class DocumentGenerator {
   }
 
   async generateStandardVehicleRecord(dealData, user) {
-    // --- DEBUG: Log all deal type fields and price/label logic ---
-    console.log('[PDF GEN] [DEBUG] dealType:', dealData.dealType);
-    console.log('[PDF GEN] [DEBUG] dealType2:', dealData.dealType2);
-    console.log('[PDF GEN] [DEBUG] dealType2SubType:', dealData.dealType2SubType);
-    console.log('[PDF GEN] [DEBUG] Raw seller:', JSON.stringify(dealData.seller, null, 2));
-    console.log('[PDF GEN] [DEBUG] Raw buyer:', JSON.stringify(dealData.buyer, null, 2));
-    console.log('[PDF GEN] dealData:', dealData);
-    console.log('[PDF GEN] user:', user);
-    console.log(`[PDF GEN] [DEBUG] dealType: ${dealData.dealType}, dealType2SubType: ${dealData.dealType2SubType}`);
-    console.log('[PDF GEN] [DEBUG] Raw seller:', JSON.stringify(dealData.seller, null, 2));
-    console.log('[PDF GEN] [DEBUG] Raw buyer:', JSON.stringify(dealData.buyer, null, 2));
+    console.log('[PDF GEN][StandardVehicleRecord] Starting standard vehicle record generation');
+    console.log('[PDF GEN][StandardVehicleRecord] Deal data:', {
+      dealType: dealData.dealType,
+      dealType2: dealData.dealType2,
+      dealType2SubType: dealData.dealType2SubType,
+      stockNumber: dealData.stockNumber,
+      vin: dealData.vin
+    });
+    
+    try {
+      // --- DEBUG: Log all deal type fields and price/label logic ---
+      console.log('[PDF GEN] [DEBUG] dealType:', dealData.dealType);
+      console.log('[PDF GEN] [DEBUG] dealType2:', dealData.dealType2);
+      console.log('[PDF GEN] [DEBUG] dealType2SubType:', dealData.dealType2SubType);
+      console.log('[PDF GEN] [DEBUG] Raw seller:', JSON.stringify(dealData.seller, null, 2));
+      console.log('[PDF GEN] [DEBUG] Raw buyer:', JSON.stringify(dealData.buyer, null, 2));
+      console.log('[PDF GEN] dealData:', dealData);
+      console.log('[PDF GEN] user:', user);
+      console.log(`[PDF GEN] [DEBUG] dealType: ${dealData.dealType}, dealType2SubType: ${dealData.dealType2SubType}`);
+      console.log('[PDF GEN] [DEBUG] Raw seller:', JSON.stringify(dealData.seller, null, 2));
+      console.log('[PDF GEN] [DEBUG] Raw buyer:', JSON.stringify(dealData.buyer, null, 2));
 
     // Helper for RP Exotics info
     const rpExoticsInfo = {
@@ -1141,6 +1151,11 @@ class DocumentGenerator {
       fileSize: stats.size,
       documentNumber: docNumber
     };
+    } catch (error) {
+      console.error('[PDF GEN][StandardVehicleRecord] Error generating standard vehicle record:', error);
+      console.error('[PDF GEN][StandardVehicleRecord] Error stack:', error.stack);
+      throw error;
+    }
   }
 
   async generateWholesalePurchaseOrder(dealData, user) {
@@ -2931,12 +2946,32 @@ class DocumentGenerator {
   }
 
   async generateVehicleRecordPDF(dealData, user) {
-    // Retail-pp buy: use custom template
-    if (dealData.dealType === 'retail-pp' && dealData.dealType2SubType === 'buy') {
-      return await this.generateRetailPPVehicleRecord(dealData, user);
+    console.log('[PDF GEN][VehicleRecordPDF] Starting vehicle record PDF generation');
+    console.log('[PDF GEN][VehicleRecordPDF] Deal data:', {
+      dealType: dealData.dealType,
+      dealType2SubType: dealData.dealType2SubType,
+      stockNumber: dealData.stockNumber,
+      vin: dealData.vin
+    });
+    
+    try {
+      // Retail-pp buy: use custom template
+      if (dealData.dealType === 'retail-pp' && dealData.dealType2SubType === 'buy') {
+        console.log('[PDF GEN][VehicleRecordPDF] Using retail PP vehicle record template');
+        const result = await this.generateRetailPPVehicleRecord(dealData, user);
+        console.log('[PDF GEN][VehicleRecordPDF] Retail PP vehicle record generated successfully:', result.fileName);
+        return result;
+      }
+      // Otherwise, use standard logic
+      console.log('[PDF GEN][VehicleRecordPDF] Using standard vehicle record template');
+      const result = await this.generateStandardVehicleRecord(dealData, user);
+      console.log('[PDF GEN][VehicleRecordPDF] Standard vehicle record generated successfully:', result.fileName);
+      return result;
+    } catch (error) {
+      console.error('[PDF GEN][VehicleRecordPDF] Error generating vehicle record PDF:', error);
+      console.error('[PDF GEN][VehicleRecordPDF] Error stack:', error.stack);
+      throw error;
     }
-    // Otherwise, use standard logic
-    return await this.generateStandardVehicleRecord(dealData, user);
   }
 }
 

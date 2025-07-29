@@ -7,15 +7,55 @@ export function AuthProvider({ children }) {
   const [token, setToken] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  // Utility to get backend API URL
+  const API_BASE = process.env.REACT_APP_API_URL || '';
+
+  // Check if the current token is valid
+  const checkSession = async (authToken) => {
+    try {
+      const response = await fetch(`${API_BASE}/api/auth/profile`, {
+        credentials: 'include',
+        headers: {
+          'Authorization': `Bearer ${authToken}`
+        }
+      });
+      
+      if (response.ok) {
+        const result = await response.json();
+        return { valid: true, user: result.user || result };
+      } else {
+        console.log('[AUTH] Session check failed, token may be expired');
+        return { valid: false };
+      }
+    } catch (error) {
+      console.error('[AUTH] Session check error:', error);
+      return { valid: false };
+    }
+  };
+
   useEffect(() => {
     // Try to load user and token from localStorage
     const storedUser = window.localStorage.getItem('user');
     const storedToken = window.localStorage.getItem('token');
+    
     if (storedUser && storedToken) {
-      setUser(JSON.parse(storedUser));
-      setToken(storedToken);
+      // Validate the stored token
+      checkSession(storedToken).then(({ valid, user: sessionUser }) => {
+        if (valid) {
+          setUser(JSON.parse(storedUser));
+          setToken(storedToken);
+          console.log('[AUTH] Valid session restored from localStorage');
+        } else {
+          // Token is invalid, clear storage
+          console.log('[AUTH] Invalid token found, clearing storage');
+          window.localStorage.removeItem('user');
+          window.localStorage.removeItem('token');
+        }
+        setLoading(false);
+      });
+    } else {
+      setLoading(false);
     }
-    setLoading(false);
   }, []);
 
   // Utility to get auth headers
@@ -39,7 +79,7 @@ export function AuthProvider({ children }) {
   const logout = async () => {
     try {
       if (token) {
-        await fetch('/api/auth/logout', { 
+        await fetch(`${API_BASE}/api/auth/logout`, { 
           method: 'POST', 
           credentials: 'include',
           headers: {
@@ -58,7 +98,7 @@ export function AuthProvider({ children }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, loading, login, logout, getAuthHeaders }}>
+    <AuthContext.Provider value={{ user, token, loading, login, logout, getAuthHeaders, checkSession }}>
       {children}
     </AuthContext.Provider>
   );

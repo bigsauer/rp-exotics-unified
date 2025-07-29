@@ -6,7 +6,7 @@ const PDFViewer = () => {
   const { fileName } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
-  const { getAuthHeaders } = useAuth();
+  const { getAuthHeaders, token, user } = useAuth();
   const [pdfUrl, setPdfUrl] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -20,6 +20,9 @@ const PDFViewer = () => {
     console.log('[PDFViewer] fileName:', fileName);
     console.log('[PDFViewer] location.state:', location.state);
     console.log('[PDFViewer] viewUrl:', viewUrl);
+    console.log('[PDFViewer] Token exists:', !!token);
+    console.log('[PDFViewer] User exists:', !!user);
+    console.log('[PDFViewer] Auth headers:', getAuthHeaders());
 
     const loadPDF = async () => {
       try {
@@ -27,12 +30,19 @@ const PDFViewer = () => {
         console.log('[PDFViewer] Fetching PDF from:', viewUrl);
         
         const headers = { ...getAuthHeaders() };
+        console.log('[PDFViewer] Request headers:', headers);
+        
         const response = await fetch(viewUrl, { 
           credentials: 'include',
           headers
         });
         
+        console.log('[PDFViewer] Response status:', response.status);
+        console.log('[PDFViewer] Response headers:', response.headers);
+        
         if (!response.ok) {
+          const errorText = await response.text();
+          console.error('[PDFViewer] Response error text:', errorText);
           throw new Error(`Failed to load PDF: ${response.status} ${response.statusText}`);
         }
         
@@ -50,7 +60,7 @@ const PDFViewer = () => {
     };
 
     loadPDF();
-  }, [viewUrl]);
+  }, [viewUrl, token, user, getAuthHeaders]);
 
   const handleIframeError = () => {
     console.error('[PDFViewer] Iframe failed to load:', pdfUrl);
