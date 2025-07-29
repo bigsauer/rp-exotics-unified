@@ -1970,7 +1970,7 @@ class DocumentGenerator {
     const safeStockNumber = (dealData.stockNumber && dealData.stockNumber !== 'N/A') ? dealData.stockNumber : (dealData.rpStockNumber && dealData.rpStockNumber !== 'N/A' ? dealData.rpStockNumber : 'UNKNOWN');
     const docNumber = Date.now();
     const fileName = `wholesale_purchase_order_${safeStockNumber}_${docNumber}.pdf`;
-    const filePath = path.join(__dirname, '../uploads/documents', fileName);
+    const filePath = path.join(this.uploadsDir, fileName);
     // --- Initialize buyer and buyerContact before any use ---
     let buyer = dealData.buyer || {};
     let buyerContact = buyer.contact || {};
@@ -2536,7 +2536,7 @@ class DocumentGenerator {
     // Use VIN or recordId as fallback for file name
     const safeStockNumber = (dealData.stockNumber && dealData.stockNumber !== 'N/A') ? dealData.stockNumber : (dealData.rpStockNumber && dealData.rpStockNumber !== 'N/A') ? dealData.rpStockNumber : (dealData.vin || dealData.vehicleRecordId || 'UNKNOWN');
     const fileName = `vehicle_record_${safeStockNumber}_${Date.now()}.pdf`;
-    const filePath = path.resolve(__dirname, '../uploads/documents', fileName);
+    const filePath = path.join(this.uploadsDir, fileName);
     console.log('[PDF GEN][RetailPPVehicleRecord] Generating file:', fileName, 'at', filePath);
 
     // Helper for address formatting
