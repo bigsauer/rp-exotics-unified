@@ -56,6 +56,7 @@ const DealerNetworkPage = () => {
   const [editFormData, setEditFormData] = useState({});
   const [deleteConfirm, setDeleteConfirm] = useState(null);
   const [successMessage, setSuccessMessage] = useState('');
+  const [selectedDealer, setSelectedDealer] = useState(null);
   const [addFormData, setAddFormData] = useState({
     dealerName: '',
     contactPerson: '',
@@ -548,17 +549,12 @@ const DealerNetworkPage = () => {
                 </div>
 
                 <div className="flex space-x-2">
-                  <button className="flex-1 bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 text-sm font-medium py-2 px-3 rounded-lg transition-colors">
+                  <button 
+                    onClick={() => setSelectedDealer(dealer)}
+                    className="flex-1 bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 text-sm font-medium py-2 px-3 rounded-lg transition-colors"
+                  >
                     View Details
                   </button>
-                  {userPermissions.canManageDealers && (
-                    <button 
-                      onClick={() => openEditModal(dealer)}
-                      className="bg-green-500/20 text-green-400 hover:bg-green-500/30 text-sm font-medium py-2 px-3 rounded-lg transition-colors"
-                    >
-                      Edit
-                    </button>
-                  )}
                 </div>
               </div>
             ))}
@@ -602,22 +598,12 @@ const DealerNetworkPage = () => {
                     <span className={`text-xs font-medium px-2 py-1 rounded-full ${getStatusColor(dealer.status)}`}>
                       {dealer.status}
                     </span>
-                    {userPermissions.canManageDealers && (
-                      <>
-                        <button 
-                          onClick={() => openEditModal(dealer)}
-                          className="bg-green-500/20 text-green-400 hover:bg-green-500/30 text-sm font-medium py-2 px-3 rounded-lg transition-colors"
-                        >
-                          Edit
-                        </button>
-                        <button 
-                          onClick={() => setDeleteConfirm(dealer)}
-                          className="bg-red-500/20 text-red-400 hover:bg-red-500/30 text-sm font-medium py-2 px-3 rounded-lg transition-colors"
-                        >
-                          Delete
-                        </button>
-                      </>
-                    )}
+                    <button 
+                      onClick={() => setSelectedDealer(dealer)}
+                      className="bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 text-sm font-medium py-2 px-3 rounded-lg transition-colors"
+                    >
+                      View Details
+                    </button>
                   </div>
                 </div>
               </div>
@@ -843,6 +829,162 @@ const DealerNetworkPage = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Dealer Details Modal */}
+      {selectedDealer && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-gray-800 rounded-xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-2xl font-bold text-white">Dealer Details</h3>
+              <button
+                onClick={() => setSelectedDealer(null)}
+                className="text-gray-400 hover:text-white transition-colors"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="space-y-6">
+              {/* Basic Information */}
+              <div className="bg-white/5 rounded-lg p-4">
+                <h4 className="text-lg font-semibold text-white mb-3">Basic Information</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-400 mb-1">Dealer Name</label>
+                    <p className="text-white font-medium">{selectedDealer.name}</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-400 mb-1">Company</label>
+                    <p className="text-white font-medium">{selectedDealer.company || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-400 mb-1">Status</label>
+                    <span className={`text-xs font-medium px-2 py-1 rounded-full ${getStatusColor(selectedDealer.status)}`}>
+                      {selectedDealer.status}
+                    </span>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-400 mb-1">License Number</label>
+                    <p className="text-white font-medium">{selectedDealer.licenseNumber || 'N/A'}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Contact Information */}
+              <div className="bg-white/5 rounded-lg p-4">
+                <h4 className="text-lg font-semibold text-white mb-3">Contact Information</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {selectedDealer.contact?.person && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-400 mb-1">Contact Person</label>
+                      <p className="text-white font-medium">{selectedDealer.contact.person}</p>
+                    </div>
+                  )}
+                  {selectedDealer.contact?.phone && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-400 mb-1">Phone</label>
+                      <p className="text-white font-medium">{selectedDealer.contact.phone}</p>
+                    </div>
+                  )}
+                  {selectedDealer.contact?.email && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-400 mb-1">Email</label>
+                      <p className="text-white font-medium">{selectedDealer.contact.email}</p>
+                    </div>
+                  )}
+                  {selectedDealer.contact?.address && (
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-medium text-gray-400 mb-1">Address</label>
+                      <p className="text-white font-medium">{joinAddress(selectedDealer.contact.address)}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Performance Metrics */}
+              <div className="bg-white/5 rounded-lg p-4">
+                <h4 className="text-lg font-semibold text-white mb-3">Performance Metrics</h4>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="text-center">
+                    <p className="text-2xl font-bold text-blue-400">{selectedDealer.totalDeals || 0}</p>
+                    <p className="text-sm text-gray-400">Total Deals</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-2xl font-bold text-green-400">${(selectedDealer.totalVolume || 0).toLocaleString()}</p>
+                    <p className="text-sm text-gray-400">Total Volume</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-2xl font-bold text-yellow-400">${(selectedDealer.avgDealSize || 0).toLocaleString()}</p>
+                    <p className="text-sm text-gray-400">Avg Deal Size</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-2xl font-bold text-purple-400">{selectedDealer.successRate || 0}%</p>
+                    <p className="text-sm text-gray-400">Success Rate</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Recent Deals */}
+              {selectedDealer.recentDeals && selectedDealer.recentDeals.length > 0 && (
+                <div className="bg-white/5 rounded-lg p-4">
+                  <h4 className="text-lg font-semibold text-white mb-3">Recent Deals</h4>
+                  <div className="space-y-2">
+                    {selectedDealer.recentDeals.slice(0, 5).map((deal, index) => (
+                      <div key={index} className="flex items-center justify-between p-2 bg-white/5 rounded">
+                        <div>
+                          <p className="text-white font-medium">{deal.vehicle}</p>
+                          <p className="text-sm text-gray-400">{new Date(deal.date).toLocaleDateString()}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-white font-medium">${deal.amount?.toLocaleString() || 'N/A'}</p>
+                          <span className={`text-xs px-2 py-1 rounded-full ${
+                            deal.status === 'Completed' ? 'bg-green-500/20 text-green-400' :
+                            deal.status === 'Pending' ? 'bg-yellow-500/20 text-yellow-400' :
+                            'bg-red-500/20 text-red-400'
+                          }`}>
+                            {deal.status}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Notes */}
+              {selectedDealer.notes && (
+                <div className="bg-white/5 rounded-lg p-4">
+                  <h4 className="text-lg font-semibold text-white mb-3">Notes</h4>
+                  <p className="text-gray-300">{selectedDealer.notes}</p>
+                </div>
+              )}
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex justify-end space-x-3 mt-6 pt-4 border-t border-white/10">
+              <button
+                onClick={() => setSelectedDealer(null)}
+                className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg transition-colors"
+              >
+                Close
+              </button>
+              {userPermissions.canManageDealers && (
+                <button
+                  onClick={() => {
+                    openEditModal(selectedDealer);
+                    setSelectedDealer(null);
+                  }}
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors"
+                >
+                  Edit Dealer
+                </button>
+              )}
+            </div>
           </div>
         </div>
       )}
