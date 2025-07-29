@@ -1222,8 +1222,8 @@ ${currentUser.name}`;
                   {renderFormField('Email', 'sellerEmail', 'email', null, false, Mail)}
                   {renderFormField(dynamicLabels.addressLabel, 'sellerAddress', 'text', null, false, MapPin)}
                   
-                  {/* Show license number and tier only for wholesale d2d deals (but not for buy deals) */}
-                  {formData.dealType === 'wholesale-d2d' && formData.dealType2SubType !== 'buy' && (
+                  {/* Show license number and tier for wholesale d2d deals */}
+                  {formData.dealType === 'wholesale-d2d' && (
                     <>
                       <div>
                         <label htmlFor="seller-license-number" className="block text-sm font-medium text-gray-300 mb-1">Dealer License Number</label>
@@ -1271,6 +1271,76 @@ ${currentUser.name}`;
                       </div>
                     </>
                   )}
+                </div>
+              )}
+              
+              {/* Buyer Section for Wholesale D2D Deals */}
+              {formData.dealType === 'wholesale-d2d' && (
+                <div className="bg-white/5 rounded-xl p-6 border border-white/10 mt-6">
+                  <h3 className="text-lg font-medium text-white mb-4">
+                    {formData.dealType2SubType === 'buy' ? 'Purchasing Dealer Information' : 'Buyer Information'}
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="md:col-span-2">
+                      {renderFormField(
+                        formData.dealType2SubType === 'buy' ? 'Purchasing Dealer Name' : 'Buyer Name', 
+                        'buyerName', 
+                        'text', 
+                        null, 
+                        true, 
+                        User
+                      )}
+                    </div>
+                    {renderFormField('Phone', 'buyerPhone', 'tel', null, false, Phone)}
+                    {renderFormField('Email', 'buyerEmail', 'email', null, false, Mail)}
+                    {renderFormField('Address', 'buyerAddress', 'text', null, false, MapPin)}
+                    
+                    {/* Dealer License Number for Buyer */}
+                    <div>
+                      <label htmlFor="buyer-license-number" className="block text-sm font-medium text-gray-300 mb-1">Dealer License Number</label>
+                      <input
+                        type="text"
+                        id="buyer-license-number"
+                        value={formData.buyerLicenseNumber || ''}
+                        onChange={e => handleInputChange('buyerLicenseNumber', e.target.value)}
+                        className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      />
+                    </div>
+                    
+                    {/* Buyer Tier Selection */}
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-medium text-white mb-2">
+                        Dealer Tier
+                      </label>
+                      <div className="flex space-x-4">
+                        <button
+                          type="button"
+                          onClick={() => handleInputChange('buyerTier', 'Tier 1')}
+                          className={`px-4 py-2 rounded-lg border transition-colors ${
+                            formData.buyerTier === 'Tier 1'
+                              ? 'bg-red-600 border-red-500 text-white'
+                              : 'bg-white/10 border-white/20 text-white hover:bg-white/20'
+                          }`}
+                        >
+                          Tier 1 - Pay Upon Title
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleInputChange('buyerTier', 'Tier 2')}
+                          className={`px-4 py-2 rounded-lg border transition-colors ${
+                            formData.buyerTier === 'Tier 2'
+                              ? 'bg-green-600 border-green-500 text-white'
+                              : 'bg-white/10 border-white/20 text-white hover:bg-white/20'
+                          }`}
+                        >
+                          Tier 2 - Pay Prior to Release
+                        </button>
+                      </div>
+                      <p className="text-xs text-gray-400 mt-1">
+                        Tier 1: Pay Upon Title. Tier 2: Pay Prior to Release.
+                      </p>
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
