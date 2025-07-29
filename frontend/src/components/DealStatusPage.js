@@ -92,8 +92,8 @@ const DealStatusPage = () => {
   const fetchDeals = async () => {
     try {
       setLoading(true);
-      const url = `${API_BASE}/api/deals`;
-      console.log('[DEBUG][DealStatusPage] Fetching deals from:', url);
+      const url = `${API_BASE}/api/sales/deals`;
+      console.log('[DEBUG][DealStatusPage] Fetching sales deals from:', url);
       const response = await fetch(url, {
         credentials: 'include',
         headers: getAuthHeaders()
@@ -104,34 +104,36 @@ const DealStatusPage = () => {
         console.log('[DEBUG][DealStatusPage] Deal fetch JSON response:', data);
         const dealsData = data.deals || data.data || [];
         
-        // Transform backend data to match frontend format
+        // Transform sales deal data to match frontend format
         const transformedDeals = dealsData.map(deal => ({
           id: deal._id || deal.id,
-          stockNumber: deal.rpStockNumber || deal.stockNumber,
+          stockNumber: deal.stockNumber,
           vin: deal.vin,
-          vehicle: `${deal.year || ''} ${deal.make || ''} ${deal.model || ''}`.trim(),
+          vehicle: deal.vehicle,
           dealType: deal.dealType || 'wholesale',
-          currentStage: deal.currentStage || 'initial-contact',
-          seller: deal.seller?.name || 'Unknown',
-          buyerContact: deal.buyer?.name || 'Pending',
-          purchasePrice: deal.purchasePrice || 0,
-          salePrice: deal.listPrice || deal.salePrice || 0,
-          payoffBalance: deal.payoffBalance || 0,
-          createdDate: new Date(deal.createdAt || deal.createdDate).toISOString().split('T')[0],
+          currentStage: deal.currentStage || 'contract-received',
+          seller: deal.customer?.name || 'Unknown',
+          buyerContact: deal.customer?.name || 'Pending',
+          purchasePrice: deal.financial?.purchasePrice || 0,
+          salePrice: deal.financial?.listPrice || 0,
+          payoffBalance: 0, // Sales deals don't have payoff balance
+          createdDate: new Date(deal.timeline?.purchaseDate || deal.createdAt || deal.createdDate).toISOString().split('T')[0],
           lastUpdated: new Date(deal.updatedAt || deal.lastUpdated).toISOString().split('T')[0],
           priority: deal.priority || 'medium',
-          notes: deal.notes || deal.generalNotes || '',
-          paymentMethod: deal.paymentMethod || 'Check',
+          notes: deal.customer?.notes || deal.notes || '',
+          paymentMethod: 'Check', // Default for sales deals
           requiresContract: true,
           documentation: {
-            contract: { status: 'received', date: deal.createdDate },
-            title: { status: deal.titleInfo?.status === 'clean' ? 'received' : 'pending', date: deal.titleInfo?.titleReceivedDate },
+            contract: { status: 'received', date: deal.timeline?.purchaseDate },
+            title: { status: deal.currentStage === 'title-received' ? 'received' : 'pending', date: null },
             odometer: { status: 'pending', date: null },
-            paymentApproval: { status: 'approved', date: deal.createdDate }
+            paymentApproval: { status: 'approved', date: deal.timeline?.purchaseDate }
           },
-          titleInfo: deal.titleInfo || {},
-          wholesalePrice: deal.wholesalePrice || null,
-          dealType2SubType: deal.dealType2SubType || deal.dealType2 || '',
+          titleInfo: {},
+          wholesalePrice: null,
+          dealType2SubType: '',
+          salesPerson: deal.salesPerson,
+          calculatedMetrics: deal.calculatedMetrics
         }));
         
         setDeals(transformedDeals);
@@ -151,7 +153,7 @@ const DealStatusPage = () => {
     const prevDeals = deals;
     setDeals(deals => deals.filter(d => d.id !== dealId));
     try {
-      const url = `${API_BASE}/api/deals/${dealId}`;
+      const url = `${API_BASE}/api/sales/deals/${dealId}`;
       const response = await fetch(url, {
         method: 'DELETE',
         headers: getAuthHeaders(),
@@ -178,9 +180,9 @@ const DealStatusPage = () => {
     setDeals(deals => deals.map(d => d.id === dealId ? { ...d, notes: editNotes } : d));
     setEditDealId(null);
     try {
-      const url = `${API_BASE}/api/deals/${dealId}`;
+      const url = `${API_BASE}/api/sales/deals/${dealId}/customer`;
       const response = await fetch(url, {
-        method: 'PATCH',
+        method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
           ...getAuthHeaders()
@@ -189,9 +191,9 @@ const DealStatusPage = () => {
         credentials: 'include'
       });
       const data = await response.json();
-      if (!response.ok || !data.success) throw new Error(data.error || 'Update failed');
+      if (!response.ok) throw new Error(data.error || 'Update failed');
       // Optionally update with backend response
-      setDeals(deals => deals.map(d => d.id === dealId ? { ...d, ...data.deal } : d));
+      setDeals(deals => deals.map(d => d.id === dealId ? { ...d, notes: editNotes } : d));
       toast.success('Deal updated!');
     } catch (err) {
       setDeals(prevDeals);
