@@ -8,7 +8,7 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   // Utility to get backend API URL
-  const API_BASE = process.env.REACT_APP_API_URL || '';
+  const API_BASE = process.env.REACT_APP_API_URL || 'https://astonishing-chicken-production.up.railway.app';
 
   // Check if the current token is valid
   const checkSession = async (authToken) => {

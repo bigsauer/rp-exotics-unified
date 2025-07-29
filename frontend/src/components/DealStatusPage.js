@@ -70,7 +70,7 @@ const DealStatusPage = () => {
   const [editDealId, setEditDealId] = useState(null);
   const [editNotes, setEditNotes] = useState('');
 
-  const API_BASE = process.env.REACT_APP_API_URL;
+  const API_BASE = process.env.REACT_APP_API_URL || 'https://astonishing-chicken-production.up.railway.app';
 
   useEffect(() => {
     console.log('[DEBUG][DealStatusPage] useEffect running');
@@ -96,48 +96,58 @@ const DealStatusPage = () => {
       setLoading(true);
       const url = `${API_BASE}/api/sales/deals`;
       console.log('[DEBUG][DealStatusPage] Fetching sales deals from:', url);
+      console.log('[DEBUG][DealStatusPage] API_BASE:', API_BASE);
+      console.log('[DEBUG][DealStatusPage] Auth headers:', getAuthHeaders());
+      
       const response = await fetch(url, {
         credentials: 'include',
         headers: getAuthHeaders()
       });
       console.log('[DEBUG][DealStatusPage] Deal fetch response status:', response.status);
+      console.log('[DEBUG][DealStatusPage] Response headers:', response.headers);
+      
       if (response.ok) {
         const data = await response.json();
         console.log('[DEBUG][DealStatusPage] Deal fetch JSON response:', data);
         const dealsData = data.deals || data.data || [];
+        console.log('[DEBUG][DealStatusPage] Deals data length:', dealsData.length);
         
         // Transform sales deal data to match frontend format
-        const transformedDeals = dealsData.map(deal => ({
-          id: deal._id || deal.id,
-          stockNumber: deal.stockNumber,
-          vin: deal.vin,
-          vehicle: deal.vehicle,
-          dealType: deal.dealType || 'wholesale',
-          currentStage: deal.currentStage || 'contract-received',
-          seller: deal.customer?.name || 'Unknown',
-          buyerContact: deal.customer?.name || 'Pending',
-          purchasePrice: deal.financial?.purchasePrice || 0,
-          salePrice: deal.financial?.listPrice || 0,
-          payoffBalance: 0, // Sales deals don't have payoff balance
-          createdDate: new Date(deal.timeline?.purchaseDate || deal.createdAt || deal.createdDate).toISOString().split('T')[0],
-          lastUpdated: new Date(deal.updatedAt || deal.lastUpdated).toISOString().split('T')[0],
-          priority: deal.priority || 'medium',
-          notes: deal.customer?.notes || deal.notes || '',
-          paymentMethod: 'Check', // Default for sales deals
-          requiresContract: true,
-          documentation: {
-            contract: { status: 'received', date: deal.timeline?.purchaseDate },
-            title: { status: deal.currentStage === 'title-received' ? 'received' : 'pending', date: null },
-            odometer: { status: 'pending', date: null },
-            paymentApproval: { status: 'approved', date: deal.timeline?.purchaseDate }
-          },
-          titleInfo: {},
-          wholesalePrice: null,
-          dealType2SubType: '',
-          salesPerson: deal.salesPerson,
-          calculatedMetrics: deal.calculatedMetrics
-        }));
+        const transformedDeals = dealsData.map(deal => {
+          console.log('[DEBUG][DealStatusPage] Processing deal:', deal._id, deal.vehicle);
+          return {
+            id: deal._id || deal.id,
+            stockNumber: deal.stockNumber,
+            vin: deal.vin,
+            vehicle: deal.vehicle,
+            dealType: deal.dealType || 'wholesale',
+            currentStage: deal.currentStage || 'contract-received',
+            seller: deal.customer?.name || 'Unknown',
+            buyerContact: deal.customer?.name || 'Pending',
+            purchasePrice: deal.financial?.purchasePrice || 0,
+            salePrice: deal.financial?.listPrice || 0,
+            payoffBalance: 0, // Sales deals don't have payoff balance
+            createdDate: new Date(deal.timeline?.purchaseDate || deal.createdAt || deal.createdDate).toISOString().split('T')[0],
+            lastUpdated: new Date(deal.updatedAt || deal.lastUpdated).toISOString().split('T')[0],
+            priority: deal.priority || 'medium',
+            notes: deal.customer?.notes || deal.notes || '',
+            paymentMethod: 'Check', // Default for sales deals
+            requiresContract: true,
+            documentation: {
+              contract: { status: 'received', date: deal.timeline?.purchaseDate },
+              title: { status: deal.currentStage === 'title-received' ? 'received' : 'pending', date: null },
+              odometer: { status: 'pending', date: null },
+              paymentApproval: { status: 'approved', date: deal.timeline?.purchaseDate }
+            },
+            titleInfo: {},
+            wholesalePrice: null,
+            dealType2SubType: '',
+            salesPerson: deal.salesPerson,
+            calculatedMetrics: deal.calculatedMetrics
+          };
+        });
         
+        console.log('[DEBUG][DealStatusPage] Transformed deals:', transformedDeals);
         setDeals(transformedDeals);
       } else {
         const text = await response.text();
