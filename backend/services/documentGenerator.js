@@ -540,8 +540,14 @@ class DocumentGenerator {
       console.log('[PDF GEN] [DEBUG] Original buyer data:', JSON.stringify(buyer, null, 2));
       
       // If buyer data is incomplete, try to get buyer info from buyerFromDB
-      if (!buyer.name || !buyer.contact) {
+      // Only fallback if buyer has no name or if contact is completely missing
+      const hasValidBuyerName = buyer.name && buyer.name !== 'N/A' && buyer.name.trim() !== '';
+      const hasValidContact = buyer.contact && typeof buyer.contact === 'object';
+      
+      if (!hasValidBuyerName || !hasValidContact) {
         console.log('[PDF GEN] [DEBUG] Incomplete buyer data detected, checking for buyerFromDB...');
+        console.log('[PDF GEN] [DEBUG] Buyer name valid:', hasValidBuyerName, 'Buyer contact valid:', hasValidContact);
+        console.log('[PDF GEN] [DEBUG] Original buyer data:', JSON.stringify(buyer, null, 2));
         
         // Try to get buyer info from buyerFromDB if available
         if (dealData.buyerFromDB && dealData.buyerFromDB.name) {
@@ -573,6 +579,7 @@ class DocumentGenerator {
         }
       } else {
         // Use the buyer data as is
+        console.log('[PDF GEN] [DEBUG] Using actual buyer data for wholesale-flip vehicle record:', buyer.name);
         mappedBuyer = buyer;
       }
       
@@ -1999,8 +2006,14 @@ class DocumentGenerator {
       buyerContact = buyer.contact || {};
       
       // Handle incomplete buyer data for wholesale-flip deals
-      if (dealData.dealType === 'wholesale-flip' && (!buyer.name || !buyer.contact)) {
+      // Only fallback if buyer has no name or if contact is completely missing
+      const hasValidBuyerName = buyer.name && buyer.name !== 'N/A' && buyer.name.trim() !== '';
+      const hasValidContact = buyer.contact && typeof buyer.contact === 'object';
+      
+      if (dealData.dealType === 'wholesale-flip' && (!hasValidBuyerName || !hasValidContact)) {
         console.log('[PDF GEN] [BOS DEBUG] Incomplete buyer data detected, checking for buyerFromDB...');
+        console.log('[PDF GEN] [BOS DEBUG] Buyer name valid:', hasValidBuyerName, 'Buyer contact valid:', hasValidContact);
+        console.log('[PDF GEN] [BOS DEBUG] Original buyer data:', JSON.stringify(buyer, null, 2));
         
         // Try to get buyer info from buyerFromDB if available
         if (dealData.buyerFromDB && dealData.buyerFromDB.name) {
@@ -2036,6 +2049,8 @@ class DocumentGenerator {
           };
         }
         buyerContact = buyer.contact || {};
+      } else {
+        console.log('[PDF GEN] [BOS DEBUG] Using actual buyer data for wholesale-flip:', buyer.name);
       }
       
       console.log('[PDF GEN] [BOS DEBUG] Default: Buyer set as purchasing dealer');
