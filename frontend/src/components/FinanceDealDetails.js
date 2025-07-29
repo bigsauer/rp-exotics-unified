@@ -97,24 +97,27 @@ const FinanceDealDetails = () => {
 
   const handleEditToggle = () => {
     if (!isEditing) {
+      // Helper function to join address parts
+      const joinAddress = (address) => {
+        if (!address) return '';
+        const { street, city, state, zip } = address;
+        return [street, city, state, zip].filter(Boolean).join(', ');
+      };
+
       // Initialize edit data with current deal values
       setEditData({
+        'seller.name': deal.seller?.name || '',
         'seller.licenseNumber': deal.seller?.licenseNumber || '',
         'seller.contact.phone': deal.seller?.contact?.phone || deal.seller?.phone || '',
         'seller.contact.email': deal.seller?.contact?.email || deal.seller?.email || '',
-        'seller.contact.address.street': deal.seller?.contact?.address?.street || '',
-        'seller.contact.address.city': deal.seller?.contact?.address?.city || '',
-        'seller.contact.address.state': deal.seller?.contact?.address?.state || '',
-        'seller.contact.address.zip': deal.seller?.contact?.address?.zip || '',
+        'seller.contact.address': joinAddress(deal.seller?.contact?.address || deal.seller?.address),
+        'buyer.name': deal.buyer?.name || '',
+        'buyer.company': deal.buyer?.company || '',
         'buyer.licenseNumber': deal.buyer?.licenseNumber || '',
         'buyer.contact.phone': deal.buyer?.contact?.phone || deal.buyer?.phone || '',
         'buyer.contact.email': deal.buyer?.contact?.email || deal.buyer?.email || '',
-        'buyer.contact.address.street': deal.buyer?.contact?.address?.street || '',
-        'buyer.contact.address.city': deal.buyer?.contact?.address?.city || '',
-        'buyer.contact.address.state': deal.buyer?.contact?.address?.state || '',
-        'buyer.contact.address.zip': deal.buyer?.contact?.address?.zip || '',
-        'buyer.name': deal.buyer?.name || '',
-        'buyer.company': deal.buyer?.company || '',
+        'buyer.contact.address': joinAddress(deal.buyer?.contact?.address || deal.buyer?.address),
+        'buyer.tier': deal.buyer?.tier || '',
         purchasePrice: deal.purchasePrice || '',
         listPrice: deal.listPrice || '',
         killPrice: deal.killPrice || '',
@@ -140,14 +143,20 @@ const FinanceDealDetails = () => {
   const handleSave = async () => {
     setSaving(true);
     try {
+      const API_BASE = process.env.REACT_APP_API_URL || 'https://astonishing-chicken-production.up.railway.app';
       const headers = { ...getAuthHeaders(), 'Content-Type': 'application/json' };
-      const response = await fetch(`/api/backoffice/deals/${dealId}/update-and-regenerate`, {
+      
+      // Always include regenerateDocuments flag
+      const updateData = {
+        ...editData,
+        regenerateDocuments: true
+      };
+      
+      const response = await fetch(`${API_BASE}/api/backoffice/deals/${dealId}/update-and-regenerate`, {
         method: 'PUT',
         credentials: 'include',
         headers,
-        body: JSON.stringify({
-          ...editData
-        })
+        body: JSON.stringify(updateData)
       });
 
       if (!response.ok) {
@@ -169,7 +178,7 @@ const FinanceDealDetails = () => {
       setDocuments([]);
       // Refresh the deal data
       const dealHeaders = { ...getAuthHeaders() };
-      const dealResponse = await fetch(`/api/backoffice/deals/${dealId}`, {
+      const dealResponse = await fetch(`${API_BASE}/api/backoffice/deals/${dealId}`, {
         credentials: 'include',
         headers: dealHeaders
       });
@@ -193,7 +202,7 @@ const FinanceDealDetails = () => {
       setIsEditing(false);
       
       // Show toast notification after closing the edit form
-      toast.success('Deal updated successfully!', { position: 'bottom-right' });
+      toast.success('Deal updated and documents regenerated successfully!', { position: 'bottom-right' });
     } catch (error) {
       console.error('Error updating deal:', error);
       // Try to extract a more detailed error message from the backend
@@ -324,6 +333,17 @@ const FinanceDealDetails = () => {
           <div className="space-y-4">
             <h3 className="text-lg font-semibold text-white">Seller Information</h3>
             
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-1">Seller Name</label>
+              <input
+                type="text"
+                value={editData['seller.name'] || ''}
+                onChange={(e) => handleInputChange('seller.name', e.target.value)}
+                className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="Seller name"
+              />
+            </div>
+
             {/* Only show license number for non-retail-pp deals */}
             {deal?.dealType !== 'retail-pp' && (
               <div>
@@ -360,52 +380,20 @@ const FinanceDealDetails = () => {
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-1">Street</label>
-                <input
-                  type="text"
-                  value={editData['seller.contact.address.street'] || ''}
-                  onChange={(e) => handleInputChange('seller.contact.address.street', e.target.value)}
-                  className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Street address"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-1">City</label>
-                <input
-                  type="text"
-                  value={editData['seller.contact.address.city'] || ''}
-                  onChange={(e) => handleInputChange('seller.contact.address.city', e.target.value)}
-                  className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="City"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-1">State</label>
-                <input
-                  type="text"
-                  value={editData['seller.contact.address.state'] || ''}
-                  onChange={(e) => handleInputChange('seller.contact.address.state', e.target.value)}
-                  className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="State"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-1">ZIP</label>
-                <input
-                  type="text"
-                  value={editData['seller.contact.address.zip'] || ''}
-                  onChange={(e) => handleInputChange('seller.contact.address.zip', e.target.value)}
-                  className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="ZIP code"
-                />
-              </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-1">Address</label>
+              <input
+                type="text"
+                value={editData['seller.contact.address'] || ''}
+                onChange={(e) => handleInputChange('seller.contact.address', e.target.value)}
+                className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="Full address (street, city, state, zip)"
+              />
             </div>
           </div>
 
-          {/* Buyer Information - Only show for wholesale-flip deals */}
-          {deal?.dealType === 'wholesale-flip' && (
+          {/* Buyer Information - Show for wholesale-flip and wholesale-d2d deals */}
+          {(deal?.dealType === 'wholesale-flip' || deal?.dealType === 'wholesale-d2d') && (
             <div className="space-y-4">
               <h3 className="text-lg font-semibold text-white">Buyer Information</h3>
               
@@ -464,6 +452,17 @@ const FinanceDealDetails = () => {
                 />
               </div>
 
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-1">Address</label>
+                <input
+                  type="text"
+                  value={editData['buyer.contact.address'] || ''}
+                  onChange={(e) => handleInputChange('buyer.contact.address', e.target.value)}
+                  className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Full address (street, city, state, zip)"
+                />
+              </div>
+
               {/* Only show buyer tier if buyer is a dealer */}
               {typeof deal?.buyer?.type === 'string' && deal.buyer.type.toLowerCase() === 'dealer' && (
                 <div>
@@ -480,49 +479,6 @@ const FinanceDealDetails = () => {
                   </select>
                 </div>
               )}
-
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-1">Street</label>
-                  <input
-                    type="text"
-                    value={editData['buyer.contact.address.street'] || ''}
-                    onChange={(e) => handleInputChange('buyer.contact.address.street', e.target.value)}
-                    className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="Street address"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-1">City</label>
-                  <input
-                    type="text"
-                    value={editData['buyer.contact.address.city'] || ''}
-                    onChange={(e) => handleInputChange('buyer.contact.address.city', e.target.value)}
-                    className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="City"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-1">State</label>
-                  <input
-                    type="text"
-                    value={editData['buyer.contact.address.state'] || ''}
-                    onChange={(e) => handleInputChange('buyer.contact.address.state', e.target.value)}
-                    className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="State"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-1">ZIP</label>
-                  <input
-                    type="text"
-                    value={editData['buyer.contact.address.zip'] || ''}
-                    onChange={(e) => handleInputChange('buyer.contact.address.zip', e.target.value)}
-                    className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="ZIP code"
-                  />
-                </div>
-              </div>
             </div>
           )}
 
@@ -622,8 +578,6 @@ const FinanceDealDetails = () => {
           </div>
         </div>
 
-
-
         {/* Action Buttons */}
         <div className="flex space-x-4 mt-6">
           <button
@@ -631,7 +585,7 @@ const FinanceDealDetails = () => {
             disabled={saving}
             className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {saving ? 'Saving...' : 'Save Changes'}
+            {saving ? 'Saving...' : 'Save Changes & Regenerate Documents'}
           </button>
           <button
             onClick={handleEditToggle}

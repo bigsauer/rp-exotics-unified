@@ -650,18 +650,30 @@ router.put('/deals/:id/update-and-regenerate', authenticateToken, requireBackOff
       return res.status(403).json({ error: 'Insufficient permissions to edit deals' });
     }
 
+    // Helper function to parse address string into parts
+    const parseAddress = (addressString) => {
+      if (!addressString) return { street: '', city: '', state: '', zip: '' };
+      const parts = addressString.split(',').map(s => s.trim());
+      return {
+        street: parts[0] || '',
+        city: parts[1] || '',
+        state: parts[2] || '',
+        zip: parts[3] || ''
+      };
+    };
+
     // Update deal fields
     const fieldsToUpdate = [
+      'seller.name',
       'seller.licenseNumber',
       'seller.contact.phone',
       'seller.contact.email',
-      'seller.contact.address',
       'buyer.name',
       'buyer.company',
       'buyer.licenseNumber',
       'buyer.contact.phone',
       'buyer.contact.email',
-      'buyer.contact.address',
+      'buyer.tier',
       'purchasePrice',
       'listPrice',
       'killPrice',
@@ -680,6 +692,17 @@ router.put('/deals/:id/update-and-regenerate', authenticateToken, requireBackOff
         updateObject[field] = updateData[field];
       }
     });
+
+    // Handle simplified address format
+    if (updateData['seller.contact.address'] !== undefined) {
+      const parsedAddress = parseAddress(updateData['seller.contact.address']);
+      updateObject['seller.contact.address'] = parsedAddress;
+    }
+
+    if (updateData['buyer.contact.address'] !== undefined) {
+      const parsedAddress = parseAddress(updateData['buyer.contact.address']);
+      updateObject['buyer.contact.address'] = parsedAddress;
+    }
 
     // Update the deal
     const updatedDeal = await Deal.findByIdAndUpdate(
