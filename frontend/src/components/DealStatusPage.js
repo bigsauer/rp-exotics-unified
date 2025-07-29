@@ -27,6 +27,7 @@ import 'react-toastify/dist/ReactToastify.css';
 
 const statusDisplayMap = {
   'contract-received': 'Initial Contact',
+  'docs-signed': 'Docs Signed',
   'title-processing': 'Documentation',
   'payment-approved': 'Finance Review',
   'funds-disbursed': 'Funds Disbursed',
@@ -35,6 +36,7 @@ const statusDisplayMap = {
 };
 const progressSteps = [
   'contract-received',
+  'docs-signed',
   'title-processing',
   'payment-approved',
   'funds-disbursed',
@@ -211,6 +213,7 @@ const DealStatusPage = () => {
       label: statusDisplayMap[currentStage] || currentStage,
       description: {
         'contract-received': 'Deal created and initial contact made',
+        'docs-signed': 'Documents have been signed by all parties',
         'title-processing': 'Documents being prepared and reviewed',
         'payment-approved': 'Financial terms and approval process',
         'funds-disbursed': 'Funds have been disbursed',
@@ -234,6 +237,7 @@ const DealStatusPage = () => {
         return 'blue';
       case 'title-processing':
       case 'contract-received':
+      case 'docs-signed':
         return 'yellow';
       default:
         return 'gray';

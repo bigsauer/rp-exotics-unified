@@ -154,6 +154,7 @@ const dealSchema = new mongoose.Schema({
     type: String,
     enum: [
       'contract-received',
+      'docs-signed',
       'title-processing',
       'funds-disbursed',
       'title-received',

@@ -7,6 +7,7 @@ import LienPayoffDatePicker from './LienPayoffDatePicker';
 const dealStages = {
   wholesale: [
     { id: 'contract-received', label: 'Contract Received', description: 'Initial paperwork received' },
+    { id: 'docs-signed', label: 'Docs Signed', description: 'All documents signed by parties' },
     { id: 'title-processing', label: 'Title Processing', description: 'Title documentation in progress' },
     { id: 'funds-disbursed', label: 'Funds Disbursed', description: 'Payment sent to seller' },
     { id: 'title-received', label: 'Title Received', description: 'Clean title in hand' },

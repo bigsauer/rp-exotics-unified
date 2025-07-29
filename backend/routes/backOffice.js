@@ -369,6 +369,7 @@ router.put('/deals/:id/stage', async (req, res) => {
     const validStages = [
       // Wholesale stages
       'contract-received',
+      'docs-signed',
       'title-processing',
       'funds-disbursed',
       'title-received',

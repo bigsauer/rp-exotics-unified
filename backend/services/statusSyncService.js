@@ -11,6 +11,15 @@ const STATUS_TITLES = [
   'deal-complete'
 ];
 
+const VALID_STAGES = [
+  'contract-received',
+  'docs-signed',
+  'title-processing',
+  'funds-disbursed',
+  'title-received',
+  'deal-complete'
+];
+
 class StatusSyncService {
   /**
    * Sync status from finance system to sales system

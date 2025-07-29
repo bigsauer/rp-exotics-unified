@@ -1516,6 +1516,7 @@ ${currentUser.name}`;
   // Add a constant for the unified status options
   const STATUS_OPTIONS = [
     { value: 'contract-received', label: 'Contract Received' },
+    { value: 'docs-signed', label: 'Docs Signed' },
     { value: 'title-processing', label: 'Title Processing' },
     { value: 'payment-approved', label: 'Payment Approved' },
     { value: 'funds-disbursed', label: 'Funds Disbursed' },
@@ -1533,6 +1534,7 @@ ${currentUser.name}`;
   // At the top, define the valid backend status values:
   const VALID_STATUSES = [
     'contract-received',
+    'docs-signed',
     'title-processing',
     'payment-approved',
     'funds-disbursed',

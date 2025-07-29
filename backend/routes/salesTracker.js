@@ -87,6 +87,7 @@ const calculateStageEfficiency = (deal) => {
 // Unified valid stages for sales
 const VALID_STAGES = [
   'contract-received',
+  'docs-signed',
   'title-processing',
   'payment-approved',
   'funds-disbursed',

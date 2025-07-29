@@ -77,6 +77,7 @@ const salesDealSchema = new mongoose.Schema({
     type: String, 
     enum: [
       'contract-received',
+      'docs-signed',
       'title-processing',
       'funds-disbursed',
       'title-received',

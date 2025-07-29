@@ -50,6 +50,7 @@ const FinanceStatusDashboard = () => {
   const dealStages = {
     wholesale: [
       { id: 'contract_received', label: 'Contract Received', description: 'Initial paperwork received' },
+      { id: 'docs_signed', label: 'Docs Signed', description: 'All documents signed by parties' },
       { id: 'title_processing', label: 'Title Processing', description: 'Title documentation in progress' },
       { id: 'payment_approved', label: 'Payment Approved', description: 'Payment authorization completed' },
       { id: 'funds_disbursed', label: 'Funds Disbursed', description: 'Payment sent to seller' },
