@@ -315,7 +315,7 @@ router.post('/generate/:dealId', auth, async (req, res) => {
         };
         const correctedBuyerData = {
           ...dealData.buyer,
-          name: req.body.buyerName || dealData.buyer?.name || 'N/A',
+          name: req.body.buyerName || dealData.buyer?.name || '',
           type: req.body.buyerType || dealData.buyer?.type || 'private',
           licenseNumber: req.body.buyerLicenseNumber || dealData.buyer?.licenseNumber || '',
           tier: req.body.buyerTier || dealData.buyer?.tier || 'Tier 1',
@@ -327,7 +327,7 @@ router.post('/generate/:dealId', auth, async (req, res) => {
         };
         
         // If buyer is a dealer and has incomplete data, try to populate from dealer database
-        if (correctedBuyerData.type === 'dealer' && (!correctedBuyerData.name || correctedBuyerData.name === 'N/A')) {
+        if (correctedBuyerData.type === 'dealer' && (!correctedBuyerData.name || correctedBuyerData.name === 'N/A' || correctedBuyerData.name.trim() === '')) {
           if (dealData.buyer.dealerId) {
             const buyerDealer = await Dealer.findById(dealData.buyer.dealerId);
             if (buyerDealer) {
@@ -406,8 +406,17 @@ router.post('/generate/:dealId', auth, async (req, res) => {
           // For dealer seller: generate wholesale purchase agreement and wholesale BOS
           // But first, ensure buyer data is complete
           let finalBuyerData = correctedBuyerData;
-          if (correctedBuyerData.type === 'dealer' && (!correctedBuyerData.name || correctedBuyerData.name === 'N/A')) {
-            console.log('[DOC GEN] 🎯 Buyer data incomplete, using RP Exotics as fallback');
+          
+          // Only use RP Exotics fallback if buyer data is truly incomplete
+          // Check if buyer has a name but it's not 'N/A' or empty
+          const hasValidBuyerName = correctedBuyerData.name && 
+                                   correctedBuyerData.name !== 'N/A' && 
+                                   correctedBuyerData.name.trim() !== '' &&
+                                   correctedBuyerData.name !== 'RP Exotics';
+          
+          if (correctedBuyerData.type === 'dealer' && !hasValidBuyerName) {
+            console.log('[DOC GEN] 🎯 Buyer data truly incomplete (no valid name), using RP Exotics as fallback');
+            console.log('[DOC GEN] 🎯 Original buyer name was:', correctedBuyerData.name);
             finalBuyerData = {
               name: 'RP Exotics',
               type: 'dealer',
@@ -424,6 +433,8 @@ router.post('/generate/:dealId', auth, async (req, res) => {
               licenseNumber: 'D4865',
               tier: 'Tier 1'
             };
+          } else {
+            console.log('[DOC GEN] 🎯 Using actual buyer data:', correctedBuyerData.name);
           }
           
           const [sellerResult, buyerResult] = await Promise.all([
@@ -463,8 +474,17 @@ router.post('/generate/:dealId', auth, async (req, res) => {
           // For private party seller: generate retail private party purchase agreements
           // But first, ensure buyer data is complete
           let finalBuyerData = correctedBuyerData;
-          if (correctedBuyerData.type === 'dealer' && (!correctedBuyerData.name || correctedBuyerData.name === 'N/A')) {
-            console.log('[DOC GEN] 🎯 Buyer data incomplete, using RP Exotics as fallback');
+          
+          // Only use RP Exotics fallback if buyer data is truly incomplete
+          // Check if buyer has a name but it's not 'N/A' or empty
+          const hasValidBuyerName = correctedBuyerData.name && 
+                                   correctedBuyerData.name !== 'N/A' && 
+                                   correctedBuyerData.name.trim() !== '' &&
+                                   correctedBuyerData.name !== 'RP Exotics';
+          
+          if (correctedBuyerData.type === 'dealer' && !hasValidBuyerName) {
+            console.log('[DOC GEN] 🎯 Buyer data truly incomplete (no valid name), using RP Exotics as fallback');
+            console.log('[DOC GEN] 🎯 Original buyer name was:', correctedBuyerData.name);
             finalBuyerData = {
               name: 'RP Exotics',
               type: 'dealer',
@@ -481,6 +501,8 @@ router.post('/generate/:dealId', auth, async (req, res) => {
               licenseNumber: 'D4865',
               tier: 'Tier 1'
             };
+          } else {
+            console.log('[DOC GEN] 🎯 Using actual buyer data:', correctedBuyerData.name);
           }
           
           const [sellerResult, buyerResult] = await Promise.all([
