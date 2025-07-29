@@ -4,12 +4,13 @@ import {
   Car, ArrowLeft, Save, Send, CheckCircle, Loader2, 
   Calendar, DollarSign, User, 
   MapPin, Phone, Mail, Hash, Palette, Gauge, 
-  Info, Plus, AlertCircle 
+  Info, Plus, AlertCircle, Shield
 } from 'lucide-react';
 import { useAuth } from './AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import LienPayoffDatePicker from './LienPayoffDatePicker';
 
 // --- Optimistic Rendering for Deal Submission ---
 // Assume setDeals is available via props or context. If not, add a callback prop or context usage as needed.
@@ -109,7 +110,11 @@ const NewDealEntry = ({ setDeals }) => {
     odometerPresent: false,
     dealerLicensePresent: false,
     documents: [], // For uploaded files
-    salesperson: ''
+    salesperson: '',
+    
+    // Lien Information (for wholesale flip with private seller)
+    lienStatus: 'none',
+    lienEta: ''
   });
 
   const [vinDecoding, setVinDecoding] = useState(false);
@@ -643,7 +648,13 @@ const NewDealEntry = ({ setDeals }) => {
         amountDueToCustomer: parseFloat(formData.amountDueToCustomer) || 0,
         amountDueToRP: parseFloat(formData.amountDueToRP) || 0,
         commissionRate: parseFloat(formData.commissionRate) || 0,
-        generalNotes: formData.generalNotes // <-- Ensure this is sent
+        generalNotes: formData.generalNotes, // <-- Ensure this is sent
+        
+        // Add lien status information for wholesale flip deals with private sellers
+        titleInfo: {
+          lienStatus: formData.lienStatus || 'none',
+          lienEta: formData.lienEta ? new Date(formData.lienEta) : null
+        }
       };
       console.log('[DEBUG] handleSave - dealData.seller.type:', dealData.seller.type);
       // Debug: log license numbers being sent
@@ -779,7 +790,11 @@ const NewDealEntry = ({ setDeals }) => {
           odometerPresent: false,
           dealerLicensePresent: false,
           documents: [],
-          salesperson: ''
+          salesperson: '',
+          
+          // Lien Information (for wholesale flip with private seller)
+          lienStatus: 'none',
+          lienEta: ''
         });
         setDocumentNotes([]); // Clear document notes
         setCurrentStep(1);
@@ -1383,6 +1398,39 @@ ${currentUser.name}`;
           <div className="bg-white/5 rounded-xl p-6 border border-white/10">
             <h3 className="text-lg font-medium text-white mb-4">Documentation & Notes</h3>
             <div className="space-y-6">
+              {/* Lien Status Section for Wholesale Flip with Private Seller */}
+              {formData.dealType === 'wholesale-flip' && formData.sellerType === 'private' && (
+                <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4">
+                  <h4 className="text-blue-300 font-semibold mb-2 flex items-center">
+                    <Shield className="h-4 w-4 mr-2 text-blue-400" />
+                    Title Lien Status
+                  </h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <span className="text-gray-300 text-sm">Lien Status</span>
+                      <select 
+                        value={formData.lienStatus} 
+                        onChange={e => handleInputChange('lienStatus', e.target.value)} 
+                        className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="none">No Lien</option>
+                        <option value="lien_on_title">Lien on Title</option>
+                      </select>
+                    </div>
+                    {formData.lienStatus === 'lien_on_title' && (
+                      <div>
+                        <span className="text-gray-300 text-sm">Lien Payoff Completion ETA</span>
+                        <LienPayoffDatePicker
+                          value={formData.lienEta ? new Date(formData.lienEta) : null}
+                          onChange={(date) => handleInputChange('lienEta', date ? date.toISOString() : '')}
+                          placeholder="Select lien payoff date..."
+                        />
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+              
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-4">
                   <h4 className="text-md font-medium text-white mb-4">Documentation Status</h4>

@@ -549,12 +549,12 @@ const DealerNetworkPage = () => {
                 </div>
 
                 <div className="flex space-x-2">
-                  <button 
+                    <button 
                     onClick={() => setSelectedDealer(dealer)}
                     className="flex-1 bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 text-sm font-medium py-2 px-3 rounded-lg transition-colors"
-                  >
+                    >
                     View Details
-                  </button>
+                    </button>
                 </div>
               </div>
             ))}
@@ -598,12 +598,12 @@ const DealerNetworkPage = () => {
                     <span className={`text-xs font-medium px-2 py-1 rounded-full ${getStatusColor(dealer.status)}`}>
                       {dealer.status}
                     </span>
-                    <button 
+                        <button 
                       onClick={() => setSelectedDealer(dealer)}
                       className="bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 text-sm font-medium py-2 px-3 rounded-lg transition-colors"
-                    >
+                        >
                       View Details
-                    </button>
+                        </button>
                   </div>
                 </div>
               </div>

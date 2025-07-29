@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { CheckCircle, Clock, X, Save, Shield } from 'lucide-react';
 import { useAuth } from './AuthContext';
+import LienPayoffDatePicker from './LienPayoffDatePicker';
 
 const dealStages = {
   wholesale: [
@@ -184,14 +185,22 @@ export default function FinanceDealStatusUpdatePage() {
             })}
           </div>
         </div>
-        {/* Editable Lien Info for Retail PP Buy in Title Processing */}
-        {(deal.dealType === 'retail-pp' && deal.dealType2SubType === 'buy' && selectedStage === 'title-processing') && (
+        {/* Editable Lien Info for Retail PP Buy and Wholesale Flip with Private Seller in Title Processing */}
+        {((deal.dealType === 'retail-pp' && deal.dealType2SubType === 'buy' && selectedStage === 'title-processing') ||
+          (deal.dealType === 'wholesale-flip' && deal.seller?.type === 'private' && selectedStage === 'title-processing')) && (
           <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4 mb-6">
-            <h4 className="text-blue-300 font-semibold mb-2 flex items-center"><Shield className="h-4 w-4 mr-2 text-blue-400" />Title Lien Status</h4>
+            <h4 className="text-blue-300 font-semibold mb-2 flex items-center">
+              <Shield className="h-4 w-4 mr-2 text-blue-400" />
+              Title Lien Status
+            </h4>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <span className="text-gray-300 text-sm">Lien Status</span>
-                <select value={lienStatus} onChange={e => setLienStatus(e.target.value)} className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <select 
+                  value={lienStatus} 
+                  onChange={e => setLienStatus(e.target.value)} 
+                  className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
                   <option value="none">No Lien</option>
                   <option value="lien_on_title">Lien on Title</option>
                 </select>
@@ -199,11 +208,10 @@ export default function FinanceDealStatusUpdatePage() {
               {lienStatus === 'lien_on_title' && (
                 <div>
                   <span className="text-gray-300 text-sm">Lien Payoff Completion ETA</span>
-                  <input 
-                    type="datetime-local" 
-                    value={lienEta} 
-                    onChange={e => setLienEta(e.target.value)} 
-                    className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500" 
+                  <LienPayoffDatePicker
+                    value={lienEta ? new Date(lienEta) : null}
+                    onChange={(date) => setLienEta(date ? date.toISOString() : '')}
+                    placeholder="Select lien payoff date..."
                   />
                 </div>
               )}

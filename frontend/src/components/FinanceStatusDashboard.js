@@ -30,6 +30,7 @@ import {
   AlertTriangle,
   ArrowLeft
 } from 'lucide-react';
+import LienPayoffDatePicker from './LienPayoffDatePicker';
 
 const FinanceStatusDashboard = () => {
   const navigate = useNavigate();
@@ -421,11 +422,10 @@ const FinanceStatusDashboard = () => {
                 </div>
                 <div>
                   <span className="text-gray-300 text-sm">ETA to Lien Release</span>
-                  <input
-                    type="date"
-                    value={lienEta}
-                    onChange={e => setLienEta(e.target.value)}
-                    className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  <LienPayoffDatePicker
+                    value={lienEta ? new Date(lienEta) : null}
+                    onChange={(date) => setLienEta(date ? date.toISOString().split('T')[0] : '')}
+                    placeholder="Select lien payoff date..."
                   />
                 </div>
               </div>
