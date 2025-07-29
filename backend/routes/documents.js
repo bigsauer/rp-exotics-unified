@@ -1087,7 +1087,13 @@ router.post('/generate/:dealId', auth, async (req, res) => {
     console.log(`[DOC GEN] 📄 Processing ${documentResults.length} document results`);
     
     for (const documentResult of documentResults) {
-      const documentType = documentResult?.documentType || 'bill_of_sale';
+      // Skip documents without a valid document type
+      if (!documentResult?.documentType) {
+        console.warn(`[DOC GEN] ⚠️ Skipping document result without documentType:`, documentResult);
+        continue;
+      }
+      
+      const documentType = documentResult.documentType;
       const party = documentResult?.party || 'main';
       
       console.log(`[DOC GEN] 📄 Processing document result:`, {
