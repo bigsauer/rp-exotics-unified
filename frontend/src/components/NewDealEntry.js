@@ -674,6 +674,39 @@ const NewDealEntry = ({ setDeals }) => {
         setDeals(deals => deals.map(d => d.id === tempId ? dealResult.deal : d));
       }
       
+      // Upload any documents that were added during deal creation
+      if (formData.documents && formData.documents.length > 0) {
+        console.log('[DEAL SUBMIT] Uploading', formData.documents.length, 'documents');
+        try {
+          for (let i = 0; i < formData.documents.length; i++) {
+            const file = formData.documents[i];
+            const note = documentNotes.find(n => n.fileIndex === i)?.note || '';
+            
+            const formDataUpload = new FormData();
+            formDataUpload.append('document', file);
+            formDataUpload.append('notes', note);
+            
+            const uploadResponse = await fetch(`${API_BASE}/api/backOffice/deals/${dealResult.deal._id}/documents/extra_doc/upload`, {
+              method: 'POST',
+              headers: {
+                ...getAuthHeaders(),
+                // Don't set Content-Type for FormData, let browser set it
+              },
+              body: formDataUpload,
+              credentials: 'include'
+            });
+            
+            if (uploadResponse.ok) {
+              console.log('[DEAL SUBMIT] Document uploaded successfully:', file.name);
+            } else {
+              console.warn('[DEAL SUBMIT] Failed to upload document:', file.name);
+            }
+          }
+        } catch (uploadError) {
+          console.error('[DEAL SUBMIT] Error uploading documents:', uploadError);
+        }
+      }
+
       // Automatically generate documents after successful deal creation
       try {
         console.log('[DEAL SUBMIT] Generating documents for deal:', dealResult.deal._id);
@@ -748,6 +781,7 @@ const NewDealEntry = ({ setDeals }) => {
           documents: [],
           salesperson: ''
         });
+        setDocumentNotes([]); // Clear document notes
         setCurrentStep(1);
       }
       
