@@ -18,6 +18,13 @@ const TEAM_MEMBERS = {
 
 // Middleware to verify JWT token
 const authenticateToken = async (req, res, next) => {
+  console.log(`[AUTH DEBUG] ${req.method} ${req.originalUrl} - Starting authentication`);
+  console.log(`[AUTH DEBUG] Headers:`, {
+    authorization: req.headers['authorization'] ? 'Present' : 'Missing',
+    cookie: req.cookies ? 'Present' : 'Missing',
+    tokenInCookie: req.cookies?.token ? 'Present' : 'Missing'
+  });
+  
   const authHeader = req.headers['authorization'];
   let token = authHeader && authHeader.split(' ')[1];
 
@@ -25,19 +32,30 @@ const authenticateToken = async (req, res, next) => {
     // Try to get token from cookie if not in header
     req.tokenSource = 'cookie';
     token = req.cookies.token;
+    console.log(`[AUTH DEBUG] Using token from cookie`);
+  } else if (token) {
+    console.log(`[AUTH DEBUG] Using token from Authorization header`);
   }
 
   if (!token) {
     console.warn(`[AUTH] No token provided for ${req.method} ${req.originalUrl}`);
+    console.log(`[AUTH DEBUG] Auth header:`, authHeader);
+    console.log(`[AUTH DEBUG] Cookies:`, req.cookies);
     return res.status(401).json({ error: 'Access token required' });
   }
 
+  console.log(`[AUTH DEBUG] Token found, length: ${token.length}, starts with: ${token.substring(0, 20)}...`);
+
   jwt.verify(token, JWT_SECRET, async (err, decoded) => {
     if (err) {
-      console.warn('[AUTH] Invalid or expired token:', err);
+      console.warn('[AUTH] Invalid or expired token:', err.message);
+      console.log(`[AUTH DEBUG] Token verification failed:`, err.message);
       // Always return 401 for invalid/expired token
       return res.status(401).json({ error: 'Invalid or expired token' });
     }
+    
+    console.log(`[AUTH DEBUG] Token verified successfully, userId: ${decoded.userId}`);
+    
     try {
       const user = await User.findById(decoded.userId);
       if (!user) {
@@ -45,6 +63,9 @@ const authenticateToken = async (req, res, next) => {
         // 401 for not found (not forbidden, just not authenticated)
         return res.status(401).json({ error: 'User not found' });
       }
+      
+      console.log(`[AUTH DEBUG] User found: ${user.email}, role: ${user.role}, active: ${user.isActive}`);
+      
       req.user = user;
       console.log('[AUTH] Authenticated user:', { id: user._id, email: user.email, role: user.role, isActive: user.isActive });
       next();

@@ -60,9 +60,17 @@ export function AuthProvider({ children }) {
 
   // Utility to get auth headers
   const getAuthHeaders = () => {
+    console.log('[AUTH DEBUG] getAuthHeaders called');
+    console.log('[AUTH DEBUG] Token exists:', !!token);
+    console.log('[AUTH DEBUG] Token length:', token ? token.length : 0);
+    console.log('[AUTH DEBUG] Token starts with:', token ? token.substring(0, 20) + '...' : 'N/A');
+    
     if (token) {
-      return { 'Authorization': `Bearer ${token}` };
+      const headers = { 'Authorization': `Bearer ${token}` };
+      console.log('[AUTH DEBUG] Returning headers:', headers);
+      return headers;
     }
+    console.log('[AUTH DEBUG] No token, returning empty headers');
     return {};
   };
 
