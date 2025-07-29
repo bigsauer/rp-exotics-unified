@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import DatePicker from 'react-datepicker';
-import { Calendar, X } from 'lucide-react';
+import { Calendar, X, Clock } from 'lucide-react';
 import 'react-datepicker/dist/react-datepicker.css';
 
 const LienPayoffDatePicker = ({ value, onChange, placeholder = "Select lien payoff date..." }) => {
@@ -18,11 +18,17 @@ const LienPayoffDatePicker = ({ value, onChange, placeholder = "Select lien payo
 
   const formatDate = (date) => {
     if (!date) return '';
-    return date.toLocaleDateString('en-US', {
+    const dateStr = date.toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'short',
       day: 'numeric'
     });
+    const timeStr = date.toLocaleTimeString('en-US', {
+      hour: 'numeric',
+      minute: undefined,
+      hour12: true
+    });
+    return `${dateStr} at ${timeStr}`;
   };
 
   return (
@@ -54,8 +60,11 @@ const LienPayoffDatePicker = ({ value, onChange, placeholder = "Select lien payo
             onChange={handleDateChange}
             inline
             minDate={new Date()}
-            showTimeSelect={false}
-            dateFormat="MMM dd, yyyy"
+            showTimeSelect={true}
+            showTimeSelectOnly={false}
+            timeIntervals={60} // 1 hour intervals
+            timeCaption="Time"
+            dateFormat="MMM dd, yyyy h:mm aa"
             placeholderText={placeholder}
             popperClassName="react-datepicker-popper"
             customInput={<div />}
@@ -125,6 +134,36 @@ const LienPayoffDatePicker = ({ value, onChange, placeholder = "Select lien payo
         }
         .react-datepicker__month-container {
           background-color: #1f2937;
+        }
+        .react-datepicker__time-container {
+          background-color: #1f2937;
+          border-left: 1px solid #4b5563;
+        }
+        .react-datepicker__time {
+          background-color: #1f2937;
+        }
+        .react-datepicker__time-box {
+          background-color: #1f2937;
+        }
+        .react-datepicker__time-list {
+          background-color: #1f2937;
+        }
+        .react-datepicker__time-list-item {
+          color: white;
+        }
+        .react-datepicker__time-list-item:hover {
+          background-color: #3b82f6;
+        }
+        .react-datepicker__time-list-item--selected {
+          background-color: #3b82f6;
+          color: white;
+        }
+        .react-datepicker__time-list-item--disabled {
+          color: #6b7280;
+        }
+        .react-datepicker__time-caption {
+          color: white;
+          font-weight: 600;
         }
       `}</style>
     </div>
