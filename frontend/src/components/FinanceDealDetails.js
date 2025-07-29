@@ -17,7 +17,7 @@ const FinanceDealDetails = () => {
   const [saving, setSaving] = useState(false);
 
 
-  const API_BASE = process.env.REACT_APP_API_URL;
+  const API_BASE = process.env.REACT_APP_API_URL || 'https://astonishing-chicken-production.up.railway.app';
 
   // Add this helper function near the top of the file
   function getDocumentUrl(doc, API_BASE) {

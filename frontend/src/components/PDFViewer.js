@@ -12,7 +12,8 @@ const PDFViewer = () => {
   const [error, setError] = useState(null);
   
   // Use the viewUrl from navigation state if available, otherwise fallback to the old method
-  const viewUrl = location.state?.viewUrl || `/api/documents/download/${encodeURIComponent(fileName || 'document')}`;
+  const API_BASE = process.env.REACT_APP_API_URL || 'https://astonishing-chicken-production.up.railway.app';
+  const viewUrl = location.state?.viewUrl || `${API_BASE}/api/documents/download/${encodeURIComponent(fileName || 'document')}`;
   const documentTitle = fileName || 'Document';
 
   useEffect(() => {
@@ -23,6 +24,7 @@ const PDFViewer = () => {
     console.log('[PDFViewer] Token exists:', !!token);
     console.log('[PDFViewer] User exists:', !!user);
     console.log('[PDFViewer] Auth headers:', getAuthHeaders());
+    console.log('[PDFViewer] Full token:', token); // Add this to see the actual token
 
     const loadPDF = async () => {
       try {
@@ -31,13 +33,18 @@ const PDFViewer = () => {
         
         const headers = { ...getAuthHeaders() };
         console.log('[PDFViewer] Request headers:', headers);
+        console.log('[PDFViewer] Request URL:', viewUrl);
+        console.log('[PDFViewer] Request method: GET');
+        console.log('[PDFViewer] Request credentials: include');
         
         const response = await fetch(viewUrl, { 
+          method: 'GET',
           credentials: 'include',
           headers
         });
         
         console.log('[PDFViewer] Response status:', response.status);
+        console.log('[PDFViewer] Response status text:', response.statusText);
         console.log('[PDFViewer] Response headers:', response.headers);
         
         if (!response.ok) {
