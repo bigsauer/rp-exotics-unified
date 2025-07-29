@@ -475,61 +475,34 @@ router.post('/generate/:dealId', auth, async (req, res) => {
           });
           
         } else {
-          console.log(`[DOC GEN] 🎯 Seller is PRIVATE PARTY - generating retail documents`);
+          console.log(`[DOC GEN] 🎯 Seller is PRIVATE PARTY - generating retail documents and wholesale BOS`);
           
-          // For private party seller: generate retail private party purchase agreements
-          // But first, ensure buyer data is complete
-          let finalBuyerData = correctedBuyerData;
-          
-          // Only use RP Exotics fallback if buyer data is truly incomplete
-          // Check if buyer has a name but it's not 'N/A' or empty
-          const hasValidBuyerName = correctedBuyerData.name && 
-                                   correctedBuyerData.name !== 'N/A' && 
-                                   correctedBuyerData.name.trim() !== '' &&
-                                   correctedBuyerData.name !== 'RP Exotics';
-          
-          if (correctedBuyerData.type === 'dealer' && !hasValidBuyerName) {
-            console.log('[DOC GEN] 🎯 Buyer data truly incomplete (no valid name), using RP Exotics as fallback');
-            console.log('[DOC GEN] 🎯 Original buyer name was:', correctedBuyerData.name);
-            finalBuyerData = {
-              name: 'RP Exotics',
-              type: 'dealer',
-              contact: {
-                address: {
-                  street: '1155 N Warson Rd',
-                  city: 'Saint Louis',
-                  state: 'MO',
-                  zip: '63132'
-                },
-                phone: '(314) 970-2427',
-                email: 'titling@rpexotics.com'
-              },
-              licenseNumber: 'D4865',
-              tier: 'Tier 1'
-            };
-          } else {
-            console.log('[DOC GEN] 🎯 Using actual buyer data:', correctedBuyerData.name);
-          }
+          // For private party seller: generate retail private party purchase agreement for seller
+          // and wholesale BOS for the purchasing dealer (buyer)
           
           const [sellerResult, buyerResult] = await Promise.all([
+            // Seller document: retail PP purchase agreement (seller is private party)
             documentGenerator.generateDocument({
               ...sellerDocumentData,
               sellerType: 'private',
               buyerType: 'dealer',
-              buyer: finalBuyerData
+              seller: correctedSellerData,
+              buyer: correctedBuyerData,
+              buyerInfo: correctedBuyerData
             }, user),
+            // Buyer document: wholesale BOS (buyer is purchasing dealer)
             documentGenerator.generateDocument({
               ...buyerDocumentData,
-              sellerType: 'dealer',
-              buyerType: 'private',
-              seller: finalBuyerData,
-              // Also ensure buyerInfo is set correctly
-              buyerInfo: finalBuyerData
+              sellerType: 'private',
+              buyerType: 'dealer',
+              seller: correctedSellerData,
+              buyer: correctedBuyerData,
+              buyerInfo: correctedBuyerData
             }, user)
           ]);
           
           console.log(`[DOC GEN] Private seller document (retail PP purchase agreement):`, sellerResult);
-          console.log(`[DOC GEN] Dealer buyer document (retail PP purchase agreement):`, buyerResult);
+          console.log(`[DOC GEN] Dealer buyer document (wholesale BOS):`, buyerResult);
           
           documentResults.push({
             ...sellerResult,
@@ -539,7 +512,7 @@ router.post('/generate/:dealId', auth, async (req, res) => {
           
           documentResults.push({
             ...buyerResult,
-            documentType: 'retail_pp_buy',
+            documentType: 'wholesale_bos',
             party: 'buyer'
           });
         }

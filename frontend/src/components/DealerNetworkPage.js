@@ -906,28 +906,7 @@ const DealerNetworkPage = () => {
                 </div>
               </div>
 
-              {/* Performance Metrics */}
-              <div className="bg-white/5 rounded-lg p-4">
-                <h4 className="text-lg font-semibold text-white mb-3">Performance Metrics</h4>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div className="text-center">
-                    <p className="text-2xl font-bold text-blue-400">{selectedDealer.totalDeals || 0}</p>
-                    <p className="text-sm text-gray-400">Total Deals</p>
-                  </div>
-                  <div className="text-center">
-                    <p className="text-2xl font-bold text-green-400">${(selectedDealer.totalVolume || 0).toLocaleString()}</p>
-                    <p className="text-sm text-gray-400">Total Volume</p>
-                  </div>
-                  <div className="text-center">
-                    <p className="text-2xl font-bold text-yellow-400">${(selectedDealer.avgDealSize || 0).toLocaleString()}</p>
-                    <p className="text-sm text-gray-400">Avg Deal Size</p>
-                  </div>
-                  <div className="text-center">
-                    <p className="text-2xl font-bold text-purple-400">{selectedDealer.successRate || 0}%</p>
-                    <p className="text-sm text-gray-400">Success Rate</p>
-                  </div>
-                </div>
-              </div>
+
 
               {/* Recent Deals */}
               {selectedDealer.recentDeals && selectedDealer.recentDeals.length > 0 && (
