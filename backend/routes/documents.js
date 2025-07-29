@@ -453,7 +453,9 @@ router.post('/generate/:dealId', auth, async (req, res) => {
               buyerType: 'dealer',
               // Ensure the purchasing dealer (buyer) info is properly set for wholesale BOS
               buyer: finalBuyerData,
-              seller: correctedSellerData
+              seller: correctedSellerData,
+              // Also ensure buyerInfo is set correctly
+              buyerInfo: finalBuyerData
             }, user)
           ]);
           
@@ -520,7 +522,9 @@ router.post('/generate/:dealId', auth, async (req, res) => {
               ...buyerDocumentData,
               sellerType: 'dealer',
               buyerType: 'private',
-              seller: finalBuyerData
+              seller: finalBuyerData,
+              // Also ensure buyerInfo is set correctly
+              buyerInfo: finalBuyerData
             }, user)
           ]);
           
