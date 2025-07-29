@@ -655,13 +655,77 @@ router.put('/deals/:id/update-and-regenerate', authenticateToken, requireBackOff
     // Helper function to parse address string into parts
     const parseAddress = (addressString) => {
       if (!addressString) return { street: '', city: '', state: '', zip: '' };
-      const parts = addressString.split(',').map(s => s.trim());
-      return {
-        street: parts[0] || '',
-        city: parts[1] || '',
-        state: parts[2] || '',
-        zip: parts[3] || ''
-      };
+      
+      // Clean the address string
+      const cleanAddress = addressString.trim();
+      
+      // Split by comma and clean each part
+      const parts = cleanAddress.split(',').map(s => s.trim()).filter(s => s.length > 0);
+      
+      if (parts.length === 0) {
+        return { street: '', city: '', state: '', zip: '' };
+      }
+      
+      // Handle different address formats
+      if (parts.length === 1) {
+        // Just street address
+        return {
+          street: parts[0],
+          city: '',
+          state: '',
+          zip: ''
+        };
+      } else if (parts.length === 2) {
+        // Street and city, or street and state/zip
+        const secondPart = parts[1];
+        if (secondPart.match(/^[A-Z]{2}\s+\d{5}/)) {
+          // State and ZIP format
+          const stateZipMatch = secondPart.match(/^([A-Z]{2})\s+(.+)$/);
+          return {
+            street: parts[0],
+            city: '',
+            state: stateZipMatch ? stateZipMatch[1] : '',
+            zip: stateZipMatch ? stateZipMatch[2] : ''
+          };
+        } else {
+          // City and state/zip
+          return {
+            street: parts[0],
+            city: parts[1],
+            state: '',
+            zip: ''
+          };
+        }
+      } else if (parts.length === 3) {
+        // Street, city, state/zip
+        const lastPart = parts[2];
+        if (lastPart.match(/^[A-Z]{2}\s+\d{5}/)) {
+          // State and ZIP format
+          const stateZipMatch = lastPart.match(/^([A-Z]{2})\s+(.+)$/);
+          return {
+            street: parts[0],
+            city: parts[1],
+            state: stateZipMatch ? stateZipMatch[1] : '',
+            zip: stateZipMatch ? stateZipMatch[2] : ''
+          };
+        } else {
+          // Assume last part is ZIP
+          return {
+            street: parts[0],
+            city: parts[1],
+            state: '',
+            zip: parts[2]
+          };
+        }
+      } else {
+        // 4 or more parts: street, city, state, zip
+        return {
+          street: parts[0],
+          city: parts[1] || '',
+          state: parts[2] || '',
+          zip: parts[3] || ''
+        };
+      }
     };
 
     // Update deal fields
@@ -752,180 +816,37 @@ router.put('/deals/:id/update-and-regenerate', authenticateToken, requireBackOff
               licenseNumber: updatedDeal.seller.licenseNumber,
               company: updatedDeal.seller.company
             },
-            buyerInfo: updatedDeal.buyer ? {
+            buyerInfo: {
               name: updatedDeal.buyer.name,
               address: updatedDeal.buyer.contact?.address || updatedDeal.buyer.address,
               phone: updatedDeal.buyer.contact?.phone || updatedDeal.buyer.phone,
               email: updatedDeal.buyer.contact?.email || updatedDeal.buyer.email,
               licenseNumber: updatedDeal.buyer.licenseNumber,
               company: updatedDeal.buyer.company
-            } : null,
-            stockNumber: updatedDeal.rpStockNumber || 'N/A',
-            color: updatedDeal.color || updatedDeal.exteriorColor,
-            mileage: updatedDeal.mileage
+            }
           };
 
-          // Generate documents based on deal type
-          const generatedDocs = [];
-          if (updatedDeal.dealType === 'wholesale-flip') {
-            if (updatedDeal.seller?.type === 'dealer') {
-              let wholesaleBOS = await documentGenerator.generateWholesaleBOS(dealDataForDocs, req.user);
-              console.log('[DOC GEN] Generated wholesaleBOS:', wholesaleBOS);
-              generatedDocs.push({
-                documentType: 'wholesale_purchase_order',
-                fileName: wholesaleBOS.fileName,
-                filePath: wholesaleBOS.filePath,
-                fileSize: wholesaleBOS.fileSize,
-                documentNumber: wholesaleBOS.documentNumber,
-                generatedAt: new Date(),
-                generatedBy: req.user._id,
-                status: 'draft'
-              });
-            } else if (updatedDeal.seller?.type === 'private') {
-              let retailPPBuy = await documentGenerator.generateRetailPPBuy(dealDataForDocs, req.user);
-              console.log('[DOC GEN] Generated retailPPBuy:', retailPPBuy);
-              generatedDocs.push({
-                documentType: 'retail_pp_buy',
-                fileName: retailPPBuy.fileName,
-                filePath: retailPPBuy.filePath,
-                fileSize: retailPPBuy.fileSize,
-                documentNumber: retailPPBuy.documentNumber,
-                generatedAt: new Date(),
-                generatedBy: req.user._id,
-                status: 'draft'
-              });
-            }
-            // Always generate the vehicle record PDF
-            const vehicleRecordPDF = await documentGenerator.generateVehicleRecordPDF(dealDataForDocs, req.user);
-            console.log('[DOC GEN] Generated vehicleRecordPDF:', vehicleRecordPDF);
-            generatedDocs.push({
-              documentType: 'vehicle_record_pdf',
-              fileName: vehicleRecordPDF.fileName,
-              filePath: vehicleRecordPDF.filePath,
-              fileSize: vehicleRecordPDF.fileSize,
-              documentNumber: vehicleRecordPDF.documentNumber,
-              generatedAt: new Date(),
-              generatedBy: req.user._id,
-              status: 'draft'
-            });
-          } else if (updatedDeal.dealType === 'wholesale-pp') {
-            const wholesalePPBuy = await documentGenerator.generateWholesalePPBuy(dealDataForDocs, req.user);
-            console.log('[DOC GEN] Generated wholesalePPBuy:', wholesalePPBuy);
-            generatedDocs.push({
-              documentType: 'wholesale_pp_buy',
-              fileName: wholesalePPBuy.fileName,
-              filePath: wholesalePPBuy.filePath,
-              fileSize: wholesalePPBuy.fileSize,
-              documentNumber: wholesalePPBuy.documentNumber,
-              generatedAt: new Date(),
-              generatedBy: req.user._id,
-              status: 'draft'
-            });
-            const vehicleRecordPDF = await documentGenerator.generateVehicleRecordPDF(dealDataForDocs, req.user);
-            console.log('[DOC GEN] Generated vehicleRecordPDF:', vehicleRecordPDF);
-            generatedDocs.push({
-              documentType: 'vehicle_record_pdf',
-              fileName: vehicleRecordPDF.fileName,
-              filePath: vehicleRecordPDF.filePath,
-              fileSize: vehicleRecordPDF.fileSize,
-              documentNumber: vehicleRecordPDF.documentNumber,
-              generatedAt: new Date(),
-              generatedBy: req.user._id,
-              status: 'draft'
-            });
-          } else if (updatedDeal.dealType === 'retail-pp') {
-            const retailPPBuy = await documentGenerator.generateRetailPPBuy(dealDataForDocs, req.user);
-            console.log('[DOC GEN] Generated retailPPBuy:', retailPPBuy);
-            generatedDocs.push({
-              documentType: 'retail_pp_buy',
-              fileName: retailPPBuy.fileName,
-              filePath: retailPPBuy.filePath,
-              fileSize: retailPPBuy.fileSize,
-              documentNumber: retailPPBuy.documentNumber,
-              generatedAt: new Date(),
-              generatedBy: req.user._id,
-              status: 'draft'
-            });
-            const vehicleRecordPDF = await documentGenerator.generateVehicleRecordPDF(dealDataForDocs, req.user);
-            console.log('[DOC GEN] Generated vehicleRecordPDF:', vehicleRecordPDF);
-            generatedDocs.push({
-              documentType: 'vehicle_record_pdf',
-              fileName: vehicleRecordPDF.fileName,
-              filePath: vehicleRecordPDF.filePath,
-              fileSize: vehicleRecordPDF.fileSize,
-              documentNumber: vehicleRecordPDF.documentNumber,
-              generatedAt: new Date(),
-              generatedBy: req.user._id,
-              status: 'draft'
-            });
-          } else {
-            // Default wholesale documents
-            const wholesaleBOS = await documentGenerator.generateWholesaleBOS(dealDataForDocs, req.user);
-            console.log('[DOC GEN] Generated wholesaleBOS:', wholesaleBOS);
-            generatedDocs.push({
-              documentType: 'wholesale_bos',
-              fileName: wholesaleBOS.fileName,
-              filePath: wholesaleBOS.filePath,
-              fileSize: wholesaleBOS.fileSize,
-              documentNumber: wholesaleBOS.documentNumber,
-              generatedAt: new Date(),
-              generatedBy: req.user._id,
-              status: 'draft'
-            });
-            const vehicleRecordPDF = await documentGenerator.generateVehicleRecordPDF(dealDataForDocs, req.user);
-            console.log('[DOC GEN] Generated vehicleRecordPDF:', vehicleRecordPDF);
-            generatedDocs.push({
-              documentType: 'vehicle_record_pdf',
-              fileName: vehicleRecordPDF.fileName,
-              filePath: vehicleRecordPDF.filePath,
-              fileSize: vehicleRecordPDF.fileSize,
-              documentNumber: vehicleRecordPDF.documentNumber,
-              generatedAt: new Date(),
-              generatedBy: req.user._id,
-              status: 'draft'
-            });
+          // Generate vehicle record PDF
+          try {
+            const vehicleRecordResult = await documentGenerator.generateVehicleRecordPDF(dealDataForDocs, req.user);
+            console.log('[BACKOFFICE] Vehicle record generated successfully:', vehicleRecordResult);
+          } catch (vehicleRecordError) {
+            console.error('[BACKOFFICE] Error generating vehicle record:', vehicleRecordError);
+            // Don't fail the entire request, just log the error
           }
 
-          // Debug: log each document object before saving
-          generatedDocs.forEach((doc, idx) => {
-            console.log(`[BACKOFFICE] Document object for vehicleRecord.generatedDocuments[${idx}]:`, doc);
-          });
-
-          // Delete old files that are no longer referenced
-          if (vehicleRecord && Array.isArray(vehicleRecord.generatedDocuments)) {
-            const fs = require('fs');
-            const oldFilePaths = vehicleRecord.generatedDocuments.map(doc => doc.filePath).filter(Boolean);
-            const newFilePaths = generatedDocs.map(doc => doc.filePath).filter(Boolean);
-            const filesToDelete = oldFilePaths.filter(oldPath => !newFilePaths.includes(oldPath));
-            filesToDelete.forEach(filePath => {
-              try {
-                if (fs.existsSync(filePath)) {
-                  fs.unlinkSync(filePath);
-                  console.log(`[BACKOFFICE] Deleted old document file: ${filePath}`);
-                } else {
-                  console.log(`[BACKOFFICE] Old document file not found for deletion: ${filePath}`);
-                }
-              } catch (err) {
-                console.error(`[BACKOFFICE] Error deleting old document file: ${filePath}`, err);
-              }
-            });
+          // Generate other documents based on deal type
+          try {
+            const documentResult = await documentGenerator.generateDocument(dealDataForDocs, req.user);
+            console.log('[BACKOFFICE] Documents generated successfully:', documentResult);
+          } catch (documentError) {
+            console.error('[BACKOFFICE] Error generating documents:', documentError);
+            // Don't fail the entire request, just log the error
           }
-
-          // Update vehicle record with new documents
-          if (vehicleRecord) {
-            console.log('[BACKOFFICE] Previous vehicleRecord.generatedDocuments:', vehicleRecord.generatedDocuments);
-            vehicleRecord.generatedDocuments = generatedDocs;
-            await vehicleRecord.save();
-            console.log('[BACKOFFICE] Updated vehicleRecord.generatedDocuments:', vehicleRecord.generatedDocuments);
-            console.log('[BACKOFFICE] Updated vehicle record with new documents');
-          }
-
-          console.log('[BACKOFFICE] Successfully regenerated documents:', generatedDocs.map(d => d.fileName));
         }
-      } catch (docError) {
-        console.error('[BACKOFFICE] Error regenerating documents:', docError);
-        // Don't fail the entire request if document generation fails
-        // Just log the error and continue
+      } catch (error) {
+        console.error('[BACKOFFICE] Error regenerating documents:', error);
+        // Don't fail the entire request, just log the error
       }
     }
 

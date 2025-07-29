@@ -410,24 +410,22 @@ class DocumentGenerator {
     console.log('[PDF GEN][StandardVehicleRecord] Starting standard vehicle record generation');
     console.log('[PDF GEN][StandardVehicleRecord] Deal data:', {
       dealType: dealData.dealType,
-      dealType2: dealData.dealType2,
       dealType2SubType: dealData.dealType2SubType,
       stockNumber: dealData.stockNumber,
       vin: dealData.vin
     });
     
-    try {
-      // --- DEBUG: Log all deal type fields and price/label logic ---
-      console.log('[PDF GEN] [DEBUG] dealType:', dealData.dealType);
-      console.log('[PDF GEN] [DEBUG] dealType2:', dealData.dealType2);
-      console.log('[PDF GEN] [DEBUG] dealType2SubType:', dealData.dealType2SubType);
-      console.log('[PDF GEN] [DEBUG] Raw seller:', JSON.stringify(dealData.seller, null, 2));
-      console.log('[PDF GEN] [DEBUG] Raw buyer:', JSON.stringify(dealData.buyer, null, 2));
-      console.log('[PDF GEN] dealData:', dealData);
-      console.log('[PDF GEN] user:', user);
-      console.log(`[PDF GEN] [DEBUG] dealType: ${dealData.dealType}, dealType2SubType: ${dealData.dealType2SubType}`);
-      console.log('[PDF GEN] [DEBUG] Raw seller:', JSON.stringify(dealData.seller, null, 2));
-      console.log('[PDF GEN] [DEBUG] Raw buyer:', JSON.stringify(dealData.buyer, null, 2));
+    // --- DEBUG: Log all deal type fields and price/label logic ---
+    console.log('[PDF GEN] [DEBUG] dealType:', dealData.dealType);
+    console.log('[PDF GEN] [DEBUG] dealType2:', dealData.dealType2);
+    console.log('[PDF GEN] [DEBUG] dealType2SubType:', dealData.dealType2SubType);
+    console.log('[PDF GEN] [DEBUG] Raw seller:', JSON.stringify(dealData.seller, null, 2));
+    console.log('[PDF GEN] [DEBUG] Raw buyer:', JSON.stringify(dealData.buyer, null, 2));
+    console.log('[PDF GEN] dealData:', dealData);
+    console.log('[PDF GEN] user:', user);
+    console.log(`[PDF GEN] [DEBUG] dealType: ${dealData.dealType}, dealType2SubType: ${dealData.dealType2SubType}`);
+    console.log('[PDF GEN] [DEBUG] Raw seller:', JSON.stringify(dealData.seller, null, 2));
+    console.log('[PDF GEN] [DEBUG] Raw buyer:', JSON.stringify(dealData.buyer, null, 2));
 
     // Helper for RP Exotics info
     const rpExoticsInfo = {
@@ -1130,31 +1128,50 @@ class DocumentGenerator {
     `;
     
     console.log('[PDF GEN] [StandardVehicleRecord] 🖨️ Starting PDF generation with Puppeteer...');
+    
+    // Ensure uploads directory exists
+    this.ensureUploadsDirectorySync();
+    
     // Use Puppeteer to render HTML to PDF
     const puppeteer = require('puppeteer');
-    const browser = await puppeteer.launch({ headless: 'new', args: ['--no-sandbox', '--font-render-hinting=none'] });
-    const page = await browser.newPage();
-    await page.setContent(html, { waitUntil: 'networkidle0' });
-    await page.pdf({ path: filePath, format: 'A4', printBackground: true });
-    await browser.close();
-    console.log('[PDF GEN] [StandardVehicleRecord] ✅ PDF generated successfully');
-    const stats = fs.statSync(filePath);
-    console.log('[PDF GEN] [StandardVehicleRecord] 📊 Generated file stats:', {
-      fileName,
-      filePath,
-      fileSize: stats.size,
-      documentNumber: docNumber
-    });
-    return {
-      fileName,
-      filePath,
-      fileSize: stats.size,
-      documentNumber: docNumber
-    };
+    let browser;
+    
+    try {
+      browser = await puppeteer.launch({ 
+        headless: 'new', 
+        args: ['--no-sandbox', '--font-render-hinting=none', '--disable-dev-shm-usage'] 
+      });
+      
+      const page = await browser.newPage();
+      await page.setContent(html, { waitUntil: 'networkidle0' });
+      await page.pdf({ path: filePath, format: 'A4', printBackground: true });
+      console.log('[PDF GEN] [StandardVehicleRecord] ✅ PDF generated successfully');
+      
+      // Verify file was created
+      if (fs.existsSync(filePath)) {
+        const stats = fs.statSync(filePath);
+        console.log('[PDF GEN] [StandardVehicleRecord] 📊 Generated file stats:', {
+          fileName,
+          filePath,
+          fileSize: stats.size,
+          documentNumber: docNumber
+        });
+        return {
+          fileName,
+          filePath,
+          fileSize: stats.size,
+          documentNumber: docNumber
+        };
+      } else {
+        throw new Error(`PDF file was not created at ${filePath}`);
+      }
     } catch (error) {
-      console.error('[PDF GEN][StandardVehicleRecord] Error generating standard vehicle record:', error);
-      console.error('[PDF GEN][StandardVehicleRecord] Error stack:', error.stack);
+      console.error('[PDF GEN][StandardVehicleRecord] Error generating PDF:', error);
       throw error;
+    } finally {
+      if (browser) {
+        await browser.close();
+      }
     }
   }
 

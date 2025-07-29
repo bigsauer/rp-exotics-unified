@@ -103,6 +103,8 @@ const VALID_STAGES = [
 router.get('/deals', authenticateToken, async (req, res) => {
   try {
     console.log('[SALES] Fetching deals for user:', req.user.id, 'role:', req.user.role);
+    console.log('[SALES] User permissions:', req.user.permissions);
+    console.log('[SALES] User object:', JSON.stringify(req.user, null, 2));
     
     // Simple query to get all deals first (for debugging)
     let query = {};
@@ -111,15 +113,29 @@ router.get('/deals', authenticateToken, async (req, res) => {
     if (req.user.role === 'sales' && !req.user.permissions?.viewAllDeals) {
       query['salesPerson.id'] = req.user._id;
       console.log('[SALES] Filtering by sales person:', req.user._id);
+    } else {
+      console.log('[SALES] No filtering applied - user can view all deals');
     }
 
     console.log('[SALES] Final query:', JSON.stringify(query));
+
+    // First, let's check if there are any sales deals at all
+    const totalDeals = await SalesDeal.countDocuments({});
+    console.log('[SALES] Total sales deals in database:', totalDeals);
+    
+    // Check deals without any filtering
+    const allDeals = await SalesDeal.find({});
+    console.log('[SALES] All deals (no filter):', allDeals.length);
+    if (allDeals.length > 0) {
+      console.log('[SALES] Sample deal salesPerson:', allDeals[0].salesPerson);
+    }
 
     const deals = await SalesDeal.find(query)
       .populate('salesPerson.id', 'name email')
       .sort({ updatedAt: -1 });
 
-    console.log('[SALES] Found deals:', deals.length);
+    console.log('[SALES] Found deals with filter:', deals.length);
+    console.log('[SALES] Deals found:', deals.map(d => ({ id: d._id, salesPerson: d.salesPerson })));
 
     // Calculate metrics for each deal
     const dealsWithMetrics = deals.map(deal => ({
