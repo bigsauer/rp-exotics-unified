@@ -747,14 +747,57 @@ router.post('/generate/:dealId', auth, async (req, res) => {
     // Generate the Vehicle Record PDF for ALL deals (if function exists)
     if (typeof documentGenerator.generateVehicleRecordPDF === 'function') {
       try {
+        console.log(`[DOC GEN] 🚗 Starting vehicle record generation for deal: ${deal._id}`);
+        console.log(`[DOC GEN] 📊 Deal data for vehicle record:`, {
+          dealType: dealData.dealType,
+          dealType2SubType: dealData.dealType2SubType,
+          stockNumber: dealData.stockNumber,
+          vin: dealData.vin,
+          year: dealData.year,
+          make: dealData.make,
+          model: dealData.model
+        });
+        console.log(`[DOC GEN] 👤 User data for vehicle record:`, {
+          id: user._id,
+          email: user.email,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          role: user.role
+        });
+        
         console.time('[PERF] generateVehicleRecordPDF');
         vehicleRecordResult = await documentGenerator.generateVehicleRecordPDF(dealData, user);
         console.timeEnd('[PERF] generateVehicleRecordPDF');
-        console.log(`[DOC GEN] Vehicle Record PDF generated:`, vehicleRecordResult);
+        
+        console.log(`[DOC GEN] ✅ Vehicle Record PDF generated successfully:`, {
+          fileName: vehicleRecordResult?.fileName,
+          filePath: vehicleRecordResult?.filePath,
+          fileSize: vehicleRecordResult?.fileSize,
+          documentType: vehicleRecordResult?.documentType
+        });
+        
+        // Verify the file was actually created
+        if (vehicleRecordResult?.filePath) {
+          const fileExists = await fs.pathExists(vehicleRecordResult.filePath);
+          console.log(`[DOC GEN] 📁 Vehicle record file exists: ${fileExists}`);
+          if (fileExists) {
+            const stats = await fs.stat(vehicleRecordResult.filePath);
+            console.log(`[DOC GEN] 📊 Vehicle record file size: ${stats.size} bytes`);
+          } else {
+            console.error(`[DOC GEN] ❌ Vehicle record file was not created at: ${vehicleRecordResult.filePath}`);
+          }
+        }
+        
       } catch (err) {
-        console.error(`[DOC GEN] Error generating Vehicle Record PDF:`, err);
-        // Not fatal, continue
+        console.error(`[DOC GEN] ❌ Error generating Vehicle Record PDF:`, err);
+        console.error(`[DOC GEN] ❌ Error stack:`, err.stack);
+        console.error(`[DOC GEN] ❌ Deal data that caused error:`, JSON.stringify(dealData, null, 2));
+        console.error(`[DOC GEN] ❌ User data that caused error:`, JSON.stringify(user, null, 2));
+        // Don't throw the error, but log it thoroughly for debugging
+        vehicleRecordResult = null;
       }
+    } else {
+      console.warn(`[DOC GEN] ⚠️ generateVehicleRecordPDF function not available`);
     }
 
     // Check if vehicle record already exists for this deal
