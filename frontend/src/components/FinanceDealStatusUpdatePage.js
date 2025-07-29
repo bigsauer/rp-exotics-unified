@@ -7,7 +7,6 @@ const dealStages = {
   wholesale: [
     { id: 'contract-received', label: 'Contract Received', description: 'Initial paperwork received' },
     { id: 'title-processing', label: 'Title Processing', description: 'Title documentation in progress' },
-    { id: 'payment-approved', label: 'Payment Approved', description: 'Payment authorization completed' },
     { id: 'funds-disbursed', label: 'Funds Disbursed', description: 'Payment sent to seller' },
     { id: 'title-received', label: 'Title Received', description: 'Clean title in hand' },
     { id: 'deal-complete', label: 'Deal Complete', description: 'All documentation finalized' }
@@ -86,7 +85,7 @@ export default function FinanceDealStatusUpdatePage() {
         body: JSON.stringify({
           stage: selectedStage,
           notes,
-          ...(deal.dealType === 'retail-pp' && selectedStage === 'title-processing' ? { lienStatus, lienEta } : {})
+          ...(deal.dealType === 'retail-pp' && deal.dealType2SubType === 'buy' && selectedStage === 'title-processing' ? { lienStatus, lienEta } : {})
         })
       });
       if (!res.ok) throw new Error('Failed to update deal status');
@@ -185,57 +184,33 @@ export default function FinanceDealStatusUpdatePage() {
             })}
           </div>
         </div>
-        {/* Editable Lien Info for Retail PP Buy in Title Processing, or Wholesale Flip with Private Seller */}
-        {((deal.dealType === 'retail-pp') || (deal.dealType === 'wholesale-flip' && typeof deal.seller?.type === 'string' && deal.seller.type.toLowerCase() === 'private')) && selectedStage === 'title_processing' && (
+        {/* Editable Lien Info for Retail PP Buy in Title Processing */}
+        {(deal.dealType === 'retail-pp' && deal.dealType2SubType === 'buy' && selectedStage === 'title-processing') && (
           <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4 mb-6">
-            <h4 className="text-blue-300 font-semibold mb-2 flex items-center"><Shield className="h-4 w-4 mr-2 text-blue-400" />Lien on Title</h4>
-            {/* Lien Sub-Status Stepper */}
-            <div className="flex items-center justify-between mb-4 mt-2">
-              {['payoff_requested', 'payoff_received', 'lien_release_pending', 'lien_released'].map((status, idx, arr) => {
-                const statusLabels = {
-                  payoff_requested: 'Payoff Requested',
-                  payoff_received: 'Payoff Received',
-                  lien_release_pending: 'Release Pending',
-                  lien_released: 'Lien Released'
-                };
-                const isActive = lienStatus === status;
-                const isCompleted = arr.indexOf(lienStatus) > idx;
-                return (
-                  <React.Fragment key={status}>
-                    <div className="flex flex-col items-center">
-                      <div className={`rounded-full w-7 h-7 flex items-center justify-center font-bold text-sm mb-1 transition-all duration-200 ${isActive ? 'bg-blue-500 text-white shadow-lg scale-110' : isCompleted ? 'bg-green-400 text-white' : 'bg-gray-400 text-white/70'}`}>{idx + 1}</div>
-                      <span className={`text-xs font-medium ${isActive ? 'text-blue-400' : isCompleted ? 'text-green-400' : 'text-gray-400'}`}>{statusLabels[status]}</span>
-                    </div>
-                    {idx < arr.length - 1 && (
-                      <div className={`flex-1 h-1 mx-1 md:mx-2 rounded-full ${isCompleted ? 'bg-green-400' : isActive ? 'bg-blue-400' : 'bg-gray-400/40'}`}></div>
-                    )}
-                  </React.Fragment>
-                );
-              })}
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <h4 className="text-blue-300 font-semibold mb-2 flex items-center"><Shield className="h-4 w-4 mr-2 text-blue-400" />Title Lien Status</h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <span className="text-gray-300 text-sm">Lien Status</span>
                 <select value={lienStatus} onChange={e => setLienStatus(e.target.value)} className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
-                  <option value="payoff_requested">Payoff Requested</option>
-                  <option value="payoff_received">Payoff Received</option>
-                  <option value="lien_release_pending">Release Pending</option>
-                  <option value="lien_released">Lien Released</option>
+                  <option value="none">No Lien</option>
+                  <option value="lien_on_title">Lien on Title</option>
                 </select>
               </div>
-              <div>
-                <span className="text-gray-300 text-sm">ETA to Lien Release</span>
-                <input type="date" value={lienEta} onChange={e => setLienEta(e.target.value)} className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500" />
-              </div>
+              {lienStatus === 'lien_on_title' && (
+                <div>
+                  <span className="text-gray-300 text-sm">Lien Payoff Completion ETA</span>
+                  <input 
+                    type="datetime-local" 
+                    value={lienEta} 
+                    onChange={e => setLienEta(e.target.value)} 
+                    className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500" 
+                  />
+                </div>
+              )}
             </div>
           </div>
         )}
-        {/* Show warning if wholesale-flip and seller type is missing */}
-        {deal.dealType === 'wholesale-flip' && selectedStage === 'title_processing' && !deal.seller?.type && (
-          <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4 mb-6 text-yellow-300">
-            <strong>Warning:</strong> Seller type is missing for this deal. Lien sub-status will only show if seller type is set to 'private'.
-          </div>
-        )}
+
         <div className="mb-6">
           <label className="block text-white font-medium mb-3">Update Notes</label>
           <textarea value={notes} onChange={e => setNotes(e.target.value)} className="w-full bg-white/5 border border-white/20 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" rows={4} placeholder="Add notes about this status update..." />
