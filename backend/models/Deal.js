@@ -155,7 +155,6 @@ const dealSchema = new mongoose.Schema({
     enum: [
       'contract-received',
       'title-processing',
-      'payment-approved',
       'funds-disbursed',
       'title-received',
       'deal-complete'
@@ -235,7 +234,7 @@ const dealSchema = new mongoose.Schema({
     titleNotes: String,
     lienStatus: {
       type: String,
-      enum: ['none', 'payoff_requested', 'payoff_received', 'lien_release_pending', 'lien_released', 'other'],
+      enum: ['none', 'lien_on_title', 'payoff_requested', 'payoff_received', 'lien_release_pending', 'lien_released', 'other'],
       default: 'none'
     },
     lienEta: Date

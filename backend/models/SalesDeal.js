@@ -78,7 +78,6 @@ const salesDealSchema = new mongoose.Schema({
     enum: [
       'contract-received',
       'title-processing',
-      'payment-approved',
       'funds-disbursed',
       'title-received',
       'deal-complete'

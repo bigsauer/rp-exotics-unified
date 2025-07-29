@@ -354,10 +354,12 @@ router.put('/deals/:id/stage', async (req, res) => {
   console.log('[DEBUG][UpdateStatus] Request params:', req.params);
   try {
     const { id } = req.params;
-    const { stage, notes } = req.body;
+    const { stage, notes, lienStatus, lienEta } = req.body;
 
     console.log('[DEBUG][UpdateStatus] Stage from body:', stage);
     console.log('[DEBUG][UpdateStatus] Notes from body:', notes);
+    console.log('[DEBUG][UpdateStatus] Lien status from body:', lienStatus);
+    console.log('[DEBUG][UpdateStatus] Lien ETA from body:', lienEta);
 
     if (!stage) {
       console.log('[DEBUG][UpdateStatus] Stage is missing from request body');
@@ -368,7 +370,6 @@ router.put('/deals/:id/stage', async (req, res) => {
       // Wholesale stages
       'contract-received',
       'title-processing',
-      'payment-approved',
       'funds-disbursed',
       'title-received',
       'deal-complete',
@@ -398,6 +399,28 @@ router.put('/deals/:id/stage', async (req, res) => {
 
     const previousStage = deal.currentStage;
     deal.currentStage = stage;
+
+    // Update lien status if provided for title-processing stage
+    if (stage === 'title-processing' && (lienStatus || lienEta)) {
+      if (!deal.titleInfo) {
+        deal.titleInfo = {};
+      }
+      if (lienStatus) {
+        deal.titleInfo.lienStatus = lienStatus;
+      }
+      if (lienEta) {
+        deal.titleInfo.lienEta = new Date(lienEta);
+      }
+      
+      // Add lien status to activity log
+      deal.activityLog.push({
+        action: 'lien_status_updated',
+        timestamp: new Date(),
+        userId: req.user?.id || null,
+        description: `Lien status updated to ${lienStatus}${lienEta ? ` with ETA: ${lienEta}` : ''}`,
+        metadata: { lienStatus, lienEta }
+      });
+    }
 
     // Add to workflow history
     deal.workflowHistory.push({
