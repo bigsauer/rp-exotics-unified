@@ -346,6 +346,8 @@ router.post('/generate/:dealId', auth, async (req, res) => {
         
         console.log(`[DOC GEN] 🔧 Corrected seller data:`, correctedSellerData);
         console.log(`[DOC GEN] 🔧 Corrected buyer data:`, correctedBuyerData);
+        console.log(`[DOC GEN] 🔧 Corrected buyer data.name:`, correctedBuyerData.name);
+        console.log(`[DOC GEN] 🔧 Corrected buyer data.type:`, correctedBuyerData.type);
         
         // Prepare document generation tasks
         const buyerDocumentData = {
@@ -436,6 +438,8 @@ router.post('/generate/:dealId', auth, async (req, res) => {
           } else {
             console.log('[DOC GEN] 🎯 Using actual buyer data:', correctedBuyerData.name);
           }
+          
+          console.log('[DOC GEN] 🚀 About to call generateDocument for buyer document with finalBuyerData:', JSON.stringify(finalBuyerData, null, 2));
           
           const [sellerResult, buyerResult] = await Promise.all([
             documentGenerator.generateDocument({
