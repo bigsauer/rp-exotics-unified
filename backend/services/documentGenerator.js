@@ -586,6 +586,14 @@ class DocumentGenerator {
       console.log('[PDF GEN] [DEBUG] Wholesale Flip mapping applied:');
       console.log('[PDF GEN] [DEBUG] - Seller:', mappedSeller.name);
       console.log('[PDF GEN] [DEBUG] - Buyer (purchasing dealer):', mappedBuyer.name);
+      console.log('[PDF GEN] [DEBUG] Final mappedBuyer for vehicle record:', {
+        name: mappedBuyer.name,
+        email: mappedBuyer.email,
+        phone: mappedBuyer.phone,
+        address: mappedBuyer.address,
+        licenseNumber: mappedBuyer.licenseNumber,
+        type: mappedBuyer.type
+      });
     }
     // Declare sellerInfo and buyerInfo as let so they can be reassigned if needed
     let sellerInfo = {
@@ -2082,6 +2090,13 @@ class DocumentGenerator {
     console.log('[PDF GEN] [BOS DEBUG] Purchasing dealer licenseNumber sources:', {
       direct: buyer.licenseNumber,
       contact: buyerContact.licenseNumber
+    });
+    console.log('[PDF GEN] [BOS DEBUG] Final purchasing dealer for template:', {
+      name: purchasingDealer.name,
+      email: purchasingDealer.email,
+      phone: purchasingDealer.phone,
+      address: purchasingDealer.address,
+      licenseNumber: purchasingDealer.licenseNumber
     });
     // Extract vehicle info
     const vehicle = dealData;
