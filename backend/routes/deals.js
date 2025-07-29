@@ -460,6 +460,14 @@ router.post('/', authenticateToken, async (req, res) => {
     }
     // Debug log for final buyer.type
     console.log('[DEAL CREATION] Final buyer.type:', buyer && buyer.type);
+    console.log('[DEAL CREATION] Final buyer data:', buyer ? {
+      name: buyer.name,
+      type: buyer.type,
+      email: buyer.email,
+      phone: buyer.phone,
+      licenseNumber: buyer.licenseNumber,
+      dealerId: buyer.dealerId
+    } : 'No buyer data');
 
     // Assign updated seller and buyer back to dealData before any further use
     dealData.seller = seller;
@@ -568,6 +576,21 @@ router.post('/', authenticateToken, async (req, res) => {
           email: seller.email || ''
         }
       },
+      buyer: buyer ? {
+        name: buyer.name || '',
+        type: buyer.type || 'dealer',
+        email: buyer.email || '',
+        phone: buyer.phone || '',
+        company: buyer.company || '',
+        contact: {
+          address: buyer.contact?.address || buyer.address || '',
+          phone: buyer.phone || '',
+          email: buyer.email || ''
+        },
+        licenseNumber: buyer.licenseNumber || '',
+        tier: buyer.tier || 'Tier 1',
+        dealerId: buyer.dealerId || null
+      } : null,
       dealType: dealData.dealType || 'wholesale',
       fundingSource: dealData.fundingSource,
       paymentMethod: dealData.paymentMethod,
