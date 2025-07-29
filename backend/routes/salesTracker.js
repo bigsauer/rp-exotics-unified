@@ -102,29 +102,24 @@ const VALID_STAGES = [
 // Get deals for sales dashboard with filtering
 router.get('/deals', authenticateToken, async (req, res) => {
   try {
-    const { 
-      search, 
-      stage, 
-      priority, 
-      status,
-      salesPerson,
-      dateFrom, 
-      dateTo,
-      page = 1, 
-      limit = 10 
-    } = req.query;
+    console.log('[SALES] Fetching deals for user:', req.user.id, 'role:', req.user.role);
+    
+    // Simple query to get all deals first (for debugging)
+    let query = {};
+    
+    // Filter by sales person (if not admin/manager, only show their deals)
+    if (req.user.role === 'sales' && !req.user.permissions?.viewAllDeals) {
+      query['salesPerson.id'] = req.user._id;
+      console.log('[SALES] Filtering by sales person:', req.user._id);
+    }
 
-    const filters = {
-      search, stage, priority, status, salesPerson, dateFrom, dateTo
-    };
-
-    const query = SalesDeal.getDealsWithFilters(filters, req.user);
+    console.log('[SALES] Final query:', JSON.stringify(query));
 
     const deals = await SalesDeal.find(query)
       .populate('salesPerson.id', 'name email')
-      .sort({ updatedAt: -1 })
-      .limit(limit * 1)
-      .skip((page - 1) * limit);
+      .sort({ updatedAt: -1 });
+
+    console.log('[SALES] Found deals:', deals.length);
 
     // Calculate metrics for each deal
     const dealsWithMetrics = deals.map(deal => ({
@@ -137,16 +132,18 @@ router.get('/deals', authenticateToken, async (req, res) => {
       }
     }));
 
-    const total = await SalesDeal.countDocuments(query);
+    const total = deals.length;
+
+    console.log('[SALES] Returning deals:', total);
 
     res.json({
       deals: dealsWithMetrics,
-      totalPages: Math.ceil(total / limit),
-      currentPage: parseInt(page),
+      totalPages: 1,
+      currentPage: 1,
       total
     });
   } catch (error) {
-    console.error('Error getting deals:', error);
+    console.error('[SALES] Error getting deals:', error);
     res.status(500).json({ error: error.message });
   }
 });
