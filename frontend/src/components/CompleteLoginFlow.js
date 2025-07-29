@@ -178,7 +178,10 @@ const CompleteLoginFlow = () => {
         });
         if (response.ok) {
           const result = await response.json();
-          login(result.user || result);
+          // Only login if we don't already have a token
+          if (!localStorage.getItem('token')) {
+            login(result.user || result);
+          }
           setCurrentScreen('dashboard');
         }
       } catch (err) {
@@ -216,7 +219,8 @@ const CompleteLoginFlow = () => {
       }
       
       const result = await response.json();
-      login(result.user || result, result.token);
+      console.log('[DEBUG][CompleteLoginFlow] Login response:', result);
+      login(result.user, result.token);
       setCurrentScreen('transition');
     } catch (err) {
       setError(err.message === 'Invalid credentials' ? 'Email or password is incorrect' : err.message);

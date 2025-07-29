@@ -15,7 +15,7 @@ const FinanceDealDetails = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [editData, setEditData] = useState({});
   const [saving, setSaving] = useState(false);
-  const [regenerateDocuments, setRegenerateDocuments] = useState(false);
+
 
   const API_BASE = process.env.REACT_APP_API_URL;
 
@@ -93,38 +93,7 @@ const FinanceDealDetails = () => {
     console.log('[FinanceDealDetails] documents state changed:', documents);
   }, [documents]);
 
-  const handleGenerateDocuments = async () => {
-    try {
-      setSaving(true);
-      
-      console.log('[FinanceDealDetails] Generating documents for deal:', dealId);
-      
-      const headers = { ...getAuthHeaders(), 'Content-Type': 'application/json' };
-      const response = await fetch(`${API_BASE}/api/documents/generate/${dealId}`, {
-        method: 'POST',
-        headers
-      });
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to generate documents');
-      }
-      
-      const result = await response.json();
-      console.log('[FinanceDealDetails] Document generation result:', result);
-      
-      toast.success('Documents generated successfully!');
-      
-      // Refresh the page to show the new documents
-      window.location.reload();
-      
-    } catch (error) {
-      console.error('[FinanceDealDetails] Error generating documents:', error);
-      toast.error(error.message || 'Failed to generate documents');
-    } finally {
-      setSaving(false);
-    }
-  };
+
 
   const handleEditToggle = () => {
     if (!isEditing) {
@@ -177,8 +146,7 @@ const FinanceDealDetails = () => {
         credentials: 'include',
         headers,
         body: JSON.stringify({
-          ...editData,
-          regenerateDocuments
+          ...editData
         })
       });
 
@@ -223,7 +191,6 @@ const FinanceDealDetails = () => {
       }
 
       setIsEditing(false);
-      setRegenerateDocuments(false);
       
       // Show toast notification after closing the edit form
       toast.success('Deal updated successfully!', { position: 'bottom-right' });
@@ -655,23 +622,7 @@ const FinanceDealDetails = () => {
           </div>
         </div>
 
-        {/* Regenerate Documents Option */}
-        <div className="mt-6 p-4 bg-blue-500/10 border border-blue-500/20 rounded-lg">
-          <label className="flex items-center space-x-3 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={regenerateDocuments}
-              onChange={(e) => setRegenerateDocuments(e.target.checked)}
-              className="w-4 h-4 text-blue-600 bg-white/10 border-white/20 rounded focus:ring-blue-500"
-            />
-            <span className="text-white font-medium">
-              Regenerate documents with updated information
-            </span>
-          </label>
-          <p className="text-gray-300 text-sm mt-2">
-            Check this box to regenerate all documents (purchase agreements, bills of sale, etc.) with the updated information.
-          </p>
-        </div>
+
 
         {/* Action Buttons */}
         <div className="flex space-x-4 mt-6">
@@ -731,13 +682,6 @@ const FinanceDealDetails = () => {
         <div className="flex justify-between items-center mb-8">
           <h1 className="text-3xl font-bold text-white">Deal Documents</h1>
           <div className="flex gap-3">
-            <button
-              onClick={handleGenerateDocuments}
-              disabled={saving}
-              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {saving ? 'Generating...' : 'Generate Documents'}
-            </button>
             <button
               onClick={handleEditToggle}
               className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"

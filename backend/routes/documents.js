@@ -185,6 +185,55 @@ router.post('/generate/:dealId', auth, async (req, res) => {
     if (dealData.buyer && dealData.buyer.dealerId) {
       dealData.buyerFromDB = await Dealer.findById(dealData.buyer.dealerId);
     }
+    
+    // For wholesale flip deals, ensure buyer data is properly populated from dealer database
+    if (dealData.dealType === 'wholesale-flip' && dealData.buyer && dealData.buyer.type === 'dealer') {
+      console.log('[DOC GEN] 🎯 Wholesale flip deal detected - ensuring buyer dealer data is populated');
+      
+      // If buyer has dealerId but no name, populate from dealer database
+      if (dealData.buyer.dealerId && (!dealData.buyer.name || dealData.buyer.name === 'N/A')) {
+        const buyerDealer = await Dealer.findById(dealData.buyer.dealerId);
+        if (buyerDealer) {
+          console.log('[DOC GEN] 🎯 Found buyer dealer in database:', buyerDealer.name);
+          dealData.buyer = {
+            ...dealData.buyer,
+            name: buyerDealer.name,
+            contact: {
+              address: buyerDealer.contact?.address || {},
+              phone: buyerDealer.contact?.phone || 'N/A',
+              email: buyerDealer.contact?.email || 'N/A'
+            },
+            licenseNumber: buyerDealer.licenseNumber || '',
+            tier: buyerDealer.tier || 'Tier 1'
+          };
+          dealData.buyerFromDB = buyerDealer;
+        } else {
+          console.log('[DOC GEN] 🎯 Buyer dealer not found in database, using existing data');
+        }
+      }
+      
+      // If buyer has name but no dealerId, try to find dealer by name
+      if (dealData.buyer.name && dealData.buyer.name !== 'N/A' && !dealData.buyer.dealerId) {
+        const buyerDealer = await Dealer.findOne({ name: { $regex: new RegExp('^' + dealData.buyer.name + '$', 'i') } });
+        if (buyerDealer) {
+          console.log('[DOC GEN] 🎯 Found buyer dealer by name:', buyerDealer.name);
+          dealData.buyer = {
+            ...dealData.buyer,
+            dealerId: buyerDealer._id,
+            contact: {
+              address: buyerDealer.contact?.address || {},
+              phone: buyerDealer.contact?.phone || 'N/A',
+              email: buyerDealer.contact?.email || 'N/A'
+            },
+            licenseNumber: buyerDealer.licenseNumber || '',
+            tier: buyerDealer.tier || 'Tier 1'
+          };
+          dealData.buyerFromDB = buyerDealer;
+        }
+      }
+      
+      console.log('[DOC GEN] 🎯 Final buyer data after dealer lookup:', JSON.stringify(dealData.buyer, null, 2));
+    }
 
     console.log(`[DOC GEN] Prepared dealData:`, dealData);
     console.log(`[DOC GEN] Vehicle fields:`, {
@@ -234,6 +283,24 @@ router.post('/generate/:dealId', auth, async (req, res) => {
           }
         };
         
+        // If seller is a dealer and has incomplete data, try to populate from dealer database
+        if (sellerType === 'dealer' && dealData.seller && (!dealData.seller.name || dealData.seller.name === 'N/A')) {
+          if (dealData.seller.dealerId) {
+            const sellerDealer = await Dealer.findById(dealData.seller.dealerId);
+            if (sellerDealer) {
+              console.log('[DOC GEN] 🎯 Found seller dealer in database:', sellerDealer.name);
+              correctedSellerData.name = sellerDealer.name;
+              correctedSellerData.contact = {
+                address: sellerDealer.contact?.address || {},
+                phone: sellerDealer.contact?.phone || 'N/A',
+                email: sellerDealer.contact?.email || 'N/A'
+              };
+              correctedSellerData.licenseNumber = sellerDealer.licenseNumber || '';
+              correctedSellerData.tier = sellerDealer.tier || 'Tier 1';
+            }
+          }
+        }
+        
         // Fix buyer data - ensure it has all required fields from req.body if present
         const parseAddress = (addr) => {
           if (!addr) return {};
@@ -258,6 +325,24 @@ router.post('/generate/:dealId', auth, async (req, res) => {
             email: req.body.buyerEmail || dealData.buyer?.contact?.email || 'N/A'
           }
         };
+        
+        // If buyer is a dealer and has incomplete data, try to populate from dealer database
+        if (correctedBuyerData.type === 'dealer' && (!correctedBuyerData.name || correctedBuyerData.name === 'N/A')) {
+          if (dealData.buyer.dealerId) {
+            const buyerDealer = await Dealer.findById(dealData.buyer.dealerId);
+            if (buyerDealer) {
+              console.log('[DOC GEN] 🎯 Found buyer dealer in database for correction:', buyerDealer.name);
+              correctedBuyerData.name = buyerDealer.name;
+              correctedBuyerData.contact = {
+                address: buyerDealer.contact?.address || {},
+                phone: buyerDealer.contact?.phone || 'N/A',
+                email: buyerDealer.contact?.email || 'N/A'
+              };
+              correctedBuyerData.licenseNumber = buyerDealer.licenseNumber || '';
+              correctedBuyerData.tier = buyerDealer.tier || 'Tier 1';
+            }
+          }
+        }
         
         console.log(`[DOC GEN] 🔧 Corrected seller data:`, correctedSellerData);
         console.log(`[DOC GEN] 🔧 Corrected buyer data:`, correctedBuyerData);

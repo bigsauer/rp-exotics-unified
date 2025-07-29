@@ -27,6 +27,7 @@ export function AuthProvider({ children }) {
   };
 
   const login = (userObj, authToken) => {
+    console.log('[AUTH] Login called with:', { userObj, authToken });
     setUser(userObj);
     setToken(authToken);
     window.localStorage.setItem('user', JSON.stringify(userObj));

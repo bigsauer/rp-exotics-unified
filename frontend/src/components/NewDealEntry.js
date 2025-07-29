@@ -384,7 +384,10 @@ const NewDealEntry = ({ setDeals }) => {
         ...prev,
         dealType: processedValue,
         dealType2SubType: processedValue === 'deal-type-2' ? prev.dealType2SubType : 
-                         processedValue === 'wholesale-flip' ? 'buy-sell' : ''
+                         processedValue === 'wholesale-flip' ? 'buy-sell' : '',
+        // Set default buyer/seller types for wholesale flip deals
+        buyerType: processedValue === 'wholesale-flip' ? 'dealer' : prev.buyerType,
+        sellerType: processedValue === 'wholesale-flip' ? 'private' : prev.sellerType
       }));
       if (currentStep > 1) setCurrentStep(1);
       return;
@@ -512,8 +515,8 @@ const NewDealEntry = ({ setDeals }) => {
     const errors = {};
     let requiredFields = dealTypeFields.requiredFields || ['vin', 'dealType', 'dealType2SubType', 'year', 'make', 'model', 'sellerName'];
     
-    // Add buyer fields for buy/sell deals
-    if (formData.dealType === 'wholesale-flip' && formData.dealType2SubType === 'buy-sell') {
+    // Add buyer fields for wholesale flip deals
+    if (formData.dealType === 'wholesale-flip') {
       requiredFields = [...requiredFields, 'buyerName'];
     }
     
@@ -673,7 +676,28 @@ const NewDealEntry = ({ setDeals }) => {
       if (setDeals) {
         setDeals(deals => deals.map(d => d.id === tempId ? dealResult.deal : d));
       }
-      toast.success('Deal submitted successfully!');
+      
+      // Automatically generate documents after successful deal creation
+      try {
+        console.log('[DEAL SUBMIT] Generating documents for deal:', dealResult.deal._id);
+        const docResponse = await fetch(`${API_BASE}/api/documents/generate/${dealResult.deal._id}`, {
+          method: 'POST',
+          headers: buildHeaders(),
+          credentials: 'include'
+        });
+        
+        if (docResponse.ok) {
+          const docResult = await docResponse.json();
+          console.log('[DEAL SUBMIT] Documents generated successfully:', docResult);
+          toast.success('Deal submitted and documents generated successfully!');
+        } else {
+          console.warn('[DEAL SUBMIT] Document generation failed, but deal was created');
+          toast.success('Deal submitted successfully! (Documents will be generated later)');
+        }
+      } catch (docError) {
+        console.error('[DEAL SUBMIT] Error generating documents:', docError);
+        toast.success('Deal submitted successfully! (Documents will be generated later)');
+      }
       
       // Optionally redirect to a success page or clear form
       if (!isDraft) {
@@ -794,8 +818,8 @@ ${currentUser.name}`;
             stepDescription = 'Set pricing and financial terms';
           } else if ((stepNumber === 3 && !dealTypeFields.showFinancials && dealTypeFields.showSellerInfo) || 
                      (stepNumber === 4 && dealTypeFields.showFinancials && dealTypeFields.showSellerInfo)) {
-            stepTitle = 'Seller Information';
-            stepDescription = 'Add seller contact information';
+            stepTitle = formData.dealType === 'wholesale-flip' ? 'Buyer & Seller Information' : 'Seller Information';
+            stepDescription = formData.dealType === 'wholesale-flip' ? 'Add buyer and seller contact information' : 'Add seller contact information';
           } else if ((stepNumber === 3 && !dealTypeFields.showFinancials && !dealTypeFields.showSellerInfo && dealTypeFields.showDocumentation) ||
                      (stepNumber === 4 && dealTypeFields.showFinancials && !dealTypeFields.showSellerInfo && dealTypeFields.showDocumentation) ||
                      (stepNumber === 5 && dealTypeFields.showFinancials && dealTypeFields.showSellerInfo && dealTypeFields.showDocumentation)) {
@@ -1084,7 +1108,7 @@ ${currentUser.name}`;
       
       case 4:
         // Seller/Dealer Info step
-        if (formData.dealType === 'wholesale-flip' && formData.dealType2SubType === 'buy-sell') {
+        if (formData.dealType === 'wholesale-flip') {
           return (
             <div className="bg-white/5 rounded-xl p-6 border border-white/10 space-y-10">
               {/* Buyer Section */}
