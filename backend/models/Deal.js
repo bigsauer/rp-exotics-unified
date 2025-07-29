@@ -38,16 +38,13 @@ const dealSchema = new mongoose.Schema({
 
   // Purchase Information
   purchasePrice: {
-    type: Number,
-    required: true
+    type: Number
   },
   purchaseDate: {
-    type: Date,
-    required: true
+    type: Date
   },
   listPrice: {
-    type: Number,
-    required: true
+    type: Number
   },
   killPrice: {
     type: Number
