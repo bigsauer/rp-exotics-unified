@@ -103,7 +103,7 @@ console.log('[DEBUG][server.js] Registering /api/deals route...');
 app.use('/api/deals', require('./routes/deals'));
 app.use('/api/documents', require('./routes/documents'));
 app.use('/api/email', require('./routes/email'));
-app.use('/api/salesTracker', require('./routes/salesTracker'));
+app.use('/api/sales', require('./routes/salesTracker'));
 app.use('/api/users', require('./routes/users'));
 
 // Debug logging for all API requests
