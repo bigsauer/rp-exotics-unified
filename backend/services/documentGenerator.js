@@ -2450,9 +2450,9 @@ class DocumentGenerator {
         console.log('[PDF GEN] 🔍 Final buyer type:', buyerType);
         
         // For wholesale flip deals, generate documents based on the party types
-        if (sellerType === 'dealer') {
-          // Seller is dealer - generate wholesale purchase agreement
-          console.log('[PDF GEN] -> Using generateWholesalePPBuy for dealer seller...');
+        if (sellerType === 'dealer' && buyerType === 'private') {
+          // Seller is dealer, buyer is private - generate wholesale purchase agreement
+          console.log('[PDF GEN] -> Using generateWholesalePPBuy for dealer seller with private buyer...');
           documentResult = await this.generateWholesalePPBuy(dealData, user);
           console.log('[PDF GEN] <- generateWholesalePPBuy complete:', documentResult.filePath);
           console.log('[PDF GEN][DEBUG] Returning documentType: wholesale_purchase_agreement for dealer seller');
@@ -2460,22 +2460,42 @@ class DocumentGenerator {
             ...documentResult,
             documentType: 'wholesale_purchase_agreement'
           };
-        } else if (buyerType === 'dealer') {
-          // Buyer is dealer - generate wholesale BOS
-          console.log('[PDF GEN] -> Using generateWholesaleBOS for dealer buyer...');
-          documentResult = await this.generateWholesaleBOS(dealData, user);
-          console.log('[PDF GEN] <- generateWholesaleBOS complete:', documentResult.filePath);
-          console.log('[PDF GEN][DEBUG] Returning documentType: wholesale_bos for dealer buyer');
+        } else if (sellerType === 'private' && buyerType === 'dealer') {
+          // Seller is private, buyer is dealer - generate retail PP contract for seller
+          console.log('[PDF GEN] -> Using generateRetailPPBuy for private seller with dealer buyer...');
+          documentResult = await this.generateRetailPPBuy(dealData, user);
+          console.log('[PDF GEN] <- generateRetailPPBuy complete:', documentResult.filePath);
+          console.log('[PDF GEN][DEBUG] Returning documentType: retail_pp_buy for private seller');
           return {
             ...documentResult,
-            documentType: 'wholesale_bos'
+            documentType: 'retail_pp_buy'
           };
-        } else {
+        } else if (sellerType === 'dealer' && buyerType === 'dealer') {
+          // Both parties are dealers - generate wholesale purchase agreement
+          console.log('[PDF GEN] -> Using generateWholesalePPBuy for dealer-to-dealer...');
+          documentResult = await this.generateWholesalePPBuy(dealData, user);
+          console.log('[PDF GEN] <- generateWholesalePPBuy complete:', documentResult.filePath);
+          console.log('[PDF GEN][DEBUG] Returning documentType: wholesale_purchase_agreement for dealer-to-dealer');
+          return {
+            ...documentResult,
+            documentType: 'wholesale_purchase_agreement'
+          };
+        } else if (sellerType === 'private' && buyerType === 'private') {
           // Both parties are private - generate retail private party purchase agreement
           console.log('[PDF GEN] -> Using generateRetailPPBuy for private parties...');
           documentResult = await this.generateRetailPPBuy(dealData, user);
           console.log('[PDF GEN] <- generateRetailPPBuy complete:', documentResult.filePath);
           console.log('[PDF GEN][DEBUG] Returning documentType: retail_pp_buy for private parties');
+          return {
+            ...documentResult,
+            documentType: 'retail_pp_buy'
+          };
+        } else {
+          // Fallback for any other combination
+          console.log('[PDF GEN] -> Using generateRetailPPBuy as fallback for wholesale flip...');
+          documentResult = await this.generateRetailPPBuy(dealData, user);
+          console.log('[PDF GEN] <- generateRetailPPBuy complete:', documentResult.filePath);
+          console.log('[PDF GEN][DEBUG] Returning documentType: retail_pp_buy as fallback');
           return {
             ...documentResult,
             documentType: 'retail_pp_buy'
