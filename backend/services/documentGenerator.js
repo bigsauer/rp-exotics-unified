@@ -539,18 +539,38 @@ class DocumentGenerator {
       console.log('[PDF GEN] [DEBUG] Wholesale Flip deal detected in vehicle record generation');
       console.log('[PDF GEN] [DEBUG] Original buyer data:', JSON.stringify(buyer, null, 2));
       
-      // If buyer data is incomplete, use RP Exotics as the purchasing dealer
+      // If buyer data is incomplete, try to get buyer info from buyerFromDB
       if (!buyer.name || !buyer.contact) {
-        console.log('[PDF GEN] [DEBUG] Incomplete buyer data detected, using RP Exotics as purchasing dealer');
-        mappedBuyer = {
-          name: 'RP Exotics',
-          email: 'titling@rpexotics.com',
-          phone: '(314) 970-2427',
-          address: '1155 N Warson Rd, Saint Louis, MO 63132',
-          licenseNumber: 'D4865',
-          tier: 'Tier 1',
-          type: 'dealer'
-        };
+        console.log('[PDF GEN] [DEBUG] Incomplete buyer data detected, checking for buyerFromDB...');
+        
+        // Try to get buyer info from buyerFromDB if available
+        if (dealData.buyerFromDB && dealData.buyerFromDB.name) {
+          console.log('[PDF GEN] [DEBUG] Using buyerFromDB data:', dealData.buyerFromDB.name);
+          mappedBuyer = {
+            name: dealData.buyerFromDB.name,
+            email: dealData.buyerFromDB.email || 'N/A',
+            phone: dealData.buyerFromDB.phone || 'N/A',
+            address: dealData.buyerFromDB.address ? 
+              (typeof dealData.buyerFromDB.address === 'string' ? 
+                dealData.buyerFromDB.address : 
+                `${dealData.buyerFromDB.address.street || ''}, ${dealData.buyerFromDB.address.city || ''}, ${dealData.buyerFromDB.address.state || ''} ${dealData.buyerFromDB.address.zip || ''}`.trim().replace(/^,\s*/, '').replace(/,\s*$/, '')
+              ) : 'N/A',
+            licenseNumber: dealData.buyerFromDB.licenseNumber || 'N/A',
+            tier: dealData.buyerFromDB.tier || 'Tier 1',
+            type: dealData.buyerFromDB.type || 'dealer'
+          };
+        } else {
+          console.log('[PDF GEN] [DEBUG] No buyerFromDB available, using RP Exotics as purchasing dealer');
+          mappedBuyer = {
+            name: 'RP Exotics',
+            email: 'titling@rpexotics.com',
+            phone: '(314) 970-2427',
+            address: '1155 N Warson Rd, Saint Louis, MO 63132',
+            licenseNumber: 'D4865',
+            tier: 'Tier 1',
+            type: 'dealer'
+          };
+        }
       } else {
         // Use the buyer data as is
         mappedBuyer = buyer;
@@ -1980,23 +2000,41 @@ class DocumentGenerator {
       
       // Handle incomplete buyer data for wholesale-flip deals
       if (dealData.dealType === 'wholesale-flip' && (!buyer.name || !buyer.contact)) {
-        console.log('[PDF GEN] [BOS DEBUG] Incomplete buyer data detected, using default RP Exotics as purchasing dealer');
-        buyer = {
-          name: 'RP Exotics',
-          type: 'dealer',
-          licenseNumber: 'D4865',
-          tier: 'Tier 1',
-          contact: {
-            address: {
-              street: '1155 N Warson Rd',
-              city: 'Saint Louis',
-              state: 'MO',
-              zip: '63132'
-            },
-            phone: '(314) 970-2427',
-            email: 'titling@rpexotics.com'
-          }
-        };
+        console.log('[PDF GEN] [BOS DEBUG] Incomplete buyer data detected, checking for buyerFromDB...');
+        
+        // Try to get buyer info from buyerFromDB if available
+        if (dealData.buyerFromDB && dealData.buyerFromDB.name) {
+          console.log('[PDF GEN] [BOS DEBUG] Using buyerFromDB data:', dealData.buyerFromDB.name);
+          buyer = {
+            name: dealData.buyerFromDB.name,
+            type: dealData.buyerFromDB.type || 'dealer',
+            licenseNumber: dealData.buyerFromDB.licenseNumber || 'N/A',
+            tier: dealData.buyerFromDB.tier || 'Tier 1',
+            contact: {
+              address: dealData.buyerFromDB.address || {},
+              phone: dealData.buyerFromDB.phone || 'N/A',
+              email: dealData.buyerFromDB.email || 'N/A'
+            }
+          };
+        } else {
+          console.log('[PDF GEN] [BOS DEBUG] No buyerFromDB available, using default RP Exotics as purchasing dealer');
+          buyer = {
+            name: 'RP Exotics',
+            type: 'dealer',
+            licenseNumber: 'D4865',
+            tier: 'Tier 1',
+            contact: {
+              address: {
+                street: '1155 N Warson Rd',
+                city: 'Saint Louis',
+                state: 'MO',
+                zip: '63132'
+              },
+              phone: '(314) 970-2427',
+              email: 'titling@rpexotics.com'
+            }
+          };
+        }
         buyerContact = buyer.contact || {};
       }
       
@@ -2011,9 +2049,16 @@ class DocumentGenerator {
     console.log('[PDF GEN] [BOS DEBUG] buyerContact:', JSON.stringify(buyerContact, null, 2));
     // ... existing code ...
     // Robust fallback for all fields
+    let address = '';
+    if (buyerContact.address && typeof buyerContact.address === 'object') {
+      address = [buyerContact.address.street, buyerContact.address.city, buyerContact.address.state, buyerContact.address.zip].filter(Boolean).join(', ');
+    } else {
+      address = buyerContact.address || buyer.address || '';
+    }
+    
     const purchasingDealer = {
       name: buyer.name || buyerContact.name || '',
-      address: (buyerContact.address && Object.values(buyerContact.address).filter(Boolean).join(', ')) || buyer.address || '',
+      address: address,
       phone: buyerContact.phone || buyer.phone || '',
       email: buyerContact.email || buyer.email || '',
       licenseNumber: buyer.licenseNumber || buyerContact.licenseNumber || ''
