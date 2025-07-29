@@ -196,11 +196,8 @@ const NewDealEntry = ({ setDeals }) => {
   // Remove Deal Type 2 from main dealTypes
   const dealTypes = [
     { value: 'wholesale-d2d', label: 'Wholesale - D2D' },
-    { value: 'wholesale-private', label: 'Wholesale - Private Party' },
     { value: 'wholesale-flip', label: 'Wholesale - Flip' },
     { value: 'retail-pp', label: 'Retail - PP' },
-    { value: 'retail-auction', label: 'Retail - Auction' },
-    { value: 'retail-dtod', label: 'Retail - DtoD' },
     { value: 'auction', label: 'Auction' }
   ];
 
@@ -249,13 +246,13 @@ const NewDealEntry = ({ setDeals }) => {
     const dealType = formData.dealType;
     return {
       showFinancials: [
-        'wholesale-d2d', 'wholesale-private', 'wholesale-flip',
-        'retail-pp', 'retail-auction', 'retail-dtod', 'auction'
+        'wholesale-d2d', 'wholesale-flip',
+        'retail-pp', 'auction'
       ].includes(dealType),
       showSellerInfo: true,
       showDocumentation: [
-        'wholesale-d2d', 'wholesale-private', 'wholesale-flip',
-        'retail-pp', 'retail-auction', 'retail-dtod', 'auction'
+        'wholesale-d2d', 'wholesale-flip',
+        'retail-pp', 'auction'
       ].includes(dealType),
       requiredFields: ['vin', 'dealType', 'dealType2SubType', 'year', 'make', 'model', 'sellerName']
     };
