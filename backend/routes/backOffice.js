@@ -452,7 +452,8 @@ router.put('/deals/:id/stage', async (req, res) => {
       console.log(`[BACKOFFICE] Auto-synced deal ${deal._id} to sales system after stage update`);
     } catch (syncError) {
       console.error(`[BACKOFFICE] Error auto-syncing deal ${deal._id} to sales system:`, syncError);
-      // Don't fail the request if sync fails
+      // Don't fail the request if sync fails - just log the error
+      // The main deal update was successful, so we should still return success
     }
 
     res.json({ 
@@ -461,8 +462,9 @@ router.put('/deals/:id/stage', async (req, res) => {
       data: deal 
     });
   } catch (error) {
-    console.error('Error updating deal stage:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    console.error('[DEBUG][UpdateStatus] Error updating deal stage:', error);
+    console.error('[DEBUG][UpdateStatus] Error stack:', error.stack);
+    res.status(500).json({ error: 'Internal server error', details: error.message });
   }
 });
 

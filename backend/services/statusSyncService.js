@@ -4,8 +4,8 @@ const SalesDeal = require('../models/SalesDeal');
 // Unified status titles
 const STATUS_TITLES = [
   'contract-received',
+  'docs-signed',
   'title-processing',
-  'payment-approved',
   'funds-disbursed',
   'title-received',
   'deal-complete'
