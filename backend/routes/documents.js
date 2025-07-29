@@ -404,6 +404,28 @@ router.post('/generate/:dealId', auth, async (req, res) => {
           console.log(`[DOC GEN] 🎯 Seller is DEALER - generating wholesale documents`);
           
           // For dealer seller: generate wholesale purchase agreement and wholesale BOS
+          // But first, ensure buyer data is complete
+          let finalBuyerData = correctedBuyerData;
+          if (correctedBuyerData.type === 'dealer' && (!correctedBuyerData.name || correctedBuyerData.name === 'N/A')) {
+            console.log('[DOC GEN] 🎯 Buyer data incomplete, using RP Exotics as fallback');
+            finalBuyerData = {
+              name: 'RP Exotics',
+              type: 'dealer',
+              contact: {
+                address: {
+                  street: '1155 N Warson Rd',
+                  city: 'Saint Louis',
+                  state: 'MO',
+                  zip: '63132'
+                },
+                phone: '(314) 970-2427',
+                email: 'titling@rpexotics.com'
+              },
+              licenseNumber: 'D4865',
+              tier: 'Tier 1'
+            };
+          }
+          
           const [sellerResult, buyerResult] = await Promise.all([
             documentGenerator.generateDocument({
               ...sellerDocumentData,
@@ -415,7 +437,7 @@ router.post('/generate/:dealId', auth, async (req, res) => {
               sellerType: 'private',
               buyerType: 'dealer',
               // Ensure the purchasing dealer (buyer) info is properly set for wholesale BOS
-              buyer: correctedBuyerData,
+              buyer: finalBuyerData,
               seller: correctedSellerData
             }, user)
           ]);
@@ -439,16 +461,40 @@ router.post('/generate/:dealId', auth, async (req, res) => {
           console.log(`[DOC GEN] 🎯 Seller is PRIVATE PARTY - generating retail documents`);
           
           // For private party seller: generate retail private party purchase agreements
+          // But first, ensure buyer data is complete
+          let finalBuyerData = correctedBuyerData;
+          if (correctedBuyerData.type === 'dealer' && (!correctedBuyerData.name || correctedBuyerData.name === 'N/A')) {
+            console.log('[DOC GEN] 🎯 Buyer data incomplete, using RP Exotics as fallback');
+            finalBuyerData = {
+              name: 'RP Exotics',
+              type: 'dealer',
+              contact: {
+                address: {
+                  street: '1155 N Warson Rd',
+                  city: 'Saint Louis',
+                  state: 'MO',
+                  zip: '63132'
+                },
+                phone: '(314) 970-2427',
+                email: 'titling@rpexotics.com'
+              },
+              licenseNumber: 'D4865',
+              tier: 'Tier 1'
+            };
+          }
+          
           const [sellerResult, buyerResult] = await Promise.all([
             documentGenerator.generateDocument({
               ...sellerDocumentData,
               sellerType: 'private',
-              buyerType: 'dealer'
+              buyerType: 'dealer',
+              buyer: finalBuyerData
             }, user),
             documentGenerator.generateDocument({
               ...buyerDocumentData,
               sellerType: 'dealer',
-              buyerType: 'private'
+              buyerType: 'private',
+              seller: finalBuyerData
             }, user)
           ]);
           
