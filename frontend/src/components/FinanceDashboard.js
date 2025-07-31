@@ -19,6 +19,7 @@ const FinanceDashboard = () => {
     search: ''
   });
   const [submittedDeals, setSubmittedDeals] = useState([]);
+  const [recentActivity, setRecentActivity] = useState([]);
 
   useEffect(() => {
     let isMounted = true;
@@ -65,11 +66,43 @@ const FinanceDashboard = () => {
         .then(data => {
           if (isMounted) setSubmittedDeals(data.deals || data.data || []);
         })
-        .catch(() => { if (isMounted) setSubmittedDeals([]); })
+        .catch(() => { if (isMounted) setSubmittedDeals([]); }),
+      fetch(`${API_BASE}/api/stats/overview`, {
+        credentials: 'include',
+        headers: getAuthHeaders()
+      })
+        .then(res => res.json())
+        .then(statsData => {
+          if (isMounted && statsData.success) {
+            setRecentActivity(statsData.data.recentActivity || []);
+          }
+        })
+        .catch(err => { console.error('[DEBUG][FinanceDashboard] Error fetching recent activity:', err); })
     ]).finally(() => {
       if (isMounted) setLoading(false);
     });
     return () => { isMounted = false; };
+  }, [getAuthHeaders]);
+
+  // Auto-refresh recent activity every 30 seconds
+  useEffect(() => {
+    const interval = setInterval(async () => {
+      try {
+        const API_BASE = process.env.REACT_APP_API_URL;
+        const response = await fetch(`${API_BASE}/api/stats/overview`, {
+          credentials: 'include',
+          headers: getAuthHeaders()
+        });
+        const statsData = await response.json();
+        if (statsData.success) {
+          setRecentActivity(statsData.data.recentActivity || []);
+        }
+      } catch (error) {
+        console.error('[DEBUG][FinanceDashboard] Error refreshing recent activity:', error);
+      }
+    }, 30000); // Refresh every 30 seconds
+
+    return () => clearInterval(interval);
   }, [getAuthHeaders]);
 
   const fetchData = async () => {
@@ -340,11 +373,13 @@ const FinanceDashboard = () => {
               value={filters.status}
               onChange={e => setFilters(f => ({ ...f, status: e.target.value }))}
             >
-              <option value="">All</option>
+              <option value="">All Statuses</option>
+              <option value="draft">Draft</option>
+              <option value="sent_to_finance">Sent to Finance</option>
               <option value="approved">Approved</option>
               <option value="rejected">Rejected</option>
-              <option value="sent_to_finance">Sent to Finance</option>
-              <option value="draft">Draft</option>
+              <option value="pending">Pending</option>
+              <option value="completed">Completed</option>
             </select>
           </div>
           <div>
@@ -354,10 +389,16 @@ const FinanceDashboard = () => {
               value={filters.dealType}
               onChange={e => setFilters(f => ({ ...f, dealType: e.target.value }))}
             >
-              <option value="">All</option>
+              <option value="">All Deal Types</option>
               <option value="retail">Retail</option>
               <option value="wholesale">Wholesale</option>
+              <option value="wholesale-d2d">Wholesale D2D</option>
+              <option value="wholesale-pp">Wholesale PP</option>
+              <option value="wholesale-flip">Wholesale Flip</option>
+              <option value="retail-pp">Retail PP</option>
+              <option value="retail-d2d">Retail D2D</option>
               <option value="consignment">Consignment</option>
+              <option value="auction">Auction</option>
             </select>
           </div>
           <div className="flex-1">
@@ -372,61 +413,125 @@ const FinanceDashboard = () => {
           </div>
         </div>
       </div>
+
+      {/* Recent Activity Section */}
+      <div className="mb-8">
+        <h2 className="text-2xl font-bold text-white mb-4">Recent Activity</h2>
+        <div className="bg-white/5 backdrop-blur-lg rounded-2xl border border-white/10 overflow-hidden">
+          <div className="p-6">
+            {recentActivity.length === 0 ? (
+              <div className="text-gray-400">No recent activity found.</div>
+            ) : (
+              <div className="space-y-4">
+                {recentActivity.slice(0, 5).map((activity, index) => (
+                  <div key={index} className="flex items-center space-x-4 p-4 bg-white/5 rounded-lg">
+                    <div className="bg-blue-500/20 rounded-full p-2">
+                      <Car className="h-4 w-4 text-blue-400" />
+                    </div>
+                    <div className="flex-1">
+                      <div className="text-sm font-medium text-white">
+                        {activity.vehicle} ({activity.dealType})
+                      </div>
+                      <div className="text-xs text-gray-400">
+                        Status: {activity.status} • {new Date(activity.date).toLocaleString()}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
       {/* Submitted Deals Section */}
       <div className="mb-12">
         <h2 className="text-2xl font-bold text-white mb-4">Submitted Deals</h2>
         {filteredSubmittedDeals.length === 0 ? (
           <div className="text-gray-400">No submitted deals found.</div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredSubmittedDeals.map(deal => (
-              <div key={deal._id || deal.id} className="bg-gradient-to-br from-white/5 to-white/10 rounded-2xl border border-white/10 p-6 hover:bg-white/10 hover:border-white/20 transition-all duration-300 cursor-pointer">
-                <div className="flex items-start justify-between mb-4">
+          <div className="bg-white/5 backdrop-blur-lg rounded-2xl border border-white/10 overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-white/5">
+                  <tr>
+                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Vehicle</th>
+                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Purchase ID</th>
+                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Stock #</th>
+                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">VIN</th>
+                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Price</th>
+                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Status</th>
+                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Assigned To</th>
+                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Created</th>
+                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-white/10">
+                              {filteredSubmittedDeals.map(deal => (
+                    <tr key={deal._id || deal.id} className="hover:bg-white/5">
+                      <td className="px-6 py-6 whitespace-nowrap">
                   <div>
-                    <h4 className="text-lg font-bold text-white mb-1">{deal.vehicle || `${deal.year} ${deal.make} ${deal.model}`}</h4>
-                    <p className="text-gray-400 text-sm">Stock #{deal.rpStockNumber || deal.stockNumber || 'N/A'}</p>
+                          <div className="text-sm font-medium text-white">
+                            {deal.vehicle || `${deal.year} ${deal.make} ${deal.model}`}
+                          </div>
+                          <div className="text-sm text-gray-400">
+                            {deal.dealType} • {deal.dealType2SubType || deal.dealType2 || 'N/A'}
+                          </div>
                   </div>
-                  <span className={`text-xs font-medium px-3 py-1 rounded-full bg-blue-500/20 text-blue-400`}>
+                      </td>
+                      <td className="px-6 py-6 whitespace-nowrap">
+                        <span className="text-sm font-medium text-blue-400">{deal.dealId || 'N/A'}</span>
+                      </td>
+                      <td className="px-6 py-6 whitespace-nowrap">
+                        <span className="text-sm text-gray-300">{deal.rpStockNumber || deal.stockNumber || 'N/A'}</span>
+                      </td>
+                      <td className="px-6 py-6 whitespace-nowrap">
+                        <span className="text-sm text-gray-300">{deal.vin || 'N/A'}</span>
+                      </td>
+                      <td className="px-6 py-6 whitespace-nowrap">
+                        <span className="text-sm font-medium text-white">${deal.purchasePrice?.toLocaleString() || 'N/A'}</span>
+                      </td>
+                      <td className="px-6 py-6 whitespace-nowrap">
+                        <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full bg-blue-500/20 text-blue-400`}>
                     {deal.currentStage || 'Unknown'}
                   </span>
-                </div>
-                <div className="space-y-3 mb-4">
-                  <div className="flex items-center justify-between">
-                    <span className="text-gray-400 text-sm">Price:</span>
-                    <span className="text-white font-semibold">${deal.purchasePrice?.toLocaleString() || 'N/A'}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-gray-400 text-sm">Assigned:</span>
-                    <span className="text-white">{deal.assignedTo?.profile?.displayName || deal.assignedTo || 'Unassigned'}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-gray-400 text-sm">Created:</span>
-                    <span className="text-white">{deal.createdAt ? new Date(deal.createdAt).toLocaleDateString() : 'N/A'}</span>
-                  </div>
-                </div>
-                <div className="flex space-x-2">
+                      </td>
+                      <td className="px-6 py-6 whitespace-nowrap">
+                        <span className="text-sm text-gray-300">{deal.assignedTo?.profile?.displayName || deal.assignedTo || 'Unassigned'}</span>
+                      </td>
+                      <td className="px-6 py-6 whitespace-nowrap">
+                        <span className="text-sm text-gray-300">{deal.createdAt ? new Date(deal.createdAt).toLocaleDateString() : 'N/A'}</span>
+                      </td>
+                      <td className="px-6 py-6 whitespace-nowrap">
+                <div className="flex space-x-3">
                   <button
-                    className="flex-1 bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 text-sm font-medium py-2 px-3 rounded-lg transition-all duration-300"
                     onClick={() => navigate(`/finance/deals/${deal._id || deal.id}`)}
+                            className="text-blue-400 hover:text-blue-300 p-2 rounded-lg hover:bg-blue-500/10 transition-colors"
+                            title="View Details"
                   >
-                    View Details
+                            <Eye className="h-5 w-5" />
                   </button>
                   <button 
-                    className="flex-1 bg-green-500/20 text-green-400 hover:bg-green-500/30 text-sm font-medium py-2 px-3 rounded-lg transition-all duration-300"
                     onClick={() => navigate(`/finance/deals/${deal._id || deal.id}/update-status`)}
+                            className="text-green-400 hover:text-green-300 p-2 rounded-lg hover:bg-green-500/10 transition-colors"
+                            title="Update Status"
                   >
-                    Update Status
+                            <CheckCircle className="h-5 w-5" />
                   </button>
                   <button 
-                    className="bg-red-500/20 text-red-400 hover:bg-red-500/30 text-sm font-medium py-2 px-3 rounded-lg transition-all duration-300"
                     onClick={() => deleteDeal(deal._id || deal.id)}
+                            className="text-red-400 hover:text-red-300 p-2 rounded-lg hover:bg-red-500/10 transition-colors"
                     title="Delete Deal"
                   >
-                    <Trash2 className="h-4 w-4" />
+                    <Trash2 className="h-5 w-5" />
                   </button>
                 </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
               </div>
-            ))}
           </div>
         )}
       </div>
@@ -442,23 +547,23 @@ const FinanceDashboard = () => {
           <table className="w-full">
             <thead className="bg-white/5">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Record ID</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Vehicle</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">VIN</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Deal Type</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Documents</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Status</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Created</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Actions</th>
+                <th className="px-6 py-4 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Record ID</th>
+                <th className="px-6 py-4 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Vehicle</th>
+                <th className="px-6 py-4 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">VIN</th>
+                <th className="px-6 py-4 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Deal Type</th>
+                <th className="px-6 py-4 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Documents</th>
+                <th className="px-6 py-4 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Status</th>
+                <th className="px-6 py-4 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Created</th>
+                <th className="px-6 py-4 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-white/10">
               {filteredRecords.map((record) => (
                 <tr key={record._id} className="hover:bg-white/5">
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td className="px-6 py-6 whitespace-nowrap">
                     <span className="text-sm font-medium text-white">{record.recordId}</span>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td className="px-6 py-6 whitespace-nowrap">
                     <div>
                       <div className="text-sm font-medium text-white">
                         {record.year} {record.make} {record.model}
@@ -466,15 +571,15 @@ const FinanceDashboard = () => {
                       <div className="text-sm text-gray-400">Stock #{record.stockNumber}</div>
                     </div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td className="px-6 py-6 whitespace-nowrap">
                     <span className="text-sm text-gray-300">{record.vin}</span>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td className="px-6 py-6 whitespace-nowrap">
                     <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${getDealTypeColor(record.dealType)}`}>
                       {record.dealType}
                     </span>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td className="px-6 py-6 whitespace-nowrap">
                     <div className="space-y-1">
                       {record.generatedDocuments?.map((doc, index) => (
                         <div key={index} className="flex items-center space-x-2">
@@ -483,30 +588,30 @@ const FinanceDashboard = () => {
                           </span>
                           <button
                             onClick={() => downloadDocument(doc.fileName)}
-                            className="text-blue-400 hover:text-blue-300"
+                            className="text-blue-400 hover:text-blue-300 p-1 rounded hover:bg-blue-500/10 transition-colors"
                           >
-                            <Download className="h-3 w-3" />
+                            <Download className="h-4 w-4" />
                           </button>
                         </div>
                       ))}
                     </div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td className="px-6 py-6 whitespace-nowrap">
                     <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(record.status)}`}>
                       {record.status}
                     </span>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                  <td className="px-6 py-6 whitespace-nowrap text-sm text-gray-300">
                     {new Date(record.createdAt).toLocaleDateString()}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex space-x-2">
+                  <td className="px-6 py-6 whitespace-nowrap">
+                    <div className="flex space-x-3">
                       <button
                         onClick={() => setSelectedRecord(record)}
-                        className="text-blue-400 hover:text-blue-300"
+                        className="text-blue-400 hover:text-blue-300 p-2 rounded-lg hover:bg-blue-500/10 transition-colors"
                         title="View Details"
                       >
-                        <Eye className="h-4 w-4" />
+                        <Eye className="h-5 w-5" />
                       </button>
                       {record.generatedDocuments?.some(doc => doc.status === 'sent_to_finance') && (
                         <>
@@ -515,30 +620,30 @@ const FinanceDashboard = () => {
                               const docIndex = record.generatedDocuments.findIndex(doc => doc.status === 'sent_to_finance');
                               handleStatusUpdate(record.recordId, docIndex, 'approved');
                             }}
-                            className="text-green-400 hover:text-green-300"
+                            className="text-green-400 hover:text-green-300 p-2 rounded-lg hover:bg-green-500/10 transition-colors"
                             title="Approve"
                           >
-                            <CheckCircle className="h-4 w-4" />
+                            <CheckCircle className="h-5 w-5" />
                           </button>
                           <button
                             onClick={() => {
                               const docIndex = record.generatedDocuments.findIndex(doc => doc.status === 'sent_to_finance');
                               handleStatusUpdate(record.recordId, docIndex, 'rejected');
                             }}
-                            className="text-red-400 hover:text-red-300"
+                            className="text-red-400 hover:text-red-300 p-2 rounded-lg hover:bg-red-500/10 transition-colors"
                             title="Reject"
                           >
-                            <XCircle className="h-4 w-4" />
+                            <XCircle className="h-5 w-5" />
                           </button>
                         </>
                       )}
                       {record.dealId && (
                         <button
                           onClick={() => deleteDeal(record.dealId)}
-                          className="text-red-400 hover:text-red-300"
+                          className="text-red-400 hover:text-red-300 p-2 rounded-lg hover:bg-red-500/10 transition-colors"
                           title="Delete Deal"
                         >
-                          <Trash2 className="h-4 w-4" />
+                          <Trash2 className="h-5 w-5" />
                         </button>
                       )}
                     </div>

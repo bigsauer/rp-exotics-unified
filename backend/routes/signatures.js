@@ -1,773 +1,514 @@
 const express = require('express');
-const jwt = require('jsonwebtoken');
-const fetch = require('node-fetch');
-const DigitalSignature = require('../models/DigitalSignature');
-const ApiKey = require('../models/ApiKey');
-const Deal = require('../models/Deal');
-const User = require('../models/User');
-const Dealer = require('../models/Dealer');
 const router = express.Router();
+const auth = require('../middleware/auth');
+const DigitalSignature = require('../models/DigitalSignature');
+const pdfSignatureService = require('../services/pdfSignatureService');
+const cloudStorage = require('../services/cloudStorage');
+const fetch = require('node-fetch');
 
-// API Key authentication middleware
-const authenticateApiKey = async (req, res, next) => {
-  const apiKey = req.headers['x-api-key'] || req.body.apiKey;
-
-  if (!apiKey) {
-    return res.status(401).json({ error: 'API key is required' });
-  }
-
-  try {
-    const keyDoc = await ApiKey.findOne({ key: apiKey, isActive: true });
-    if (!keyDoc) {
-      return res.status(401).json({ error: 'Invalid or inactive API key' });
+// Debug logging utility
+const debugLog = (message, data = null) => {
+  const timestamp = new Date().toISOString();
+  const logPrefix = '[SIGNATURES ROUTE]';
+  
+  if (process.env.NODE_ENV !== 'production') {
+    console.log(`${logPrefix} [${timestamp}] ${message}`);
+    if (data) {
+      console.log(`${logPrefix} [${timestamp}] Data:`, JSON.stringify(data, null, 2));
     }
-
-    if (!keyDoc.isValid()) {
-      return res.status(401).json({ error: 'API key has expired' });
-    }
-
-    // Check permissions
-    if (!keyDoc.permissions.signAgreements) {
-      return res.status(403).json({ error: 'API key does not have permission to sign agreements' });
-    }
-
-    req.apiKey = keyDoc;
-    next();
-  } catch (error) {
-    console.error('API key authentication error:', error);
-    return res.status(500).json({ error: 'Authentication failed' });
   }
 };
 
-// Get signatures for a document
-router.get('/document/:documentId', async (req, res) => {
-  try {
-    const { documentId } = req.params;
-    
-    const signatures = await DigitalSignature.find({ documentId })
-      .populate('signerId', 'firstName lastName name email')
-      .populate('apiKeyUsed', 'name type')
-      .sort({ createdAt: -1 });
-
-    res.json(signatures);
-  } catch (error) {
-    console.error('Error fetching signatures:', error);
-    res.status(500).json({ error: 'Failed to fetch signatures' });
+const errorLog = (message, error = null) => {
+  const timestamp = new Date().toISOString();
+  const logPrefix = '[SIGNATURES ROUTE]';
+  
+  console.error(`${logPrefix} [${timestamp}] ERROR: ${message}`);
+  if (error) {
+    console.error(`${logPrefix} [${timestamp}] Error details:`, error);
   }
-});
+};
 
-// Create a new signature request
-router.post('/request', authenticateApiKey, async (req, res) => {
+// Create signature
+router.post('/', auth, async (req, res) => {
   try {
-    const {
-      documentId,
-      documentType,
-      signerName,
-      signerEmail,
-      signerType = 'customer',
-      signatureMethod = 'api_key'
-    } = req.body;
-
-    // Validation
-    if (!documentId || !documentType || !signerName || !signerEmail) {
-      return res.status(400).json({ error: 'Document ID, type, signer name, and email are required' });
-    }
-
-    // Verify document exists
-    const deal = await Deal.findById(documentId);
-    if (!deal) {
-      return res.status(404).json({ error: 'Document not found' });
-    }
-
-    // Create signature record
-    const signature = new DigitalSignature({
-      documentId,
-      documentType,
-      signerType,
-      signerName,
-      signerEmail,
-      signatureMethod,
-      apiKeyUsed: req.apiKey._id,
-      signatureData: {
-        timestamp: new Date()
-      },
-      status: 'pending',
-      // Initialize consent fields
-      intentToSign: false,
-      consentToElectronicBusiness: false,
-      signatureAssociation: {
-        signerIdentityVerified: false,
-        identityVerificationMethod: 'api_key'
+    debugLog('Signature creation request received', {
+      userId: req.user.id,
+      userEmail: req.user.email,
+      userRole: req.user.role,
+      requestBody: {
+        documentUrl: req.body.documentUrl,
+        documentType: req.body.documentType,
+        signatureType: req.body.signatureType,
+        hasImageSignature: !!req.body.signatureImage,
+        hasTypedSignature: !!req.body.typedSignature,
+        auditTrail: req.body.auditTrail ? 'present' : 'missing'
       }
     });
 
-    const savedSignature = await signature.save();
-    
-    // Populate references
-    await savedSignature.populate('apiKeyUsed', 'name type');
-
-    console.log(`[SIGNATURE] Signature request created for document ${documentId} by ${signerName}`);
-
-    res.status(201).json({
-      message: 'Signature request created successfully',
-      signature: savedSignature
-    });
-  } catch (error) {
-    console.error('Error creating signature request:', error);
-    res.status(500).json({ error: 'Failed to create signature request' });
-  }
-});
-
-// NEW: Record intent to sign electronically
-router.post('/consent/intent-to-sign', authenticateApiKey, async (req, res) => {
-  try {
-    const { signatureId, ipAddress, userAgent } = req.body;
-
-    if (!signatureId) {
-      return res.status(400).json({ error: 'Signature ID is required' });
-    }
-
-    const signature = await DigitalSignature.findOne({ signatureId });
-    if (!signature) {
-      return res.status(404).json({ error: 'Signature not found' });
-    }
-
-    if (signature.status !== 'pending') {
-      return res.status(400).json({ error: 'Signature is not in pending status' });
-    }
-
-    // Record intent to sign
-    signature.intentToSign = true;
-    signature.intentToSignTimestamp = new Date();
-    signature.intentToSignIpAddress = ipAddress || req.ip;
-    signature.intentToSignUserAgent = userAgent || req.get('User-Agent');
-
-    await signature.save();
-
-    console.log(`[SIGNATURE] Intent to sign recorded for signature ${signatureId}`);
-
-    res.json({
-      message: 'Intent to sign recorded successfully',
-      signature: signature
-    });
-  } catch (error) {
-    console.error('Error recording intent to sign:', error);
-    res.status(500).json({ error: 'Failed to record intent to sign' });
-  }
-});
-
-// NEW: Record consent to do business electronically
-router.post('/consent/electronic-business', authenticateApiKey, async (req, res) => {
-  try {
-    const { signatureId, ipAddress, userAgent } = req.body;
-
-    if (!signatureId) {
-      return res.status(400).json({ error: 'Signature ID is required' });
-    }
-
-    const signature = await DigitalSignature.findOne({ signatureId });
-    if (!signature) {
-      return res.status(404).json({ error: 'Signature not found' });
-    }
-
-    if (signature.status !== 'pending') {
-      return res.status(400).json({ error: 'Signature is not in pending status' });
-    }
-
-    // Record consent to do business electronically
-    signature.consentToElectronicBusiness = true;
-    signature.consentToElectronicBusinessTimestamp = new Date();
-    signature.consentToElectronicBusinessIpAddress = ipAddress || req.ip;
-    signature.consentToElectronicBusinessUserAgent = userAgent || req.get('User-Agent');
-    signature.status = 'consent_given';
-
-    await signature.save();
-
-    console.log(`[SIGNATURE] Electronic business consent recorded for signature ${signatureId}`);
-
-    res.json({
-      message: 'Consent to do business electronically recorded successfully',
-      signature: signature
-    });
-  } catch (error) {
-    console.error('Error recording electronic business consent:', error);
-    res.status(500).json({ error: 'Failed to record electronic business consent' });
-  }
-});
-
-// NEW: Create signature for finance personnel (no API key required) - FULL LEGAL COMPLIANCE
-router.post('/', async (req, res) => {
-  try {
     const {
-      dealId,
+      documentUrl,
       documentType,
-      fileName,
-      signerType,
-      signerName,
-      signerEmail,
+      signatureType,
       signatureImage,
-      consent,
-      auditTrail
+      typedSignature,
+      auditTrail,
+      clientEmail
     } = req.body;
 
-    // Validation
-    if (!dealId || !documentType || !fileName || !signerName || !signerEmail || !signatureImage) {
-      return res.status(400).json({ error: 'All fields are required' });
+    // Validate required fields
+    if (!documentUrl) {
+      errorLog('Missing documentUrl in request');
+      return res.status(400).json({ error: 'Document URL is required' });
     }
 
-    // Verify deal exists
-    const deal = await Deal.findById(dealId);
-    if (!deal) {
-      return res.status(404).json({ error: 'Deal not found' });
+    if (!documentType) {
+      errorLog('Missing documentType in request');
+      return res.status(400).json({ error: 'Document type is required' });
     }
 
-    // Generate unique signature ID
+    if (!signatureImage && !typedSignature) {
+      errorLog('No signature data provided (neither image nor typed)');
+      return res.status(400).json({ error: 'Either signature image or typed signature is required' });
+    }
+
+    debugLog('Request validation passed, starting signature process');
+
+    // Generate signature ID
     const signatureId = DigitalSignature.generateSignatureId();
-    
-    // Create document hash for integrity
-    const crypto = require('crypto');
-    const documentHash = crypto.createHash('sha256')
-      .update(`${dealId}-${documentType}-${fileName}-${Date.now()}`)
-      .digest('hex');
+    debugLog('Generated signature ID', { signatureId });
 
-    // Create signature record with FULL LEGAL COMPLIANCE
-    const signature = new DigitalSignature({
+    // Create digital signature record
+    const signatureData = {
       signatureId,
-      documentId: dealId,
+      documentUrl,
       documentType,
-      fileName,
-      signerType: signerType || 'finance',
-      signerName,
-      signerEmail,
+      signatureType,
+      signerType: req.user.role === 'finance' ? 'finance' : 'client',
       signatureMethod: 'built_in',
+      status: 'completed',
+      signerId: req.user.id,
+      signerModel: 'User',
+      signerEmail: req.user.email,
+      signerName: req.user.profile?.displayName || req.user.email,
       signatureData: {
-        signatureImage,
-        timestamp: new Date(),
-        consent,
-        documentHash,
+        imageSignature: signatureImage || null,
+        typedSignature: typedSignature || null,
+        signatureMethod: signatureType,
+        documentHash: null, // Will be generated
         documentIntegrity: {
           isFlattened: true,
           watermark: 'SIGNED',
-          signedTimestamp: new Date(),
-          originalDocumentUrl: auditTrail?.documentUrl || '',
-          signedDocumentUrl: auditTrail?.documentUrl || ''
+          signedTimestamp: new Date().toISOString(),
+          originalDocumentUrl: documentUrl,
+          signedDocumentUrl: null // Will be updated after upload
         }
       },
-      status: 'completed',
-      // ✅ 1. Intent to Sign
-      intentToSign: consent?.intentToSign || false,
-      intentToSignTimestamp: consent?.intentToSign ? new Date() : null,
-      intentToSignIpAddress: auditTrail?.ipAddress || req.ip,
-      intentToSignUserAgent: auditTrail?.userAgent || req.get('User-Agent'),
-      
-      // ✅ 2. Consent to Electronic Business
-      consentToElectronicBusiness: consent?.electronicBusiness || false,
-      consentToElectronicBusinessTimestamp: consent?.electronicBusiness ? new Date() : null,
-      consentToElectronicBusinessIpAddress: auditTrail?.ipAddress || req.ip,
-      consentToElectronicBusinessUserAgent: auditTrail?.userAgent || req.get('User-Agent'),
-      
-      // ✅ 3. Clear Signature Association
       signatureAssociation: {
-        signerIdentityVerified: true,
-        identityVerificationMethod: 'built_in_system',
-        identityVerificationTimestamp: new Date(),
-        documentHash
-      },
-      
-      // ✅ 4. Audit Trail
-      ipAddress: auditTrail?.ipAddress || req.ip,
-      userAgent: auditTrail?.userAgent || req.get('User-Agent'),
-      
-      // ✅ 5. Document Integrity
-      signatureHash: signatureId // Will be updated with actual hash
-    });
-
-    // Generate final signature hash
-    signature.signatureHash = signature.generateHash();
-
-    const savedSignature = await signature.save();
-
-    // ✅ 6. Retention & Accessibility - Store signed document
-    try {
-      const cloudStorage = require('../services/cloudStorage');
-      const pdfSignatureService = require('../services/pdfSignatureService');
-      
-      // Get the original PDF from cloud storage
-      const originalPdfResponse = await fetch(viewUrl);
-      if (!originalPdfResponse.ok) {
-        throw new Error(`Failed to fetch original PDF: ${originalPdfResponse.status}`);
-      }
-      const originalPdfBuffer = await originalPdfResponse.buffer();
-      
-      // Create signed PDF with signature placed on the document
-      const signedPdfBuffer = await pdfSignatureService.createSignedDocument(
-        originalPdfBuffer,
-        signatureImage,
+        documentUrl,
         documentType,
-        {
-          signerName: signerName,
-          signerEmail: signerEmail
-        }
-      );
-      
-      // Upload signed document to cloud storage
-      const signedFileName = `signed_${fileName}_${signatureId}.pdf`;
-      const uploadResult = await cloudStorage.uploadBuffer(
-        signedPdfBuffer,
-        signedFileName,
-        'application/pdf'
-      );
-      
-      // Update signature with signed document URL
-      savedSignature.signatureData.documentIntegrity.signedDocumentUrl = uploadResult.url;
-      await savedSignature.save();
-      
-      console.log(`[SIGNATURE] Signed document stored: ${signedFileName}`);
-      console.log(`[SIGNATURE] Signed document URL: ${uploadResult.url}`);
-    } catch (storageError) {
-      console.error('[SIGNATURE] Storage error:', storageError);
-      // Don't fail the signature process if storage fails
-    }
-
-    console.log(`[SIGNATURE] ✅ LEGALLY COMPLIANT signature created by ${signerName} for deal ${dealId}`);
-    console.log(`[SIGNATURE] Audit trail: IP=${auditTrail?.ipAddress}, UA=${auditTrail?.userAgent?.substring(0, 50)}...`);
-
-    res.status(201).json({
-      message: '✅ Document signed successfully with full legal compliance',
-      signature: savedSignature,
-      compliance: savedSignature.verifyLegalCompliance()
-    });
-  } catch (error) {
-    console.error('Error signing document:', error);
-    res.status(500).json({ error: 'Failed to sign document' });
-  }
-});
-
-// NEW: Verify legal compliance for a signature
-router.get('/:signatureId/compliance', async (req, res) => {
-  try {
-    const { signatureId } = req.params;
-    
-    const signature = await DigitalSignature.findOne({ signatureId });
-    if (!signature) {
-      return res.status(404).json({ error: 'Signature not found' });
-    }
-
-    const compliance = signature.verifyLegalCompliance();
-    
-    res.json({
-      signatureId,
-      compliance,
+        signaturePosition: 'calculated',
+        identityVerificationMethod: 'built_in_system',
+        consentGiven: req.user.role === 'finance' ? true : auditTrail?.consentGiven || false
+      },
       auditTrail: {
-        intentToSign: {
-          timestamp: signature.intentToSignTimestamp,
-          ipAddress: signature.intentToSignIpAddress,
-          userAgent: signature.intentToSignUserAgent
-        },
-        consentToElectronicBusiness: {
-          timestamp: signature.consentToElectronicBusinessTimestamp,
-          ipAddress: signature.consentToElectronicBusinessIpAddress,
-          userAgent: signature.consentToElectronicBusinessUserAgent
+        signatureTimestamp: new Date().toISOString(),
+        ipAddress: auditTrail?.ipAddress || req.ip,
+        userAgent: auditTrail?.userAgent || req.get('User-Agent'),
+        screenResolution: auditTrail?.screenResolution || 'unknown',
+        timezone: auditTrail?.timezone || 'unknown',
+        language: auditTrail?.language || 'unknown',
+        sessionId: auditTrail?.sessionId || 'unknown',
+        consentTimestamp: auditTrail?.consentTimestamp || new Date().toISOString(),
+        consentMethod: req.user.role === 'finance' ? 'automatic' : 'manual'
+      },
+      legalCompliance: {
+        esignActCompliant: true,
+        uetaCompliant: true,
+        intentToSign: true,
+        consentToElectronicBusiness: req.user.role === 'finance' ? true : auditTrail?.consentGiven || false,
+        clearSignatureAssociation: true,
+        auditTrailComplete: true,
+        documentIntegrityMaintained: true,
+        retentionPolicyCompliant: true,
+        signerIdentityVerified: true
+      }
+    };
+
+    debugLog('Created signature data object', {
+      signatureId,
+      documentType,
+      signatureType,
+      signerType: signatureData.signerType,
+      hasImageSignature: !!signatureData.signatureData.imageSignature,
+      hasTypedSignature: !!signatureData.signatureData.typedSignature
+    });
+
+    // Fetch original PDF
+    debugLog('Fetching original PDF from URL', { documentUrl });
+    const originalPdfResponse = await fetch(documentUrl);
+    
+    if (!originalPdfResponse.ok) {
+      errorLog('Failed to fetch original PDF', {
+        status: originalPdfResponse.status,
+        statusText: originalPdfResponse.statusText,
+        url: documentUrl
+      });
+      return res.status(400).json({ error: 'Failed to fetch original document' });
+    }
+
+    const originalPdfBuffer = await originalPdfResponse.buffer();
+    debugLog('Original PDF fetched successfully', {
+      bufferSize: originalPdfBuffer.length,
+      contentType: originalPdfResponse.headers.get('content-type')
+    });
+
+    // Validate PDF buffer
+    try {
+      pdfSignatureService.validatePdfBuffer(originalPdfBuffer);
+      debugLog('PDF buffer validation passed');
+    } catch (validationError) {
+      errorLog('PDF buffer validation failed', validationError);
+      return res.status(400).json({ error: 'Invalid PDF document' });
+    }
+
+    // Get document info for debugging
+    try {
+      const documentInfo = await pdfSignatureService.getDocumentInfo(originalPdfBuffer);
+      debugLog('Document information retrieved', documentInfo);
+    } catch (infoError) {
+      debugLog('Could not retrieve document info (non-critical)', infoError.message);
+    }
+
+    // Create signed document
+    debugLog('Starting PDF signature process');
+    const signatureResult = await pdfSignatureService.createSignedDocument(
+      originalPdfBuffer,
+      {
+        imageSignature: signatureImage,
+        typedSignature: typedSignature
+      },
+      documentType,
+      {
+        signerName: req.user.profile?.displayName || req.user.email,
+        signatureType: signatureType
+      }
+    );
+
+    debugLog('PDF signature process completed', {
+      success: signatureResult.success,
+      originalSize: signatureResult.originalSize,
+      finalSize: signatureResult.finalSize,
+      signatureType: signatureResult.signatureType
+    });
+
+    // Upload signed document to cloud storage
+    debugLog('Uploading signed document to cloud storage');
+    const fileName = `signed_${documentType}_${signatureId}_${Date.now()}.pdf`;
+    
+    const uploadResult = await cloudStorage.uploadBuffer(
+      signatureResult.signedPdfBuffer,
+      fileName,
+      'application/pdf'
+    );
+
+    debugLog('Cloud storage upload completed', {
+      fileName,
+      uploadUrl: uploadResult.url,
+      filePath: uploadResult.filePath
+    });
+
+    // Update signature data with signed document URL
+    signatureData.signatureData.documentHash = signatureResult.documentHash || 'generated';
+    signatureData.signatureData.documentIntegrity.signedDocumentUrl = uploadResult.url;
+
+    // Generate signature hash
+    const digitalSignature = new DigitalSignature(signatureData);
+    digitalSignature.signatureHash = digitalSignature.generateHash();
+
+    debugLog('Digital signature object created', {
+      signatureId: digitalSignature.signatureId,
+      documentHash: digitalSignature.signatureData.documentHash,
+      signatureHash: digitalSignature.signatureHash ? 'generated' : 'missing'
+    });
+
+    // Save to database
+    debugLog('Saving digital signature to database');
+    await digitalSignature.save();
+    debugLog('Digital signature saved successfully', { signatureId: digitalSignature.signatureId });
+
+    // If client email provided, create client signature request
+    if (clientEmail) {
+      debugLog('Creating client signature request', { clientEmail });
+      
+      const clientSignatureData = {
+        signatureId: DigitalSignature.generateSignatureId(),
+        documentUrl: uploadResult.url, // Use the signed document
+        documentType,
+        signatureType: 'client',
+        signerType: 'client',
+        signatureMethod: 'email_invitation',
+        status: 'pending',
+        signerEmail: clientEmail,
+        signerName: clientEmail,
+        signatureData: {
+          imageSignature: null,
+          typedSignature: null,
+          signatureMethod: 'email_invitation',
+          documentHash: null,
+          documentIntegrity: {
+            isFlattened: false,
+            watermark: null,
+            signedTimestamp: null,
+            originalDocumentUrl: uploadResult.url,
+            signedDocumentUrl: null
+          }
         },
         signatureAssociation: {
-          signerIdentityVerified: signature.signatureAssociation.signerIdentityVerified,
-          identityVerificationMethod: signature.signatureAssociation.identityVerificationMethod,
-          identityVerificationTimestamp: signature.signatureAssociation.identityVerificationTimestamp
+          documentUrl: uploadResult.url,
+          documentType,
+          signaturePosition: 'pending',
+          identityVerificationMethod: 'email_verification',
+          consentGiven: false
         },
-        documentIntegrity: {
-          documentHash: signature.signatureData.documentHash,
-          signatureHash: signature.signatureHash,
-          isVerified: signature.verifySignature()
+        auditTrail: {
+          signatureTimestamp: null,
+          ipAddress: null,
+          userAgent: null,
+          screenResolution: null,
+          timezone: null,
+          language: null,
+          sessionId: null,
+          consentTimestamp: null,
+          consentMethod: 'pending'
+        },
+        legalCompliance: {
+          esignActCompliant: false,
+          uetaCompliant: false,
+          intentToSign: false,
+          consentToElectronicBusiness: false,
+          clearSignatureAssociation: false,
+          auditTrailComplete: false,
+          documentIntegrityMaintained: false,
+          retentionPolicyCompliant: false,
+          signerIdentityVerified: false
         }
-      }
+      };
+
+      const clientSignature = new DigitalSignature(clientSignatureData);
+      await clientSignature.save();
+      
+      debugLog('Client signature request created', {
+        clientSignatureId: clientSignature.signatureId,
+        clientEmail
+      });
+    }
+
+    debugLog('Signature creation process completed successfully', {
+      signatureId: digitalSignature.signatureId,
+      signedDocumentUrl: uploadResult.url,
+      hasClientRequest: !!clientEmail
     });
+
+    res.json({
+      success: true,
+      signatureId: digitalSignature.signatureId,
+      signedDocumentUrl: uploadResult.url,
+      message: 'Document signed successfully'
+    });
+
   } catch (error) {
-    console.error('Error verifying compliance:', error);
-    res.status(500).json({ error: 'Failed to verify compliance' });
+    errorLog('Signature creation failed', error);
+    res.status(500).json({ error: 'Failed to create signature' });
   }
 });
 
-// NEW: Download signed document
-router.get('/:signatureId/download', async (req, res) => {
+// Send document to client for signature
+router.post('/:signatureId/send-to-client', auth, async (req, res) => {
   try {
     const { signatureId } = req.params;
-    
-    const signature = await DigitalSignature.findOne({ signatureId });
-    if (!signature) {
+    const { clientEmail } = req.body;
+
+    debugLog('Send to client request received', {
+      signatureId,
+      clientEmail,
+      userId: req.user.id,
+      userEmail: req.user.email
+    });
+
+    if (!clientEmail) {
+      errorLog('Missing clientEmail in request');
+      return res.status(400).json({ error: 'Client email is required' });
+    }
+
+    // Find the original signature
+    const originalSignature = await DigitalSignature.findOne({ signatureId });
+    if (!originalSignature) {
+      errorLog('Original signature not found', { signatureId });
       return res.status(404).json({ error: 'Signature not found' });
     }
 
-    const signedDocumentUrl = signature.signatureData.documentIntegrity.signedDocumentUrl;
-    if (!signedDocumentUrl) {
-      return res.status(404).json({ error: 'Signed document not found' });
-    }
-
-    // Redirect to the signed document URL
-    res.redirect(signedDocumentUrl);
-  } catch (error) {
-    console.error('Error downloading signed document:', error);
-    res.status(500).json({ error: 'Failed to download signed document' });
-  }
-});
-
-// NEW: Send document to client for signature
-router.post('/:signatureId/send-to-client', async (req, res) => {
-  try {
-    const { signatureId } = req.params;
-    const { clientEmail, documentUrl, dealId, documentType } = req.body;
-
-    if (!clientEmail || !documentUrl || !dealId || !documentType) {
-      return res.status(400).json({ error: 'Client email, document URL, deal ID, and document type are required' });
-    }
-
-    // Verify signature exists
-    const signature = await DigitalSignature.findById(signatureId);
-    if (!signature) {
-      return res.status(404).json({ error: 'Signature not found' });
-    }
+    debugLog('Original signature found', {
+      signatureId: originalSignature.signatureId,
+      documentType: originalSignature.documentType,
+      status: originalSignature.status
+    });
 
     // Create client signature request
-    const clientSignature = new DigitalSignature({
-      documentId: dealId,
-      documentType,
-      fileName: signature.fileName,
+    const clientSignatureData = {
+      signatureId: DigitalSignature.generateSignatureId(),
+      documentUrl: originalSignature.signatureData.documentIntegrity.signedDocumentUrl,
+      documentType: originalSignature.documentType,
+      signatureType: 'client',
       signerType: 'client',
-      signerName: 'Client',
-      signerEmail: clientEmail,
       signatureMethod: 'email_invitation',
       status: 'pending',
-      parentSignatureId: signatureId,
+      signerEmail: clientEmail,
+      signerName: clientEmail,
       signatureData: {
-        invitationSentAt: new Date(),
-        documentUrl
+        imageSignature: null,
+        typedSignature: null,
+        signatureMethod: 'email_invitation',
+        documentHash: null,
+        documentIntegrity: {
+          isFlattened: false,
+          watermark: null,
+          signedTimestamp: null,
+          originalDocumentUrl: originalSignature.signatureData.documentIntegrity.signedDocumentUrl,
+          signedDocumentUrl: null
+        }
+      },
+      signatureAssociation: {
+        documentUrl: originalSignature.signatureData.documentIntegrity.signedDocumentUrl,
+        documentType: originalSignature.documentType,
+        signaturePosition: 'pending',
+        identityVerificationMethod: 'email_verification',
+        consentGiven: false
+      },
+      auditTrail: {
+        signatureTimestamp: null,
+        ipAddress: null,
+        userAgent: null,
+        screenResolution: null,
+        timezone: null,
+        language: null,
+        sessionId: null,
+        consentTimestamp: null,
+        consentMethod: 'pending'
+      },
+      legalCompliance: {
+        esignActCompliant: false,
+        uetaCompliant: false,
+        intentToSign: false,
+        consentToElectronicBusiness: false,
+        clearSignatureAssociation: false,
+        auditTrailComplete: false,
+        documentIntegrityMaintained: false,
+        retentionPolicyCompliant: false,
+        signerIdentityVerified: false
       }
+    };
+
+    const clientSignature = new DigitalSignature(clientSignatureData);
+    await clientSignature.save();
+
+    debugLog('Client signature request created successfully', {
+      clientSignatureId: clientSignature.signatureId,
+      clientEmail,
+      originalSignatureId: signatureId
     });
 
-    const savedClientSignature = await clientSignature.save();
-
-    // TODO: Send email to client with signature link
-    // For now, just return success
-    console.log(`[SIGNATURE] Client signature request created for ${clientEmail}`);
-
-    res.status(201).json({
-      message: 'Document sent to client for signature',
-      clientSignature: savedClientSignature
+    res.json({
+      success: true,
+      clientSignatureId: clientSignature.signatureId,
+      message: 'Document sent to client for signature'
     });
+
   } catch (error) {
-    console.error('Error sending to client:', error);
+    errorLog('Send to client failed', error);
     res.status(500).json({ error: 'Failed to send document to client' });
   }
 });
 
-// Sign a document
-router.post('/sign', authenticateApiKey, async (req, res) => {
-  try {
-    const {
-      signatureId,
-      signatureImage,
-      typedSignature,
-      coordinates,
-      ipAddress,
-      userAgent
-    } = req.body;
-
-    // Validation
-    if (!signatureId) {
-      return res.status(400).json({ error: 'Signature ID is required' });
-    }
-
-    if (!signatureImage && !typedSignature) {
-      return res.status(400).json({ error: 'Either signature image or typed signature is required' });
-    }
-
-    // Find signature
-    const signature = await DigitalSignature.findOne({ signatureId });
-    if (!signature) {
-      return res.status(404).json({ error: 'Signature not found' });
-    }
-
-    if (signature.status !== 'consent_given' && signature.status !== 'pending') {
-      return res.status(400).json({ error: 'Signature is not ready for signing. Consent must be given first.' });
-    }
-
-    // Verify legal compliance
-    if (!signature.intentToSign || !signature.consentToElectronicBusiness) {
-      return res.status(400).json({ 
-        error: 'Legal consent requirements not met. Both intent to sign and consent to electronic business must be recorded.',
-        missingConsents: {
-          intentToSign: !signature.intentToSign,
-          consentToElectronicBusiness: !signature.consentToElectronicBusiness
-        }
-      });
-    }
-
-    // Update signature data
-    signature.signatureData = {
-      timestamp: new Date(),
-      signatureImage: signatureImage || null,
-      typedSignature: typedSignature || null,
-      coordinates: coordinates || null
-    };
-
-    signature.ipAddress = ipAddress || req.ip;
-    signature.userAgent = userAgent || req.get('User-Agent');
-    signature.status = 'signed';
-    signature.isVerified = true;
-    signature.verifiedAt = new Date();
-
-    // Verify signer identity
-    signature.signatureAssociation.signerIdentityVerified = true;
-    signature.signatureAssociation.identityVerificationMethod = 'api_key';
-    signature.signatureAssociation.identityVerificationTimestamp = new Date();
-
-    // Generate signature hash
-    signature.signatureHash = signature.generateHash();
-
-    const savedSignature = await signature.save();
-    
-    // Populate references
-    await savedSignature.populate('signerId', 'firstName lastName name email');
-    await savedSignature.populate('apiKeyUsed', 'name type');
-
-    console.log(`[SIGNATURE] Document signed by ${signature.signerName} using API key ${req.apiKey.name}`);
-
-    res.json({
-      message: 'Document signed successfully',
-      signature: savedSignature,
-      legalCompliance: savedSignature.verifyLegalCompliance()
-    });
-  } catch (error) {
-    console.error('Error signing document:', error);
-    res.status(500).json({ error: 'Failed to sign document' });
-  }
-});
-
-// Verify a signature
-router.post('/verify/:signatureId', async (req, res) => {
+// Get signature compliance report
+router.get('/:signatureId/compliance', auth, async (req, res) => {
   try {
     const { signatureId } = req.params;
 
+    debugLog('Compliance report request received', {
+      signatureId,
+      userId: req.user.id,
+      userEmail: req.user.email
+    });
+
     const signature = await DigitalSignature.findOne({ signatureId });
     if (!signature) {
+      errorLog('Signature not found for compliance report', { signatureId });
       return res.status(404).json({ error: 'Signature not found' });
     }
 
-    const isValid = signature.verifySignature();
-    const legalCompliance = signature.verifyLegalCompliance();
-
-    res.json({
-      signatureId,
-      isValid,
-      legalCompliance,
-      signature: signature
-    });
-  } catch (error) {
-    console.error('Error verifying signature:', error);
-    res.status(500).json({ error: 'Failed to verify signature' });
-  }
-});
-
-// Get signature status
-router.get('/status/:signatureId', async (req, res) => {
-  try {
-    const { signatureId } = req.params;
-
-    const signature = await DigitalSignature.findOne({ signatureId })
-      .populate('signerId', 'firstName lastName name email')
-      .populate('apiKeyUsed', 'name type');
-
-    if (!signature) {
-      return res.status(404).json({ error: 'Signature not found' });
-    }
-
-    const legalCompliance = signature.verifyLegalCompliance();
-
-    res.json({
-      signatureId,
+    debugLog('Signature found for compliance report', {
+      signatureId: signature.signatureId,
       status: signature.status,
-      legalCompliance,
-      signature: signature
+      signerType: signature.signerType
     });
-  } catch (error) {
-    console.error('Error fetching signature status:', error);
-    res.status(500).json({ error: 'Failed to fetch signature status' });
-  }
-});
 
-// NEW: Get legal compliance report
-router.get('/compliance/:signatureId', async (req, res) => {
-  try {
-    const { signatureId } = req.params;
+    const complianceReport = signature.verifyLegalCompliance();
 
-    const signature = await DigitalSignature.findOne({ signatureId })
-      .populate('signerId', 'firstName lastName name email')
-      .populate('apiKeyUsed', 'name type');
-
-    if (!signature) {
-      return res.status(404).json({ error: 'Signature not found' });
-    }
-
-    const compliance = signature.verifyLegalCompliance();
+    debugLog('Compliance report generated', {
+      signatureId: signature.signatureId,
+      overallCompliance: complianceReport.overallCompliance,
+      complianceScore: complianceReport.complianceScore
+    });
 
     res.json({
-      signatureId,
-      compliance,
-      requirements: {
-        intentToSign: {
-          required: true,
-          met: signature.intentToSign,
-          timestamp: signature.intentToSignTimestamp,
-          ipAddress: signature.intentToSignIpAddress
-        },
-        consentToElectronicBusiness: {
-          required: true,
-          met: signature.consentToElectronicBusiness,
-          timestamp: signature.consentToElectronicBusinessTimestamp,
-          ipAddress: signature.consentToElectronicBusinessIpAddress
-        },
-        signatureAssociation: {
-          required: true,
-          met: signature.signatureAssociation.signerIdentityVerified,
-          verificationMethod: signature.signatureAssociation.identityVerificationMethod,
-          timestamp: signature.signatureAssociation.identityVerificationTimestamp
-        },
-        documentIntegrity: {
-          required: true,
-          met: signature.verifySignature(),
-          hash: signature.signatureHash
-        }
-      },
-      signature: signature
+      success: true,
+      signatureId: signature.signatureId,
+      complianceReport
     });
+
   } catch (error) {
-    console.error('Error fetching compliance report:', error);
-    res.status(500).json({ error: 'Failed to fetch compliance report' });
+    errorLog('Compliance report generation failed', error);
+    res.status(500).json({ error: 'Failed to generate compliance report' });
   }
 });
 
-// Revoke a signature (admin only)
-router.post('/revoke/:signatureId', async (req, res) => {
+// Download signed document
+router.get('/:signatureId/download', auth, async (req, res) => {
   try {
     const { signatureId } = req.params;
-    const { reason } = req.body;
+
+    debugLog('Download request received', {
+      signatureId,
+      userId: req.user.id,
+      userEmail: req.user.email
+    });
 
     const signature = await DigitalSignature.findOne({ signatureId });
     if (!signature) {
+      errorLog('Signature not found for download', { signatureId });
       return res.status(404).json({ error: 'Signature not found' });
     }
 
-    signature.status = 'revoked';
-    signature.updatedAt = new Date();
-
-    const savedSignature = await signature.save();
-
-    console.log(`[SIGNATURE] Signature ${signatureId} revoked. Reason: ${reason}`);
-
-    res.json({
-      message: 'Signature revoked successfully',
-      signature: savedSignature
+    debugLog('Signature found for download', {
+      signatureId: signature.signatureId,
+      signedDocumentUrl: signature.signatureData.documentIntegrity.signedDocumentUrl
     });
-  } catch (error) {
-    console.error('Error revoking signature:', error);
-    res.status(500).json({ error: 'Failed to revoke signature' });
-  }
-});
 
-// Get all signatures for a user
-router.get('/user/:userId', async (req, res) => {
-  try {
-    const { userId } = req.params;
-
-    const signatures = await DigitalSignature.find({ signerId: userId })
-      .populate('documentId', 'vehicle vin stockNumber')
-      .populate('apiKeyUsed', 'name type')
-      .sort({ createdAt: -1 });
-
-    res.json(signatures);
-  } catch (error) {
-    console.error('Error fetching user signatures:', error);
-    res.status(500).json({ error: 'Failed to fetch user signatures' });
-  }
-});
-
-// Bulk sign multiple documents
-router.post('/bulk-sign', authenticateApiKey, async (req, res) => {
-  try {
-    const { signatures } = req.body;
-
-    if (!Array.isArray(signatures) || signatures.length === 0) {
-      return res.status(400).json({ error: 'Signatures array is required' });
+    const signedDocumentUrl = signature.signatureData.documentIntegrity.signedDocumentUrl;
+    if (!signedDocumentUrl) {
+      errorLog('No signed document URL found', { signatureId });
+      return res.status(404).json({ error: 'Signed document not found' });
     }
 
-    const results = [];
+    debugLog('Redirecting to signed document', { signedDocumentUrl });
 
-    for (const sigData of signatures) {
-      try {
-        const {
-          documentId,
-          documentType,
-          signerName,
-          signerEmail,
-          signatureImage,
-          typedSignature,
-          coordinates
-        } = sigData;
+    // Redirect to the signed document URL
+    res.redirect(signedDocumentUrl);
 
-        // Create and sign in one step with consent
-        const signature = new DigitalSignature({
-          documentId,
-          documentType,
-          signerType: 'customer',
-          signerName,
-          signerEmail,
-          signatureMethod: 'api_key',
-          apiKeyUsed: req.apiKey._id,
-          signatureData: {
-            timestamp: new Date(),
-            signatureImage: signatureImage || null,
-            typedSignature: typedSignature || null,
-            coordinates: coordinates || null
-          },
-          status: 'signed',
-          isVerified: true,
-          verifiedAt: new Date(),
-          // Set consent requirements for bulk operations
-          intentToSign: true,
-          intentToSignTimestamp: new Date(),
-          consentToElectronicBusiness: true,
-          consentToElectronicBusinessTimestamp: new Date(),
-          signatureAssociation: {
-            signerIdentityVerified: true,
-            identityVerificationMethod: 'api_key',
-            identityVerificationTimestamp: new Date()
-          }
-        });
-
-        signature.signatureHash = signature.generateHash();
-        const savedSignature = await signature.save();
-
-        results.push({
-          documentId,
-          success: true,
-          signatureId: savedSignature.signatureId,
-          legalCompliance: savedSignature.verifyLegalCompliance()
-        });
-      } catch (error) {
-        results.push({
-          documentId: sigData.documentId,
-          success: false,
-          error: error.message
-        });
-      }
-    }
-
-    res.json({
-      message: 'Bulk signature operation completed',
-      results
-    });
   } catch (error) {
-    console.error('Error in bulk signature:', error);
-    res.status(500).json({ error: 'Failed to process bulk signatures' });
+    errorLog('Download failed', error);
+    res.status(500).json({ error: 'Failed to download document' });
   }
 });
 

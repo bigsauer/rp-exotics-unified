@@ -17,8 +17,7 @@ import {
   RefreshCw,
   Edit3,
   TrendingUp,
-  XCircle,
-  Shield
+  Trash2
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from './AuthContext';
@@ -28,7 +27,7 @@ import 'react-toastify/dist/ReactToastify.css';
 const statusDisplayMap = {
   'contract-received': 'Initial Contact',
   'docs-signed': 'Docs Signed',
-  'title-processing': 'Documentation',
+  'title-processing': 'Title Processing',
   'payment-approved': 'Finance Review',
   'funds-disbursed': 'Funds Disbursed',
   'title-received': 'Title Received',
@@ -69,6 +68,8 @@ const DealStatusPage = () => {
   const navigate = useNavigate();
   const [editDealId, setEditDealId] = useState(null);
   const [editNotes, setEditNotes] = useState('');
+  const [previousDeals, setPreviousDeals] = useState([]);
+  const [statusChanges, setStatusChanges] = useState([]);
 
   const API_BASE = process.env.REACT_APP_API_URL || 'https://astonishing-chicken-production.up.railway.app';
 
@@ -77,19 +78,29 @@ const DealStatusPage = () => {
     console.log('[DEBUG][DealStatusPage] API_BASE:', API_BASE);
     fetchDeals();
     
-    // Set up auto-refresh every 30 seconds if enabled
+    // Set up auto-refresh every 10 seconds if enabled for real-time status updates
     let interval;
     if (autoRefresh) {
       interval = setInterval(() => {
         fetchDeals();
         setLastSync(new Date());
-      }, 30000); // 30 seconds
+      }, 10000); // 10 seconds for real-time status updates
     }
     
     return () => {
       if (interval) clearInterval(interval);
     };
   }, [autoRefresh]);
+
+  // Clean up old status changes after 5 minutes
+  useEffect(() => {
+    const cleanupInterval = setInterval(() => {
+      const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
+      setStatusChanges(prev => prev.filter(change => change.timestamp > fiveMinutesAgo));
+    }, 60000); // Check every minute
+
+    return () => clearInterval(cleanupInterval);
+  }, []);
 
   const fetchDeals = async () => {
     try {
@@ -109,46 +120,107 @@ const DealStatusPage = () => {
       if (response.ok) {
         const data = await response.json();
         console.log('[DEBUG][DealStatusPage] Deal fetch JSON response:', data);
+        console.log('[DEBUG][DealStatusPage] Response data type:', typeof data);
+        console.log('[DEBUG][DealStatusPage] Response data keys:', Object.keys(data));
+        console.log('[DEBUG][DealStatusPage] Full response data:', JSON.stringify(data, null, 2));
+        
         const dealsData = data.deals || data.data || [];
         console.log('[DEBUG][DealStatusPage] Deals data length:', dealsData.length);
+        console.log('[DEBUG][DealStatusPage] Deals data type:', typeof dealsData);
+        console.log('[DEBUG][DealStatusPage] Deals data:', dealsData);
+        
+        if (dealsData.length === 0) {
+          console.warn('[DEBUG][DealStatusPage] No deals found in response data');
+          console.warn('[DEBUG][DealStatusPage] Full response data:', data);
+          console.warn('[DEBUG][DealStatusPage] Trying to find deals in different response structures...');
+          console.warn('[DEBUG][DealStatusPage] data.deals:', data.deals);
+          console.warn('[DEBUG][DealStatusPage] data.data:', data.data);
+          console.warn('[DEBUG][DealStatusPage] data.salesDeals:', data.salesDeals);
+          console.warn('[DEBUG][DealStatusPage] data.results:', data.results);
+          console.warn('[DEBUG][DealStatusPage] Array.isArray(data):', Array.isArray(data));
+          if (Array.isArray(data)) {
+            console.warn('[DEBUG][DealStatusPage] data is an array with length:', data.length);
+          }
+        }
         
         // Transform sales deal data to match frontend format
         const transformedDeals = dealsData.map(deal => {
           console.log('[DEBUG][DealStatusPage] Processing deal:', deal._id, deal.vehicle);
           return {
             id: deal._id || deal.id,
-            stockNumber: deal.stockNumber,
+            stockNumber: deal.stockNumber || deal.rpStockNumber,
             vin: deal.vin,
-            vehicle: deal.vehicle,
+            vehicle: deal.vehicle || `${deal.year || ''} ${deal.make || ''} ${deal.model || ''}`.trim(),
             dealType: deal.dealType || 'wholesale',
             currentStage: deal.currentStage || 'contract-received',
-            seller: deal.customer?.name || 'Unknown',
-            buyerContact: deal.customer?.name || 'Pending',
-            purchasePrice: deal.financial?.purchasePrice || 0,
-            salePrice: deal.financial?.listPrice || 0,
-            payoffBalance: 0, // Sales deals don't have payoff balance
-            createdDate: new Date(deal.timeline?.purchaseDate || deal.createdAt || deal.createdDate).toISOString().split('T')[0],
+            seller: deal.seller?.name || deal.customer?.name || 'Unknown',
+            buyerContact: deal.buyer?.name || deal.customer?.name || 'Pending',
+            purchasePrice: deal.purchasePrice || deal.financial?.purchasePrice || 0,
+            salePrice: deal.listPrice || deal.salePrice || deal.financial?.listPrice || 0,
+            payoffBalance: deal.payoffBalance || 0,
+            createdDate: new Date(deal.purchaseDate || deal.timeline?.purchaseDate || deal.createdAt || deal.createdDate).toISOString().split('T')[0],
             lastUpdated: new Date(deal.updatedAt || deal.lastUpdated).toISOString().split('T')[0],
             priority: deal.priority || 'medium',
-            notes: deal.customer?.notes || deal.notes || '',
-            paymentMethod: 'Check', // Default for sales deals
+            notes: deal.generalNotes || deal.notes || deal.customer?.notes || '',
+            paymentMethod: deal.paymentMethod || 'Check',
             requiresContract: true,
-            documentation: {
-              contract: { status: 'received', date: deal.timeline?.purchaseDate },
-              title: { status: deal.currentStage === 'title-received' ? 'received' : 'pending', date: null },
-              odometer: { status: 'pending', date: null },
-              paymentApproval: { status: 'approved', date: deal.timeline?.purchaseDate }
+
+            titleInfo: deal.titleInfo || {},
+            wholesalePrice: deal.wholesalePrice || null,
+            dealType2SubType: deal.dealType2SubType || '',
+            salesPerson: deal.salesPerson || {
+              id: deal.salesperson || null,
+              name: deal.salesperson || 'Unknown',
+              email: ''
             },
-            titleInfo: {},
-            wholesalePrice: null,
-            dealType2SubType: '',
-            salesPerson: deal.salesPerson,
-            calculatedMetrics: deal.calculatedMetrics
+            calculatedMetrics: deal.calculatedMetrics || {
+              daysInCurrentStage: 0,
+              estimatedCompletion: new Date(),
+              progressPercentage: 0,
+              timelineStatus: 'on-track'
+            }
           };
         });
         
         console.log('[DEBUG][DealStatusPage] Transformed deals:', transformedDeals);
+        console.log('[DEBUG][DealStatusPage] Setting deals state with length:', transformedDeals.length);
+        
+        // Detect status changes for real-time updates
+        if (previousDeals.length > 0) {
+          const changes = [];
+          transformedDeals.forEach(newDeal => {
+            const oldDeal = previousDeals.find(d => d.id === newDeal.id);
+            if (oldDeal && oldDeal.currentStage !== newDeal.currentStage) {
+              changes.push({
+                dealId: newDeal.id,
+                vehicle: newDeal.vehicle,
+                oldStage: oldDeal.currentStage,
+                newStage: newDeal.currentStage,
+                timestamp: new Date()
+              });
+            }
+          });
+          
+          if (changes.length > 0) {
+            setStatusChanges(changes);
+            console.log('[DEBUG][DealStatusPage] Status changes detected:', changes);
+            
+            // Show notification for status changes
+            changes.forEach(change => {
+              toast.info(`Status updated: ${change.vehicle} - ${change.oldStage} → ${change.newStage}`, {
+                position: "top-right",
+                autoClose: 5000,
+                hideProgressBar: false,
+                closeOnClick: true,
+                pauseOnHover: true,
+                draggable: true,
+              });
+            });
+          }
+        }
+        
         setDeals(transformedDeals);
+        setPreviousDeals(transformedDeals);
       } else {
         const text = await response.text();
         console.error('[DEBUG][DealStatusPage] Deal fetch failed:', response.status, text);
@@ -224,7 +296,7 @@ const DealStatusPage = () => {
       description: {
         'contract-received': 'Deal created and initial contact made',
         'docs-signed': 'Documents have been signed by all parties',
-        'title-processing': 'Documents being prepared and reviewed',
+        'title-processing': 'Title is being processed and transferred',
         'payment-approved': 'Financial terms and approval process',
         'funds-disbursed': 'Funds have been disbursed',
         'title-received': 'Title has been received',
@@ -244,8 +316,8 @@ const DealStatusPage = () => {
       case 'payment-approved':
       case 'funds-disbursed':
       case 'title-received':
-        return 'blue';
       case 'title-processing':
+        return 'blue';
       case 'contract-received':
       case 'docs-signed':
         return 'yellow';
@@ -267,17 +339,25 @@ const DealStatusPage = () => {
     }
   };
 
+  // Filter deals based on search term, status, and deal type
   const filteredDeals = deals.filter(deal => {
     const matchesSearch = searchTerm === '' || 
-      deal.vehicle.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      deal.vehicle?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       deal.stockNumber?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      deal.vin?.toLowerCase().includes(searchTerm.toLowerCase());
-    
+      deal.vin?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      deal.seller?.toLowerCase().includes(searchTerm.toLowerCase());
+
     const matchesStatus = filterStatus === 'all' || deal.currentStage === filterStatus;
-    const matchesType = filterDealType === 'all' || deal.dealType === filterDealType;
-    
-    return matchesSearch && matchesStatus && matchesType;
+    const matchesDealType = filterDealType === 'all' || deal.dealType === filterDealType;
+
+    return matchesSearch && matchesStatus && matchesDealType;
   });
+
+  console.log('[DEBUG][DealStatusPage] Current deals state length:', deals.length);
+  console.log('[DEBUG][DealStatusPage] Filtered deals length:', filteredDeals.length);
+  console.log('[DEBUG][DealStatusPage] Search term:', searchTerm);
+  console.log('[DEBUG][DealStatusPage] Filter status:', filterStatus);
+  console.log('[DEBUG][DealStatusPage] Filter deal type:', filterDealType);
 
   if (loading) {
     return (
@@ -312,7 +392,7 @@ const DealStatusPage = () => {
               </button>
               <div>
                 <h1 className="text-3xl font-bold text-white mb-2">Sales Deal Status</h1>
-                <p className="text-gray-300">Track and monitor your deals through the sales pipeline</p>
+                <p className="text-gray-300">Track and monitor your deals through the sales pipeline - Directly synced with Finance status</p>
               </div>
             </div>
             <div className="flex items-center space-x-3">
@@ -340,10 +420,17 @@ const DealStatusPage = () => {
               <button 
                 onClick={fetchDeals}
                 className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2 transition-colors"
+                disabled={loading}
               >
-                <RefreshCw className="h-4 w-4" />
-                <span>Refresh</span>
+                <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+                <span>{loading ? 'Refreshing...' : 'Refresh'}</span>
               </button>
+              
+              {/* Real-time status indicator */}
+              <div className="flex items-center space-x-2 text-green-400 text-sm">
+                <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                <span>Real-time updates</span>
+              </div>
             </div>
           </div>
 
@@ -369,6 +456,7 @@ const DealStatusPage = () => {
               <option value="wholesale-d2d">Wholesale D2D</option>
               <option value="retail">Retail</option>
               <option value="retail-pp">Retail PP</option>
+              <option value="retail-d2d">Retail D2D</option>
             </select>
 
             <select
@@ -378,8 +466,11 @@ const DealStatusPage = () => {
             >
               <option value="all">All Statuses</option>
               <option value="contract-received">Initial Contact</option>
-              <option value="title-processing">Documentation</option>
+              <option value="docs-signed">Docs Signed</option>
+              <option value="title-processing">Title Processing</option>
               <option value="payment-approved">Finance Review</option>
+              <option value="funds-disbursed">Funds Disbursed</option>
+              <option value="title-received">Title Received</option>
               <option value="deal-complete">Complete</option>
             </select>
 
@@ -429,11 +520,21 @@ const DealStatusPage = () => {
                           {/* Sync status indicator */}
                           <div className="flex items-center space-x-1">
                             <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse" title="In sync with finance system"></div>
-                            <span className="text-green-400 text-xs">Synced</span>
+                            <span className="text-green-400 text-xs">Synced with Finance</span>
                           </div>
+                          
+                          {/* Recently Updated Badge */}
+                          {statusChanges.some(change => change.dealId === deal.id && 
+                            (new Date() - change.timestamp) < 60000) && (
+                            <span className="bg-yellow-500/20 text-yellow-400 text-xs font-medium px-2 py-1 rounded-full animate-pulse">
+                              Recently Updated
+                            </span>
+                          )}
                         </div>
                         <div className="flex items-center space-x-4 text-gray-300 text-sm">
                           <span>Stock #{deal.stockNumber}</span>
+                          <span>•</span>
+                          <span className="text-blue-400 font-medium">ID: {deal.dealId || 'N/A'}</span>
                           <span>•</span>
                           <span>{deal.seller}</span>
                           <span>•</span>
@@ -472,7 +573,7 @@ const DealStatusPage = () => {
                         onClick={() => handleDeleteDeal(deal.id)}
                         className="bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded-lg flex items-center space-x-2 transition-colors"
                       >
-                        <XCircle className="h-4 w-4" />
+                        <Trash2 className="h-4 w-4" />
                         <span>Delete</span>
                       </button>
                     </div>
@@ -498,8 +599,7 @@ const DealStatusPage = () => {
                   </div>
 
                   {/* Deal Details Grid */}
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                    {/* Remove price cards for sales users, only show VIN */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
                     <div className="bg-white/5 rounded-lg p-4 border border-white/10">
                       <div className="flex items-center justify-between mb-2">
                         <span className="text-gray-400 text-sm">VIN</span>
@@ -507,28 +607,47 @@ const DealStatusPage = () => {
                       </div>
                       <p className="text-white font-bold text-sm font-mono">{deal.vin}</p>
                     </div>
+
+                    <div className="bg-white/5 rounded-lg p-4 border border-white/10">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-gray-400 text-sm">Purchase Price</span>
+                        <DollarSign className="h-4 w-4 text-green-400" />
+                      </div>
+                      <p className="text-white font-bold text-lg">${deal.purchasePrice?.toLocaleString() || 'N/A'}</p>
+                    </div>
+
+                    {deal.dealType === 'wholesale-flip' ? (
+                      <div className="bg-white/5 rounded-lg p-4 border border-white/10">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-gray-400 text-sm">Wholesale Price</span>
+                          <TrendingUp className="h-4 w-4 text-blue-400" />
+                        </div>
+                        <p className="text-white font-bold text-lg">${deal.wholesalePrice?.toLocaleString() || 'N/A'}</p>
+                      </div>
+                    ) : (
+                      <div className="bg-white/5 rounded-lg p-4 border border-white/10">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-gray-400 text-sm">List Price</span>
+                          <TrendingUp className="h-4 w-4 text-blue-400" />
+                        </div>
+                        <p className="text-white font-bold text-lg">${deal.salePrice?.toLocaleString() || 'N/A'}</p>
+                      </div>
+                    )}
+
+                    {deal.payoffBalance > 0 && (
+                      <div className="bg-white/5 rounded-lg p-4 border border-white/10">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-gray-400 text-sm">Payoff Balance</span>
+                          <AlertCircle className="h-4 w-4 text-orange-400" />
+                        </div>
+                        <p className="text-white font-bold text-lg">${deal.payoffBalance?.toLocaleString() || 'N/A'}</p>
+                      </div>
+                    )}
                   </div>
 
-                  {/* Documentation Status */}
-                  <div className="mb-4">
-                    <h4 className="text-white font-medium mb-3">Documentation Status</h4>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                      {Object.entries(deal.documentation).map(([doc, info]) => (
-                        <div key={doc} className="flex items-center space-x-2">
-                          {info.status === 'received' || info.status === 'approved' ? (
-                            <CheckCircle className="h-4 w-4 text-green-400" />
-                          ) : info.status === 'pending' ? (
-                            <Clock className="h-4 w-4 text-orange-400" />
-                          ) : (
-                            <XCircle className="h-4 w-4 text-red-400" />
-                          )}
-                          <span className="text-gray-300 text-sm capitalize">
-                            {doc.replace('_', ' ')}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
+
+
+
 
                   {/* Expanded Details */}
                   {expandedDeal === deal.id && (
@@ -632,6 +751,8 @@ const DealStatusPage = () => {
                           </div>
                         </div>
                       </div>
+
+
                     </div>
                   )}
 

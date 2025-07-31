@@ -15,7 +15,7 @@ const LoginTransition = ({ user, onComplete }) => {
     { text: 'Loading user profile...', icon: (user && user.role === 'admin') ? Shield : (user && user.role === 'sales') ? Car : (user && user.role === 'finance') ? BarChart3 : Eye, duration: 700 },
     { text: 'Initializing workspace...', icon: Users, duration: 600 },
     { text: 'Preparing dashboard...', icon: Zap, duration: 500 },
-    { text: 'Welcome to RP Exotics!', icon: CheckCircle, duration: 400 }
+            { text: 'Welcome to RP Exotics!', icon: CheckCircle, duration: 400 }
   ], [user]);
 
   React.useEffect(() => {
@@ -178,11 +178,20 @@ const CompleteLoginFlow = () => {
         });
         if (response.ok) {
           const result = await response.json();
+          const user = result.user || result;
           // Only login if we don't already have a token
           if (!localStorage.getItem('token')) {
-            login(result.user || result);
+            login(user);
           }
-          setCurrentScreen('dashboard');
+          
+          // Clayton-specific routing for existing sessions
+          if (user && user.email && user.email.toLowerCase() === 'clayton@rpexotics.com') {
+            // Clayton goes directly to IT page using React Router
+            navigate('/it');
+          } else {
+            // All other users go to dashboard
+            setCurrentScreen('dashboard');
+          }
         }
       } catch (err) {
         // Not logged in, ignore
@@ -230,7 +239,14 @@ const CompleteLoginFlow = () => {
   };
 
   const handleTransitionComplete = () => {
-    setCurrentScreen('dashboard');
+    // Clayton-specific routing after login
+    if (currentUser && currentUser.email && currentUser.email.toLowerCase() === 'clayton@rpexotics.com') {
+      // Clayton goes directly to IT page using React Router
+      navigate('/it');
+    } else {
+      // All other users go to dashboard
+      setCurrentScreen('dashboard');
+    }
   };
 
   const handleForgotPassword = async () => {

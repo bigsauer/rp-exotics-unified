@@ -4,7 +4,7 @@ import {
   Car, ArrowLeft, Save, Send, CheckCircle, Loader2, 
   Calendar, DollarSign, User, 
   MapPin, Phone, Mail, Hash, Palette, Gauge, 
-  Info, Plus, AlertCircle, Shield
+  Info, Plus, AlertCircle, Shield, FileText, X
 } from 'lucide-react';
 import { useAuth } from './AuthContext';
 import { useNavigate } from 'react-router-dom';
@@ -103,12 +103,7 @@ const NewDealEntry = ({ setDeals }) => {
     vehicleDescription: '',
     generalNotes: '',
     
-    // Documentation
-    contractRequired: false,
-    titlePresent: false,
-    driverLicensePresent: false,
-    odometerPresent: false,
-    dealerLicensePresent: false,
+
     documents: [], // For uploaded files
     salesperson: '',
     
@@ -179,20 +174,35 @@ const NewDealEntry = ({ setDeals }) => {
     };
   }
 
+  // Helper function to identify wholesale buy deals
+  const isWholesaleBuyDeal = () => {
+    return (
+      (formData.dealType === 'wholesale-d2d' && formData.dealType2SubType === 'buy') ||
+      (formData.dealType === 'wholesale-pp') ||
+      (formData.dealType === 'wholesale-flip' && formData.dealType2SubType === 'buy')
+    );
+  };
 
   // Get dynamic labels based on deal type
   const getDynamicLabels = () => {
     const dealType2 = formData.dealType2SubType;
     const isRetailPP = formData.dealType === 'retail-pp';
+    const isRetailD2D = formData.dealType === 'retail-d2d';
+    const isWholesaleD2DSale = formData.dealType === 'wholesale-d2d' && dealType2 === 'sale';
+    const isWholesaleD2DBuy = formData.dealType === 'wholesale-d2d' && dealType2 === 'buy';
     
     return {
       purchasePriceLabel: dealType2 === 'sale' ? 'Sale Price' : 'Purchase Price',
       sellerLabel: dealType2 === 'sale' ? 'Sold To' : 'Purchased From',
-      sellerSectionTitle: dealType2 === 'sale' ? 'Buyer Information' : 'Seller Information',
-      // For retail PP deals, use more generic labels
-      companyLabel: isRetailPP ? 'Company (if applicable)' : 'Company/Dealer',
-      licenseLabel: isRetailPP ? 'License Number (if applicable)' : 'Dealer License Number',
-      addressLabel: isRetailPP ? 'Address' : 'Seller Address'
+      sellerSectionTitle: isWholesaleD2DSale ? 'Seller Information' : (dealType2 === 'sale' ? 'Buyer Information' : 'Seller Information'),
+      // For retail PP and retail D2D deals, use more generic labels
+      companyLabel: (isRetailPP || isRetailD2D) ? 'Company (if applicable)' : 'Company/Dealer',
+      licenseLabel: (isRetailPP || isRetailD2D) ? 'License Number (if applicable)' : 'Dealer License Number',
+      addressLabel: (isRetailPP || isRetailD2D) ? 'Address' : 'Seller Address',
+      // Specific labels for wholesale D2D buy deals
+      payoffBalanceLabel: 'Payoff Balance',
+      amountDueToCustomerLabel: 'Amount Due to Customer',
+      amountDueToRPExoticsLabel: 'Amount Due to RP Exotics'
     };
   };
 
@@ -203,6 +213,7 @@ const NewDealEntry = ({ setDeals }) => {
     { value: 'wholesale-d2d', label: 'Wholesale - D2D' },
     { value: 'wholesale-flip', label: 'Wholesale - Flip' },
     { value: 'retail-pp', label: 'Retail - PP' },
+    { value: 'retail-d2d', label: 'Retail - D2D' },
     { value: 'auction', label: 'Auction' }
   ];
 
@@ -252,13 +263,9 @@ const NewDealEntry = ({ setDeals }) => {
     return {
       showFinancials: [
         'wholesale-d2d', 'wholesale-flip',
-        'retail-pp', 'auction'
+        'retail-pp', 'retail-d2d', 'auction'
       ].includes(dealType),
       showSellerInfo: true,
-      showDocumentation: [
-        'wholesale-d2d', 'wholesale-flip',
-        'retail-pp', 'auction'
-      ].includes(dealType),
       requiredFields: ['vin', 'dealType', 'dealType2SubType', 'year', 'make', 'model', 'sellerName']
     };
   };
@@ -375,6 +382,11 @@ const NewDealEntry = ({ setDeals }) => {
   const handleInputChange = (field, value) => {
     let processedValue = value;
     
+    // Convert VIN to uppercase
+    if (field === 'vin') {
+      processedValue = value.toUpperCase();
+    }
+    
     // Handle currency formatting for financial fields
     if (['purchasePrice', 'listPrice', 'killPrice', 'wholesalePrice', 'brokerageFee', 'payoffBalance', 'amountDueToCustomer', 'amountDueToRP'].includes(field)) {
       processedValue = formatCurrency(value);
@@ -382,20 +394,49 @@ const NewDealEntry = ({ setDeals }) => {
     
     // If changing dealType, reset dealType2SubType unless still deal-type-2
     if (field === 'dealType') {
-      setFormData(prev => ({
-        ...prev,
-        dealType: processedValue,
-        dealType2SubType: processedValue === 'deal-type-2' ? prev.dealType2SubType : 
-                         processedValue === 'wholesale-flip' ? 'buy-sell' : '',
-        // Set default buyer/seller types for wholesale flip deals
-        buyerType: processedValue === 'wholesale-flip' ? 'dealer' : prev.buyerType,
-        sellerType: processedValue === 'wholesale-flip' ? 'private' : prev.sellerType
-      }));
+      console.log('[DEAL TYPE CHANGE] 🔍 Field:', field, 'Value:', processedValue);
+      
+      setFormData(prev => {
+        console.log('[DEAL TYPE CHANGE] 🔍 Previous formData:', prev);
+        
+        const newDealType2SubType = processedValue === 'deal-type-2' ? prev.dealType2SubType : 
+                                    processedValue === 'wholesale-flip' ? 'buy-sell' : 
+                                    processedValue === 'wholesale-d2d' ? '' : '';
+        
+        console.log('[DEAL TYPE CHANGE] 🔍 New dealType2SubType:', newDealType2SubType);
+        
+        const newFormData = {
+          ...prev,
+          dealType: processedValue,
+          dealType2SubType: newDealType2SubType,
+          // Set default buyer/seller types for wholesale flip deals
+          buyerType: processedValue === 'wholesale-flip' ? 'dealer' : prev.buyerType,
+          sellerType: processedValue === 'wholesale-flip' ? 'private' : prev.sellerType
+        };
+        
+        console.log('[DEAL TYPE CHANGE] 🔍 Updated formData:', newFormData);
+        return newFormData;
+      });
+      
       if (currentStep > 1) setCurrentStep(1);
       return;
     }
     
-    setFormData(prev => ({ ...prev, [field]: processedValue }));
+    setFormData(prev => {
+      // Add debugging for dealType2SubType changes
+      if (field === 'dealType2SubType') {
+        console.log('[DEAL TYPE 2 CHANGE] 🔍 Field:', field, 'Value:', processedValue);
+        console.log('[DEAL TYPE 2 CHANGE] 🔍 Previous formData:', prev);
+      }
+      
+      const newFormData = { ...prev, [field]: processedValue };
+      
+      if (field === 'dealType2SubType') {
+        console.log('[DEAL TYPE 2 CHANGE] 🔍 Updated formData:', newFormData);
+      }
+      
+      return newFormData;
+    });
     
     // Clear error when user starts typing
     if (formErrors[field]) {
@@ -450,21 +491,47 @@ const NewDealEntry = ({ setDeals }) => {
   // Handle file uploads for documentation
   const handleDocumentUpload = (e) => {
     const files = Array.from(e.target.files);
-    setFormData(prev => ({
-      ...prev,
-      documents: [...(prev.documents || []), ...files]
-    }));
-    setDocumentNotes(prev => ([
-      ...prev,
-      ...files.map((_, i) => ({ fileIndex: (prev.length + i), note: '' }))
-    ]));
+    console.log('[DOCUMENT UPLOAD] Files selected:', files.length, 'files');
+    files.forEach((file, index) => {
+      console.log(`[DOCUMENT UPLOAD] File ${index + 1}:`, file.name, 'Size:', file.size, 'Type:', file.type);
+    });
+    
+    setFormData(prev => {
+      const newDocuments = [...(prev.documents || []), ...files];
+      console.log('[DOCUMENT UPLOAD] Total documents after upload:', newDocuments.length);
+      return {
+        ...prev,
+        documents: newDocuments
+      };
+    });
+    
+    setDocumentNotes(prev => {
+      const newNotes = [
+        ...prev,
+        ...files.map((_, i) => ({ fileIndex: (prev.length + i), note: '' }))
+      ];
+      console.log('[DOCUMENT UPLOAD] Total document notes after upload:', newNotes.length);
+      return newNotes;
+    });
+    
+    // Clear the file input value to allow re-selection of the same files
+    e.target.value = '';
   };
   const handleRemoveDocument = (index) => {
-    setFormData(prev => ({
-      ...prev,
-      documents: prev.documents.filter((_, i) => i !== index)
-    }));
-    setDocumentNotes(prev => prev.filter(sel => sel.fileIndex !== index).map(sel => ({ ...sel, fileIndex: sel.fileIndex > index ? sel.fileIndex - 1 : sel.fileIndex })));
+    console.log('[DOCUMENT REMOVE] Removing document at index:', index);
+    setFormData(prev => {
+      const newDocuments = prev.documents.filter((_, i) => i !== index);
+      console.log('[DOCUMENT REMOVE] Documents after removal:', newDocuments.length);
+      return {
+        ...prev,
+        documents: newDocuments
+      };
+    });
+    setDocumentNotes(prev => {
+      const newNotes = prev.filter(sel => sel.fileIndex !== index).map(sel => ({ ...sel, fileIndex: sel.fileIndex > index ? sel.fileIndex - 1 : sel.fileIndex }));
+      console.log('[DOCUMENT REMOVE] Notes after removal:', newNotes.length);
+      return newNotes;
+    });
   };
   const handleDocumentNoteChange = (fileIndex, note) => {
     setDocumentNotes(prev => {
@@ -513,39 +580,83 @@ const NewDealEntry = ({ setDeals }) => {
     console.log('[BUYER DEALER AUTOFILL] Selected dealer:', dealer);
   };
 
-  const validateForm = () => {
+  const validateForm = (dataToValidate = formData) => {
+    console.log('[VALIDATION] Starting form validation...');
+    console.log('[VALIDATION] Data to validate:', dataToValidate);
+    
     const errors = {};
     let requiredFields = dealTypeFields.requiredFields || ['vin', 'dealType', 'dealType2SubType', 'year', 'make', 'model', 'sellerName'];
     
+    console.log('[VALIDATION] Required fields:', requiredFields);
+    
     // Add buyer fields for wholesale flip deals
-    if (formData.dealType === 'wholesale-flip') {
+    if (dataToValidate.dealType === 'wholesale-flip') {
       requiredFields = [...requiredFields, 'buyerName'];
+      console.log('[VALIDATION] Added buyerName for wholesale flip deal');
     }
     
+
+    
+    console.log('[VALIDATION] Final required fields:', requiredFields);
+    
     requiredFields.forEach(field => {
-      if (!formData[field] || formData[field].toString().trim() === '') {
+      const value = dataToValidate[field];
+      console.log(`[VALIDATION] Checking field '${field}':`, value);
+      
+      if (!value || value.toString().trim() === '') {
         errors[field] = `${field.charAt(0).toUpperCase() + field.slice(1)} is required`;
+        console.log(`[VALIDATION] ❌ Field '${field}' is missing or empty`);
+      } else {
+        console.log(`[VALIDATION] ✅ Field '${field}' is valid:`, value);
       }
     });
 
     // Additional validation for specific fields
     // REMOVE strict VIN length check
-    // if (formData.vin && formData.vin.length !== 17) {
+    // if (dataToValidate.vin && dataToValidate.vin.length !== 17) {
     //   errors.vin = 'VIN must be exactly 17 characters';
     // }
 
-    if (formData.year && (formData.year < 1900 || formData.year > new Date().getFullYear() + 1)) {
+    if (dataToValidate.year && (dataToValidate.year < 1900 || dataToValidate.year > new Date().getFullYear() + 1)) {
       errors.year = 'Please enter a valid year';
+      console.log('[VALIDATION] ❌ Invalid year:', dataToValidate.year);
     }
 
-    if (formData.mileage && formData.mileage < 0) {
+    if (dataToValidate.mileage && dataToValidate.mileage < 0) {
       errors.mileage = 'Mileage cannot be negative';
+      console.log('[VALIDATION] ❌ Negative mileage:', dataToValidate.mileage);
     }
 
-    if (dealTypeFields.showFinancials && formData.purchasePrice && formData.purchasePrice <= 0) {
+    if (dealTypeFields.showFinancials && dataToValidate.purchasePrice && dataToValidate.purchasePrice <= 0) {
       errors.purchasePrice = 'Purchase price must be greater than 0';
+      console.log('[VALIDATION] ❌ Invalid purchase price:', dataToValidate.purchasePrice);
     }
 
+    // Validate wholesale d2d deals have dealType2SubType selected
+    if (dataToValidate.dealType === 'wholesale-d2d' && (!dataToValidate.dealType2SubType || dataToValidate.dealType2SubType.trim() === '')) {
+      errors.dealType2SubType = 'Please select "Buy" or "Sale" for wholesale dealer-to-dealer deals.';
+      console.log('[VALIDATION] ❌ Wholesale d2d deal missing dealType2SubType');
+    }
+    
+    // Validate wholesale d2d sale deals have correct dealType2SubType
+    if (dataToValidate.dealType === 'wholesale-d2d' && dataToValidate.dealType2SubType === 'buy') {
+      // Check if this looks like it should be a sale deal (has buyer information)
+      if (dataToValidate.buyerName && dataToValidate.buyerName.trim() !== '') {
+        errors.dealType2SubType = 'This appears to be a sale deal (has buyer info). Please select "Sale" as Deal Type 2.';
+        console.log('[VALIDATION] ❌ Wholesale d2d deal has buyer info but dealType2SubType is "buy"');
+      }
+    }
+    
+    // Additional validation for wholesale d2d sale deals
+    if (dataToValidate.dealType === 'wholesale-d2d' && dataToValidate.dealType2SubType === 'sale') {
+      // For sale deals, ensure buyer information is provided
+      if (!dataToValidate.buyerName || dataToValidate.buyerName.trim() === '') {
+        errors.buyerName = 'Buyer information is required for wholesale dealer-to-dealer sale deals.';
+        console.log('[VALIDATION] ❌ Wholesale d2d sale deal missing buyer info');
+      }
+    }
+
+    console.log('[VALIDATION] Final validation errors:', errors);
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -555,107 +666,150 @@ const NewDealEntry = ({ setDeals }) => {
   // Add a new prop: setDeals (function to update deals list)
 
   const handleSave = async (isDraft = false) => {
+    return handleSaveWithData(formData, isDraft);
+  };
+
+  const handleSaveWithData = async (dataToUse, isDraft = false) => {
+    console.log('[HANDLE SAVE] Starting deal submission...');
+    console.log('[HANDLE SAVE] isDraft:', isDraft);
+    console.log('[HANDLE SAVE] currentUser:', currentUser);
+    console.log('[HANDLE SAVE] Using data:', dataToUse);
+    console.log('[HANDLE SAVE] 🔍 dealType:', dataToUse.dealType);
+    console.log('[HANDLE SAVE] 🔍 dealType2SubType:', dataToUse.dealType2SubType);
+    console.log('[HANDLE SAVE] 🔍 dealType2:', dataToUse.dealType2);
+    
     if (!currentUser) {
+      console.log('[HANDLE SAVE] No user logged in');
       alert('You must be logged in to submit a deal.');
       navigate('/login');
       return;
     }
-    if (!isDraft && !validateForm()) {
-      console.log('[DEAL SUBMIT] Validation errors:', formErrors);
+    
+    if (!isDraft && !validateForm(dataToUse)) {
+      console.log('[HANDLE SAVE] Validation failed');
+      console.log('[HANDLE SAVE] Validation errors:', formErrors);
+      alert('Please fill in all required fields: ' + Object.keys(formErrors).join(', '));
       return;
     }
+    
+    console.log('[HANDLE SAVE] Setting saving state to true');
     setSaving(true);
 
-    // --- Optimistic UI: Add temp deal to UI immediately ---
-    const tempId = 'temp-' + Date.now();
-    const optimisticDeal = {
-      ...formData,
-      id: tempId,
-      status: 'pending',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      // Add any other fields your deals list expects
-    };
-    if (setDeals) {
-      setDeals(deals => [optimisticDeal, ...deals]);
-    }
-
     try {
-      // Debug: log formData before building dealData
-      console.log('[DEAL SUBMIT] formData:', formData);
-      console.log('[DEBUG] handleSave - sellerType in formData:', formData.sellerType);
-      // Log all financial fields from formData
+      console.log('[HANDLE SAVE] Building deal data...');
+      // Debug: log dataToUse before building dealData
+      console.log('[DEAL SUBMIT] dataToUse:', dataToUse);
+      console.log('[DEBUG] handleSave - sellerType in dataToUse:', dataToUse.sellerType);
+      console.log('[DEBUG] handleSave - dealType2SubType in dataToUse:', dataToUse.dealType2SubType);
+      // Log all financial fields from dataToUse
       console.log('[DEAL SUBMIT] Financial fields:', {
-        brokerageFee: formData.brokerageFee,
-        brokerageFeePaidTo: formData.brokerageFeePaidTo,
-        payoffBalance: formData.payoffBalance,
-        amountDueToCustomer: formData.amountDueToCustomer,
-        amountDueToRP: formData.amountDueToRP,
-        commissionRate: formData.commissionRate
+        brokerageFee: dataToUse.brokerageFee,
+        brokerageFeePaidTo: dataToUse.brokerageFeePaidTo,
+        payoffBalance: dataToUse.payoffBalance,
+        amountDueToCustomer: dataToUse.amountDueToCustomer,
+        amountDueToRP: dataToUse.amountDueToRP,
+        commissionRate: dataToUse.commissionRate
       });
       const currentStage = 'contract-received';
       // First, create the deal in the backend
       const dealData = {
-        vehicle: `${formData.year} ${formData.make} ${formData.model}`,
-        vin: formData.vin,
-        year: parseInt(formData.year),
-        make: formData.make,
-        model: formData.model,
-        rpStockNumber: formData.rpStockNumber,
-        color: formData.exteriorColor,
-        exteriorColor: formData.exteriorColor, // Add this field
-        interiorColor: formData.interiorColor, // Add this field
-        mileage: parseInt(formData.mileage) || 0,
-        purchasePrice: parseFloat(formData.purchasePrice) || 0,
-        listPrice: parseFloat(formData.listPrice) || 0,
-        killPrice: parseFloat(formData.killPrice) || 0,
-        wholesalePrice: parseFloat(formData.wholesalePrice) || 0,
-        dealType: formData.dealType,
-        dealType2SubType: formData.dealType2SubType, // <-- Ensure this is sent
-        dealType2: formData.dealType2SubType, // <-- Add this for backend compatibility
+        vehicle: `${dataToUse.year} ${dataToUse.make} ${dataToUse.model}`,
+        vin: dataToUse.vin,
+        year: parseInt(dataToUse.year),
+        make: dataToUse.make,
+        model: dataToUse.model,
+        rpStockNumber: dataToUse.rpStockNumber,
+        color: dataToUse.exteriorColor,
+        exteriorColor: dataToUse.exteriorColor, // Add this field
+        interiorColor: dataToUse.interiorColor, // Add this field
+        mileage: parseInt(dataToUse.mileage) || 0,
+        purchasePrice: parseFloat(dataToUse.purchasePrice) || 0,
+        listPrice: parseFloat(dataToUse.listPrice) || 0,
+        killPrice: parseFloat(dataToUse.killPrice) || 0,
+        wholesalePrice: parseFloat(dataToUse.wholesalePrice) || 0,
+        dealType: dataToUse.dealType,
+        dealType2SubType: dataToUse.dealType2SubType, // <-- Ensure this is sent
+        dealType2: (() => {
+          // Convert dealType2SubType to proper dealType2 format
+          const mapping = {
+            'buy': 'Buy',
+            'sale': 'Sale',
+            'buy-sell': 'Buy/Sell',
+            'consign-a': 'Consign-A',
+            'consign-b': 'Consign-B',
+            'consign-c': 'Consign-C',
+            'consign-rdnc': 'Consign-RDNC'
+          };
+          
+          console.log('[DEAL TYPE 2 MAPPING] 🔍 Input dealType2SubType:', dataToUse.dealType2SubType);
+          console.log('[DEAL TYPE 2 MAPPING] 🔍 Mapping table:', mapping);
+          const result = mapping[dataToUse.dealType2SubType] || 'Buy';
+          console.log('[DEAL TYPE 2 MAPPING] 🔍 Mapped result:', result);
+          
+          return result;
+        })(),
         seller: {
-          name: formData.sellerName,
-          type: formData.sellerType || (formData.dealType === 'wholesale-flip' ? 'private' : formData.dealType.includes('private') ? 'private' : 'dealer'),
+          name: dataToUse.sellerName,
+          type: dataToUse.sellerType || (dataToUse.dealType === 'wholesale-flip' ? 'private' : dataToUse.dealType.includes('private') ? 'private' : 'dealer'),
           contact: {
-            address: parseAddress(formData.sellerAddress), // Use parsed address
-            phone: formData.sellerPhone,
-            email: formData.sellerEmail
+            address: parseAddress(dataToUse.sellerAddress), // Use parsed address
+            phone: dataToUse.sellerPhone,
+            email: dataToUse.sellerEmail
           },
-          licenseNumber: formData.sellerLicenseNumber,
-          tier: formData.sellerTier
+          licenseNumber: dataToUse.sellerLicenseNumber,
+          tier: dataToUse.sellerTier
         },
         // Always include buyer info if present
         buyer: {
-          name: formData.buyerName,
-          type: formData.buyerType,
+          name: dataToUse.buyerName,
+          type: dataToUse.buyerType,
           contact: {
-            address: parseAddress(formData.buyerAddress),
-            phone: formData.buyerPhone,
-            email: formData.buyerEmail
+            address: parseAddress(dataToUse.buyerAddress),
+            phone: dataToUse.buyerPhone,
+            email: dataToUse.buyerEmail
           },
-          licenseNumber: formData.buyerLicenseNumber,
-          tier: formData.buyerTier
+          licenseNumber: dataToUse.buyerLicenseNumber,
+          tier: dataToUse.buyerTier
         },
-        fundingSource: formData.fundingSource,
-        paymentMethod: formData.paymentMethod,
-        purchaseDate: formData.purchaseDate ? new Date(formData.purchaseDate) : new Date(),
+        fundingSource: dataToUse.fundingSource,
+        paymentMethod: dataToUse.paymentMethod,
+        purchaseDate: dataToUse.purchaseDate ? new Date(dataToUse.purchaseDate) : new Date(),
         currentStage: currentStage || 'contract-received',
         salesperson: currentUser.name || 'Unknown', // Use current user's name as salesperson
         // --- Add all financial fields below ---
-        brokerFee: parseFloat(formData.brokerageFee) || 0,
-        brokerFeePaidTo: formData.brokerageFeePaidTo || '',
-        payoffBalance: parseFloat(formData.payoffBalance) || 0,
-        amountDueToCustomer: parseFloat(formData.amountDueToCustomer) || 0,
-        amountDueToRP: parseFloat(formData.amountDueToRP) || 0,
-        commissionRate: parseFloat(formData.commissionRate) || 0,
-        generalNotes: formData.generalNotes, // <-- Ensure this is sent
+        brokerFee: parseFloat(dataToUse.brokerageFee) || 0,
+        brokerFeePaidTo: dataToUse.brokerageFeePaidTo || '',
+        payoffBalance: parseFloat(dataToUse.payoffBalance) || 0,
+        amountDueToCustomer: parseFloat(dataToUse.amountDueToCustomer) || 0,
+        amountDueToRP: parseFloat(dataToUse.amountDueToRP) || 0,
+        commissionRate: parseFloat(dataToUse.commissionRate) || 0,
+        generalNotes: dataToUse.generalNotes, // <-- Ensure this is sent
         
         // Add lien status information for wholesale flip deals with private sellers
         titleInfo: {
-          lienStatus: formData.lienStatus || 'none',
-          lienEta: formData.lienEta ? new Date(formData.lienEta) : null
+          lienStatus: dataToUse.lienStatus || 'none',
+          lienEta: dataToUse.lienEta ? new Date(dataToUse.lienEta) : null
         }
       };
+      
+      // Debug: log the final dealData being sent
+      console.log('[DEAL SUBMIT] Final dealData being sent:', {
+        dealType: dealData.dealType,
+        dealType2: dealData.dealType2,
+        dealType2SubType: dealData.dealType2SubType,
+        buyer: dealData.buyer?.name,
+        seller: dealData.seller?.name
+      });
+      
+      // ENHANCED DEBUGGING FOR WHOLESALE D2D SALE
+      if (dealData.dealType === 'wholesale-d2d') {
+        console.log('[DEAL SUBMIT] 🔍 WHOLESALE D2D DEAL DEBUGGING:');
+        console.log('[DEAL SUBMIT] 🔍 - dealType:', dealData.dealType);
+        console.log('[DEAL SUBMIT] 🔍 - dealType2:', dealData.dealType2);
+        console.log('[DEAL SUBMIT] 🔍 - dealType2SubType:', dealData.dealType2SubType);
+        console.log('[DEAL SUBMIT] 🔍 - Is this a sale deal?', dealData.dealType2SubType === 'sale' || dealData.dealType2 === 'Sale');
+        console.log('[DEAL SUBMIT] 🔍 - Full dealData object:', JSON.stringify(dealData, null, 2));
+      }
       console.log('[DEBUG] handleSave - dealData.seller.type:', dealData.seller.type);
       // Debug: log license numbers being sent
       console.log('[DEAL SUBMIT] SENDING seller license number:', formData.sellerLicenseNumber);
@@ -666,6 +820,12 @@ const NewDealEntry = ({ setDeals }) => {
       dealData.currentStage = 'contract-received';
       console.log('[DEBUG] dealData.currentStage (final):', dealData.currentStage);
       console.log('[DEBUG] Full dealData:', dealData);
+      
+      console.log('[HANDLE SAVE] Making API call to create deal...');
+      console.log('[HANDLE SAVE] API URL:', `${API_BASE}/api/deals`);
+      console.log('[HANDLE SAVE] Headers:', buildHeaders());
+      console.log('[HANDLE SAVE] Deal data:', dealData);
+      
       // Create deal (this would be your existing deal creation endpoint)
       const dealResponse = await fetch(`${API_BASE}/api/deals`, {
         method: 'POST',
@@ -673,71 +833,136 @@ const NewDealEntry = ({ setDeals }) => {
         body: JSON.stringify(dealData),
         credentials: 'include'
       });
+      
       // Debug: log backend response status
       console.log('[DEAL SUBMIT] Backend response status:', dealResponse.status);
-      const dealResult = await dealResponse.json().catch(() => ({}));
+      console.log('[DEAL SUBMIT] Backend response headers:', dealResponse.headers);
+      
+      const dealResult = await dealResponse.json().catch((error) => {
+        console.error('[DEAL SUBMIT] Error parsing JSON response:', error);
+        return {};
+      });
+      
       console.log('[DEAL SUBMIT] Backend response JSON:', dealResult);
-      if (!dealResponse.ok || !dealResult.success || !dealResult.deal) {
-        throw new Error(dealResult.error || 'Failed to create deal');
+      
+      if (!dealResponse.ok) {
+        console.error('[DEAL SUBMIT] API call failed with status:', dealResponse.status);
+        console.error('[DEAL SUBMIT] Error response:', dealResult);
+        throw new Error(dealResult.error || `Failed to create deal (Status: ${dealResponse.status})`);
       }
+      
+      if (!dealResult.success || !dealResult.deal) {
+        console.error('[DEAL SUBMIT] API call succeeded but no deal returned');
+        console.error('[DEAL SUBMIT] Response:', dealResult);
+        throw new Error(dealResult.error || 'Failed to create deal - no deal data returned');
+      }
+      
+      console.log('[DEAL SUBMIT] Deal created successfully!');
+      console.log('[DEAL SUBMIT] Deal ID:', dealResult.deal._id);
+      console.log('[DEAL SUBMIT] Stock number:', dealResult.stockNumber);
+      
       // --- Optimistic UI: Replace temp deal with real deal ---
       if (setDeals) {
-        setDeals(deals => deals.map(d => d.id === tempId ? dealResult.deal : d));
+        setDeals(deals => [dealResult.deal, ...deals]);
       }
       
       // Upload any documents that were added during deal creation
-      if (formData.documents && formData.documents.length > 0) {
-        console.log('[DEAL SUBMIT] Uploading', formData.documents.length, 'documents');
+      if (dataToUse.documents && dataToUse.documents.length > 0) {
+        console.log('[DEAL SUBMIT] Uploading', dataToUse.documents.length, 'documents');
+        console.log('[DEAL SUBMIT] Documents to upload:', dataToUse.documents.map(d => ({ name: d.name, size: d.size, type: d.type })));
+        
         try {
-          for (let i = 0; i < formData.documents.length; i++) {
-            const file = formData.documents[i];
-            const note = documentNotes.find(n => n.fileIndex === i)?.note || '';
-            
-            const formDataUpload = new FormData();
-            formDataUpload.append('document', file);
-            formDataUpload.append('notes', note);
-            
-            const uploadResponse = await fetch(`${API_BASE}/api/backOffice/deals/${dealResult.deal._id}/documents/extra_doc/upload`, {
-              method: 'POST',
-              headers: {
-                ...getAuthHeaders(),
-                // Don't set Content-Type for FormData, let browser set it
-              },
-              body: formDataUpload,
-              credentials: 'include'
-            });
-            
-            if (uploadResponse.ok) {
-              console.log('[DEAL SUBMIT] Document uploaded successfully:', file.name);
-            } else {
-              console.warn('[DEAL SUBMIT] Failed to upload document:', file.name);
+          // Create a single FormData with all files for batch upload
+          const formDataUpload = new FormData();
+          
+          // Add all files to the FormData
+          dataToUse.documents.forEach((file, index) => {
+            formDataUpload.append('documents', file);
+            const note = documentNotes.find(n => n.fileIndex === index)?.note || '';
+            if (note) {
+              formDataUpload.append('notes', note);
             }
+          });
+          
+          console.log('[DEAL SUBMIT] Batch uploading all documents to:', `${API_BASE}/api/backOffice/deals/${dealResult.deal._id}/documents/extra_doc/upload`);
+          
+          const uploadResponse = await fetch(`${API_BASE}/api/backOffice/deals/${dealResult.deal._id}/documents/extra_doc/upload`, {
+            method: 'POST',
+            headers: {
+              ...getAuthHeaders(),
+              // Don't set Content-Type for FormData, let browser set it
+            },
+            body: formDataUpload,
+            credentials: 'include'
+          });
+          
+          console.log('[DEAL SUBMIT] Upload response status:', uploadResponse.status);
+          
+          if (uploadResponse.ok) {
+            const uploadResult = await uploadResponse.json();
+            console.log('[DEAL SUBMIT] All documents uploaded successfully:', uploadResult);
+            toast.success(`${uploadResult.data.length} document(s) uploaded successfully!`);
+          } else {
+            const errorText = await uploadResponse.text();
+            console.warn('[DEAL SUBMIT] Failed to upload documents:', 'Status:', uploadResponse.status, 'Error:', errorText);
+            toast.error('Failed to upload some documents. Please try again.');
           }
         } catch (uploadError) {
           console.error('[DEAL SUBMIT] Error uploading documents:', uploadError);
+          toast.error('Error uploading documents. Please try again.');
         }
+      } else {
+        console.log('[DEAL SUBMIT] No documents to upload');
       }
 
       // Automatically generate documents after successful deal creation
       try {
         console.log('[DEAL SUBMIT] Generating documents for deal:', dealResult.deal._id);
-        const docResponse = await fetch(`${API_BASE}/api/documents/generate/${dealResult.deal._id}`, {
-          method: 'POST',
-          headers: buildHeaders(),
-          credentials: 'include'
+        console.log('[DEAL SUBMIT] Sending document generation data:', {
+          dealType2SubType: dealData.dealType2SubType,
+          dealType2: dealData.dealType2,
+          sellerType: dealData.sellerType,
+          buyerType: dealData.buyerType
         });
         
-        if (docResponse.ok) {
-          const docResult = await docResponse.json();
-          console.log('[DEAL SUBMIT] Documents generated successfully:', docResult);
-          toast.success('Deal submitted and documents generated successfully!');
-        } else {
-          console.warn('[DEAL SUBMIT] Document generation failed, but deal was created');
-          toast.success('Deal submitted successfully! (Documents will be generated later)');
+        try {
+          const docResponse = await fetch(`${API_BASE}/api/documents/generate/${dealResult.deal._id}`, {
+            method: 'POST',
+            headers: {
+              ...buildHeaders(),
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              dealType2SubType: dealData.dealType2SubType,
+              dealType2: dealData.dealType2,
+              sellerType: dealData.sellerType,
+              buyerType: dealData.buyerType
+            }),
+            credentials: 'include'
+          });
+          
+          console.log('[DEAL SUBMIT] Document generation response status:', docResponse.status);
+          
+          if (docResponse.ok) {
+            const docResult = await docResponse.json();
+            console.log('[DEAL SUBMIT] Documents generated successfully:', docResult);
+            toast.success(`Deal submitted and ${docResult.documentCount || 0} document(s) generated successfully!`);
+          } else {
+            const errorText = await docResponse.text();
+            console.error('[DEAL SUBMIT] Document generation failed:', {
+              status: docResponse.status,
+              statusText: docResponse.statusText,
+              error: errorText
+            });
+            toast.error('Deal submitted but document generation failed. Please contact support.');
+          }
+        } catch (docError) {
+          console.error('[DEAL SUBMIT] Error generating documents:', docError);
+          toast.error('Deal submitted but document generation failed. Please contact support.');
         }
-      } catch (docError) {
-        console.error('[DEAL SUBMIT] Error generating documents:', docError);
-        toast.success('Deal submitted successfully! (Documents will be generated later)');
+      } catch (docGenError) {
+        console.error('[DEAL SUBMIT] Error in document generation block:', docGenError);
+        toast.error('Deal submitted but document generation failed. Please contact support.');
       }
       
       // Optionally redirect to a success page or clear form
@@ -784,11 +1009,7 @@ const NewDealEntry = ({ setDeals }) => {
           rpStockNumber: '',
           vehicleDescription: '',
           generalNotes: '',
-          contractRequired: false,
-          titlePresent: false,
-          driverLicensePresent: false,
-          odometerPresent: false,
-          dealerLicensePresent: false,
+
           documents: [],
           salesperson: '',
           
@@ -801,18 +1022,33 @@ const NewDealEntry = ({ setDeals }) => {
       }
       
     } catch (error) {
+      console.error('[HANDLE SAVE] Error occurred during deal submission:', error);
+      console.error('[HANDLE SAVE] Error message:', error.message);
+      console.error('[HANDLE SAVE] Error stack:', error.stack);
+      
       // --- Optimistic UI: Remove temp deal on failure ---
-      if (setDeals) {
-        setDeals(deals => deals.filter(d => d.id !== tempId));
-      }
+      // Note: dealResult is not available in catch scope, so we can't remove specific deal
+      // The optimistic UI will be handled by the finally block setting saving to false
+      
       if (error.message.includes('401') || error.message.includes('not authorized')) {
+        console.error('[HANDLE SAVE] Authentication error detected');
         alert('Session expired or not authorized. Please log in again.');
         navigate('/login');
+      } else if (error.message.includes('400')) {
+        console.error('[HANDLE SAVE] Bad request error detected');
+        alert(`Validation error: ${error.message}`);
+      } else if (error.message.includes('403')) {
+        console.error('[HANDLE SAVE] Forbidden error detected');
+        alert('Access denied. Please check your permissions.');
+      } else if (error.message.includes('500')) {
+        console.error('[HANDLE SAVE] Server error detected');
+        alert('Server error occurred. Please try again later.');
       } else {
+        console.error('[HANDLE SAVE] Unknown error occurred');
         alert(`Error saving deal: ${error.message}`);
-        console.log('[DEAL SUBMIT] Error:', error);
       }
     } finally {
+      console.log('[HANDLE SAVE] Setting saving state to false');
       setSaving(false);
     }
   };
@@ -864,13 +1100,14 @@ ${currentUser.name}`;
             stepDescription = 'Set pricing and financial terms';
           } else if ((stepNumber === 3 && !dealTypeFields.showFinancials && dealTypeFields.showSellerInfo) || 
                      (stepNumber === 4 && dealTypeFields.showFinancials && dealTypeFields.showSellerInfo)) {
-            stepTitle = formData.dealType === 'wholesale-flip' ? 'Buyer & Seller Information' : 'Seller Information';
-            stepDescription = formData.dealType === 'wholesale-flip' ? 'Add buyer and seller contact information' : 'Add seller contact information';
-          } else if ((stepNumber === 3 && !dealTypeFields.showFinancials && !dealTypeFields.showSellerInfo && dealTypeFields.showDocumentation) ||
-                     (stepNumber === 4 && dealTypeFields.showFinancials && !dealTypeFields.showSellerInfo && dealTypeFields.showDocumentation) ||
-                     (stepNumber === 5 && dealTypeFields.showFinancials && dealTypeFields.showSellerInfo && dealTypeFields.showDocumentation)) {
-            stepTitle = 'Documentation & Notes';
-            stepDescription = 'Document status and additional notes';
+                          stepTitle = (formData.dealType === 'wholesale-flip' && formData.dealType2SubType === 'buy-sell') ? 'Buyer & Seller Information' : 
+                          (formData.dealType === 'wholesale-d2d' && formData.dealType2SubType === 'sale') ? 'Buyer Information' : 'Seller Information';
+              stepDescription = (formData.dealType === 'wholesale-flip' && formData.dealType2SubType === 'buy-sell') ? 'Add buyer and seller contact information' : 
+                               (formData.dealType === 'wholesale-d2d' && formData.dealType2SubType === 'sale') ? 'Add purchasing dealer information' : 'Add seller contact information';
+          } else if ((stepNumber === 4 && !dealTypeFields.showFinancials && !dealTypeFields.showSellerInfo) || 
+                     (stepNumber === 5 && (dealTypeFields.showFinancials || dealTypeFields.showSellerInfo))) {
+            stepTitle = 'Comments & Files';
+            stepDescription = 'Add vehicle description, notes, and upload documents';
           }
           
           return (
@@ -960,6 +1197,7 @@ ${currentUser.name}`;
                 handleInputChange(field, e.target.value);
               }}
               placeholder={`Enter ${label.toLowerCase()}...`}
+              pattern={type === 'tel' ? '[0-9+\-\(\)\s]*' : undefined}
               className={`w-full bg-white/10 border rounded-lg px-3 py-2 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors ${
                 formErrors[field] ? 'border-red-500' : 'border-white/20 hover:border-white/30'
               } ${field === 'vin' ? 'pr-20' : ''} ${['purchasePrice', 'listPrice', 'killPrice', 'wholesalePrice', 'brokerageFee', 'payoffBalance', 'amountDueToCustomer', 'amountDueToRP'].includes(field) ? 'pl-8' : ''}`}
@@ -1070,7 +1308,40 @@ ${currentUser.name}`;
               <h3 className="text-lg font-medium text-white mb-4">Deal Type Selection</h3>
               {renderFormField('Deal Type', 'dealType', 'select', dealTypes, true, Car)}
               <div className="mt-4">
-                {renderFormField('Deal Type 2', 'dealType2SubType', 'select', dealType2SubOptions, true)}
+                <div className={formData.dealType === 'wholesale-d2d' && (!formData.dealType2SubType || formData.dealType2SubType.trim() === '') ? 'ring-2 ring-yellow-500/50 rounded-lg p-1' : ''}>
+                  {renderFormField('Deal Type 2', 'dealType2SubType', 'select', dealType2SubOptions, true)}
+                </div>
+                {formData.dealType === 'wholesale-d2d' && (
+                  <div className={`mt-2 p-3 border rounded-lg ${(!formData.dealType2SubType || formData.dealType2SubType.trim() === '') ? 'bg-yellow-500/10 border-yellow-500/30' : 'bg-blue-500/10 border-blue-500/20'}`}>
+                    <p className={`text-sm ${(!formData.dealType2SubType || formData.dealType2SubType.trim() === '') ? 'text-yellow-300' : 'text-blue-300'}`}>
+                      {(!formData.dealType2SubType || formData.dealType2SubType.trim() === '') ? (
+                        <>
+                          ⚠️ <strong>Required:</strong> Please select "Buy" or "Sale" for wholesale dealer-to-dealer deals:
+                          <br />• Select <strong>"Buy"</strong> if RP Exotics is purchasing from another dealer
+                          <br />• Select <strong>"Sale"</strong> if RP Exotics is selling to another dealer
+                        </>
+                      ) : formData.dealType2SubType === 'buy' ? (
+                        <>
+                          ✅ <strong>Buy Deal:</strong> RP Exotics is purchasing from another dealer
+                          <br />• <strong>Seller:</strong> Another dealer (you'll enter their info)
+                          <br />• <strong>Buyer:</strong> RP Exotics (no buyer info needed)
+                        </>
+                      ) : formData.dealType2SubType === 'sale' ? (
+                        <>
+                          ✅ <strong>Sale Deal:</strong> RP Exotics is selling to another dealer
+                          <br />• <strong>Seller:</strong> RP Exotics (no seller info needed)
+                          <br />• <strong>Buyer:</strong> Another dealer (you'll enter their info)
+                        </>
+                      ) : (
+                        <>
+                          💡 <strong>Important:</strong> Please select the correct option for wholesale dealer-to-dealer deals:
+                          <br />• Select <strong>"Buy"</strong> if RP Exotics is purchasing from another dealer
+                          <br />• Select <strong>"Sale"</strong> if RP Exotics is selling to another dealer
+                        </>
+                      )}
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
             {/* Vehicle Information */}
@@ -1102,7 +1373,7 @@ ${currentUser.name}`;
                 {renderFormField('Funding Source', 'fundingSource', 'select', fundingSources, true, DollarSign)}
                 {renderFormField('Purchase/Sale Date', 'purchaseDate', 'date', null, true, Calendar)}
                 {renderFormField('Payment Method', 'paymentMethod', 'select', paymentMethods, true)}
-                {renderFormField('RP Stock Number', 'rpStockNumber', 'text', null, false, Hash)}
+                {renderFormField('RP Exotics Stock Number', 'rpStockNumber', 'text', null, false, Hash)}
                 {renderFormField('Salesperson', 'salesperson', 'select', salespersonOptions, true, User)}
               </div>
             </div>
@@ -1117,8 +1388,65 @@ ${currentUser.name}`;
                 {renderFormField(dynamicLabels.purchasePriceLabel, 'purchasePrice', 'number', null, true, DollarSign)}
                 {renderFormField('Brokerage Fee', 'brokerageFee', 'number')}
                 {renderFormField('Brokerage Fee Paid To', 'brokerageFeePaidTo', 'text')}
-                {renderFormField('Amount Due to Customer', 'amountDueToCustomer', 'number')}
-                {renderFormField('Amount Due to RP', 'amountDueToRP', 'number')}
+                {renderFormField(dynamicLabels.amountDueToCustomerLabel, 'amountDueToCustomer', 'number')}
+                {renderFormField(dynamicLabels.amountDueToRPExoticsLabel, 'amountDueToRP', 'number')}
+              </div>
+            ) : formData.dealType === 'retail-pp' ? (
+              // Financial info for retail-pp buy deals - same layout as others
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Left column */}
+                <div className="space-y-6">
+                  {renderFormField(dynamicLabels.purchasePriceLabel, 'purchasePrice', 'number', null, true, DollarSign)}
+                  {renderFormField('List Price', 'listPrice', 'number')}
+                  {renderFormField(dynamicLabels.payoffBalanceLabel, 'payoffBalance', 'number')}
+                </div>
+                {/* Right column */}
+                <div className="space-y-6">
+                  {renderFormField('Brokerage Fee', 'brokerageFee', 'number')}
+                  {renderFormField('Brokerage Fee Paid To', 'brokerageFeePaidTo', 'text')}
+                  {renderFormField(dynamicLabels.amountDueToCustomerLabel, 'amountDueToCustomer', 'number')}
+                  {renderFormField(dynamicLabels.amountDueToRPExoticsLabel, 'amountDueToRP', 'number')}
+                </div>
+              </div>
+            ) : formData.dealType === 'retail-d2d' ? (
+              // Financial info for retail-d2d deals - similar to retail-pp but with different layout
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Left column */}
+                <div className="space-y-6">
+                  {renderFormField(dynamicLabels.purchasePriceLabel, 'purchasePrice', 'number', null, true, DollarSign)}
+                  {renderFormField('List Price', 'listPrice', 'number')}
+                  {renderFormField(dynamicLabels.payoffBalanceLabel, 'payoffBalance', 'number')}
+                </div>
+                {/* Right column */}
+                <div className="space-y-6">
+                  {renderFormField('Brokerage Fee', 'brokerageFee', 'number')}
+                  {renderFormField('Brokerage Fee Paid To', 'brokerageFeePaidTo', 'text')}
+                  {renderFormField(dynamicLabels.amountDueToCustomerLabel, 'amountDueToCustomer', 'number')}
+                  {renderFormField(dynamicLabels.amountDueToRPExoticsLabel, 'amountDueToRP', 'number')}
+                </div>
+              </div>
+            ) : formData.dealType === 'wholesale-d2d' && formData.dealType2SubType === 'buy' ? (
+              // Financial info for wholesale D2D buy deals - exclude List Price
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Left column */}
+                <div className="space-y-6">
+                  {renderFormField(dynamicLabels.purchasePriceLabel, 'purchasePrice', 'number', null, true, DollarSign)}
+                  {renderFormField('Kill Price', 'killPrice', 'number')}
+                  {renderFormField('Wholesale Price', 'wholesalePrice', 'number')}
+                  {/* List Price excluded for wholesale D2D buy deals */}
+                  {/* Only show Commission Rate for consign deals, otherwise keep layout clean */}
+                  {['consign-a','consign-b','consign-c','consign-rdnc'].includes(formData.dealType2SubType)
+                    ? renderFormField('Commission Rate (%)', 'commissionRate', 'number')
+                    : null}
+                </div>
+                {/* Right column */}
+                <div className="space-y-6">
+                  {renderFormField('Brokerage Fee', 'brokerageFee', 'number')}
+                  {renderFormField('Brokerage Fee Paid To', 'brokerageFeePaidTo', 'text')}
+                  {renderFormField(dynamicLabels.payoffBalanceLabel, 'payoffBalance', 'number')}
+                  {renderFormField(dynamicLabels.amountDueToCustomerLabel, 'amountDueToCustomer', 'number')}
+                  {renderFormField(dynamicLabels.amountDueToRPExoticsLabel, 'amountDueToRP', 'number')}
+                </div>
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -1137,9 +1465,9 @@ ${currentUser.name}`;
                 <div className="space-y-6">
                   {renderFormField('Brokerage Fee', 'brokerageFee', 'number')}
                   {renderFormField('Brokerage Fee Paid To', 'brokerageFeePaidTo', 'text')}
-                  {renderFormField('Payoff Balance', 'payoffBalance', 'number')}
-                  {renderFormField('Amount Due to Customer', 'amountDueToCustomer', 'number')}
-                  {renderFormField('Amount Due to RP', 'amountDueToRP', 'number')}
+                  {renderFormField(dynamicLabels.payoffBalanceLabel, 'payoffBalance', 'number')}
+                  {renderFormField(dynamicLabels.amountDueToCustomerLabel, 'amountDueToCustomer', 'number')}
+                  {renderFormField(dynamicLabels.amountDueToRPExoticsLabel, 'amountDueToRP', 'number')}
                 </div>
               </div>
             )}
@@ -1154,7 +1482,7 @@ ${currentUser.name}`;
       
       case 4:
         // Seller/Dealer Info step
-        if (formData.dealType === 'wholesale-flip') {
+        if (formData.dealType === 'wholesale-flip' && formData.dealType2SubType === 'buy-sell') {
           return (
             <div className="bg-white/5 rounded-xl p-6 border border-white/10 space-y-10">
               {/* Buyer Section */}
@@ -1192,7 +1520,7 @@ ${currentUser.name}`;
                   {renderFormField('Email', 'buyerEmail', 'email', null, false, Mail)}
                   {renderFormField('Address', 'buyerAddress', 'text', null, false, MapPin)}
                   {formData.buyerType === 'dealer' && renderFormField('Dealer License Number', 'buyerLicenseNumber', 'text')}
-                  {formData.buyerType === 'dealer' && !(formData.dealType === 'wholesale-d2d' && formData.dealType2SubType === 'buy') && renderFormField('Dealer Tier', 'buyerTier', 'select', [
+                  {formData.buyerType === 'dealer' && !isWholesaleBuyDeal() && renderFormField('Dealer Tier', 'buyerTier', 'select', [
                     { value: 'Tier 1', label: 'Tier 1: Pay Upon Title' },
                     { value: 'Tier 2', label: 'Tier 2: Pay Prior to Release' }
                   ])}
@@ -1234,11 +1562,30 @@ ${currentUser.name}`;
                   {renderFormField('Email', 'sellerEmail', 'email', null, false, Mail)}
                   {renderFormField('Address', 'sellerAddress', 'text', null, false, MapPin)}
                   {formData.sellerType === 'dealer' && renderFormField('Dealer License Number', 'sellerLicenseNumber', 'text')}
-                  {formData.sellerType === 'dealer' && !(formData.dealType === 'wholesale-flip' && formData.dealType2SubType === 'buy-sell') && !(formData.dealType === 'wholesale-d2d' && formData.dealType2SubType === 'buy') && renderFormField('Dealer Tier', 'sellerTier', 'select', [
+                  {formData.sellerType === 'dealer' && !(formData.dealType === 'wholesale-flip' && formData.dealType2SubType === 'buy-sell') && !isWholesaleBuyDeal() && renderFormField('Dealer Tier', 'sellerTier', 'select', [
                     { value: 'Tier 1', label: 'Tier 1: Pay Upon Title' },
                     { value: 'Tier 2', label: 'Tier 2: Pay Prior to Release' }
                   ])}
                 </div>
+              </div>
+            </div>
+          );
+        } else if (formData.dealType === 'wholesale-d2d' && formData.dealType2SubType === 'sale') {
+          // For wholesale d2d sale, only show buyer information (RP Exotics is the seller)
+          return (
+            <div className="bg-white/5 rounded-xl p-6 border border-white/10">
+              <h3 className="text-lg font-medium text-white mb-4">Buyer Information</h3>
+                              <p className="text-gray-400 mb-6">Enter the purchasing dealer information (RP Exotics is the seller)</p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {renderFormField('Dealer Name', 'buyerName', 'text', null, true, User)}
+                {renderFormField('Phone', 'buyerPhone', 'tel', null, false, Phone)}
+                {renderFormField('Email', 'buyerEmail', 'email', null, false, Mail)}
+                {renderFormField('Address', 'buyerAddress', 'text', null, false, MapPin)}
+                {renderFormField('Dealer License Number', 'buyerLicenseNumber', 'text')}
+                {!isWholesaleBuyDeal() && renderFormField('Dealer Tier', 'buyerTier', 'select', [
+                  { value: 'Tier 1', label: 'Tier 1: Pay Upon Title' },
+                  { value: 'Tier 2', label: 'Tier 2: Pay Prior to Release' }
+                ])}
               </div>
             </div>
           );
@@ -1263,12 +1610,12 @@ ${currentUser.name}`;
                   <div className="md:col-span-2">
                     {renderFormField(dynamicLabels.sellerLabel, 'sellerName', 'text', null, true, User)}
                   </div>
-                  {!isRetailPP && renderFormField(dynamicLabels.companyLabel, 'sellerCompany', 'text')}
+                  {!isRetailPP && formData.dealType !== 'retail-d2d' && !(formData.dealType === 'wholesale-d2d' && formData.dealType2SubType === 'buy') && renderFormField(dynamicLabels.companyLabel, 'sellerCompany', 'text')}
                   {renderFormField('Phone', 'sellerPhone', 'tel', null, false, Phone)}
                   {renderFormField('Email', 'sellerEmail', 'email', null, false, Mail)}
                   {renderFormField(dynamicLabels.addressLabel, 'sellerAddress', 'text', null, false, MapPin)}
                   
-                  {/* Show license number and tier for wholesale d2d deals */}
+                  {/* Show license number and tier for wholesale d2d deals (but not for buy deals) */}
                   {formData.dealType === 'wholesale-d2d' && (
                     <>
                       <div>
@@ -1282,46 +1629,48 @@ ${currentUser.name}`;
                         />
                       </div>
                       
-                      {/* Tier Selection */}
-                      <div className="md:col-span-2">
-                        <label className="block text-sm font-medium text-white mb-2">
-                          Dealer Tier
-                        </label>
-                        <div className="flex space-x-4">
-                          <button
-                            type="button"
-                            onClick={() => handleInputChange('sellerTier', 'Tier 1')}
-                            className={`px-4 py-2 rounded-lg border transition-colors ${
-                              formData.sellerTier === 'Tier 1'
-                                ? 'bg-red-600 border-red-500 text-white'
-                                : 'bg-white/10 border-white/20 text-white hover:bg-white/20'
-                            }`}
-                          >
-                            Tier 1 - Pay Upon Title
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleInputChange('sellerTier', 'Tier 2')}
-                            className={`px-4 py-2 rounded-lg border transition-colors ${
-                              formData.sellerTier === 'Tier 2'
-                                ? 'bg-green-600 border-green-500 text-white'
-                                : 'bg-white/10 border-white/20 text-white hover:bg-white/20'
-                            }`}
-                          >
-                            Tier 2 - Pay Prior to Release
-                          </button>
+                      {/* Tier Selection - only for sale deals, not buy deals */}
+                      {formData.dealType2SubType === 'sale' && (
+                        <div className="md:col-span-2">
+                          <label className="block text-sm font-medium text-white mb-2">
+                            Dealer Tier
+                          </label>
+                          <div className="flex space-x-4">
+                            <button
+                              type="button"
+                              onClick={() => handleInputChange('sellerTier', 'Tier 1')}
+                              className={`px-4 py-2 rounded-lg border transition-colors ${
+                                formData.sellerTier === 'Tier 1'
+                                  ? 'bg-red-600 border-red-500 text-white'
+                                  : 'bg-white/10 border-white/20 text-white hover:bg-white/20'
+                              }`}
+                            >
+                              Tier 1 - Pay Upon Title
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleInputChange('sellerTier', 'Tier 2')}
+                              className={`px-4 py-2 rounded-lg border transition-colors ${
+                                formData.sellerTier === 'Tier 2'
+                                  ? 'bg-green-600 border-green-500 text-white'
+                                  : 'bg-white/10 border-white/20 text-white hover:bg-white/20'
+                              }`}
+                            >
+                              Tier 2 - Pay Prior to Release
+                            </button>
+                          </div>
+                          <p className="text-xs text-gray-400 mt-1">
+                            Tier 1: Pay Upon Title. Tier 2: Pay Prior to Release.
+                          </p>
                         </div>
-                        <p className="text-xs text-gray-400 mt-1">
-                          Tier 1: Pay Upon Title. Tier 2: Pay Prior to Release.
-                        </p>
-                      </div>
+                      )}
                     </>
                   )}
                 </div>
               )}
               
               {/* Buyer Section for Wholesale D2D Deals */}
-              {formData.dealType === 'wholesale-d2d' && (
+              {formData.dealType === 'wholesale-d2d' && formData.dealType2SubType === 'sale' && (
                 <div className="bg-white/5 rounded-xl p-6 border border-white/10 mt-6">
                   <h3 className="text-lg font-medium text-white mb-4">
                     {formData.dealType2SubType === 'buy' ? 'Purchasing Dealer Information' : 'Buyer Information'}
@@ -1354,6 +1703,7 @@ ${currentUser.name}`;
                     </div>
                     
                     {/* Buyer Tier Selection */}
+                    {!isWholesaleBuyDeal() && (
                     <div className="md:col-span-2">
                       <label className="block text-sm font-medium text-white mb-2">
                         Dealer Tier
@@ -1386,21 +1736,14 @@ ${currentUser.name}`;
                         Tier 1: Pay Upon Title. Tier 2: Pay Prior to Release.
                       </p>
                     </div>
+                    )}
                   </div>
                 </div>
               )}
-            </div>
-          );
-        }
       
-      case 5:
-        return dealTypeFields.showDocumentation ? (
-          <div className="bg-white/5 rounded-xl p-6 border border-white/10">
-            <h3 className="text-lg font-medium text-white mb-4">Documentation & Notes</h3>
-            <div className="space-y-6">
               {/* Lien Status Section for Wholesale Flip with Private Seller */}
               {formData.dealType === 'wholesale-flip' && formData.sellerType === 'private' && (
-                <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4">
+                <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4 mt-6">
                   <h4 className="text-blue-300 font-semibold mb-2 flex items-center">
                     <Shield className="h-4 w-4 mr-2 text-blue-400" />
                     Title Lien Status
@@ -1431,27 +1774,32 @@ ${currentUser.name}`;
                 </div>
               )}
               
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-4">
-                  <h4 className="text-md font-medium text-white mb-4">Documentation Status</h4>
-                  {renderFormField('Contract Required', 'contractRequired', 'checkbox')}
-                  {renderFormField('Title Present', 'titlePresent', 'checkbox')}
-                  {renderFormField('Driver License Present', 'driverLicensePresent', 'checkbox')}
-                  {renderFormField('Odometer Present', 'odometerPresent', 'checkbox')}
-                  {renderFormField('Dealer License Present', 'dealerLicensePresent', 'checkbox')}
-                </div>
-                <div className="space-y-4">
+                                {/* Document Upload Section - Hide for retail-pp deals, retail-d2d deals, and wholesale d2d buy deals */}
+                  {formData.dealType !== 'retail-pp' && formData.dealType !== 'retail-d2d' && !(formData.dealType === 'wholesale-d2d' && formData.dealType2SubType === 'buy') && (
+                <div className="bg-white/5 rounded-xl p-6 border border-white/10 mt-6">
+                <h3 className="text-lg font-medium text-white mb-4">Additional Information</h3>
+                <div className="space-y-6">
                   {renderFormField('Vehicle Description', 'vehicleDescription', 'textarea', null, false, Info)}
+                  {renderFormField('General Notes', 'generalNotes', 'textarea', null, false, Info)}
+                  
                   {/* File upload area */}
                   <div>
                     <label className="block text-sm font-medium text-white mb-2">Upload Documents/Photos</label>
                     <input
                       type="file"
                       multiple
-                      accept="image/*,application/pdf"
+                      accept="image/*,application/pdf,.doc,.docx"
                       onChange={handleDocumentUpload}
                       className="block w-full text-sm text-gray-300 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-700"
+                      style={{ display: 'block' }}
+                      key={`file-input-step4-${formData.documents?.length || 0}`}
                     />
+                    <p className="text-gray-400 text-xs mt-1">You can select multiple files at once</p>
+                    {formData.documents && formData.documents.length > 0 && (
+                      <p className="text-blue-400 text-xs mt-1">
+                        Currently uploaded: {formData.documents.length} file{formData.documents.length !== 1 ? 's' : ''}
+                      </p>
+                    )}
                     {/* Preview uploaded files */}
                     {formData.documents && formData.documents.length > 0 && (
                       <div className="mt-3 space-y-2">
@@ -1484,16 +1832,110 @@ ${currentUser.name}`;
                   </div>
                 </div>
               </div>
+              )}
+            </div>
+          );
+        }
+      
+      case 5:
+        return (
+          <div className="space-y-6">
+            {/* Comments, Description & Files */}
+            <div className="bg-white/5 rounded-xl p-6 border border-white/10">
+              <h3 className="text-lg font-medium text-white mb-4">Comments, Description & Files</h3>
+              
+              {/* Vehicle Description */}
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Vehicle Description
+                </label>
+                <textarea
+                  value={formData.vehicleDescription || ''}
+                  onChange={(e) => handleInputChange('vehicleDescription', e.target.value)}
+                  placeholder="Enter detailed vehicle description..."
+                  rows={4}
+                  className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+                />
+              </div>
+
+              {/* General Notes */}
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  General Notes
+                </label>
+                <textarea
+                  value={formData.generalNotes || ''}
+                  onChange={(e) => handleInputChange('generalNotes', e.target.value)}
+                  placeholder="Enter any additional notes or comments..."
+                  rows={4}
+                  className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+                />
+              </div>
+
+              {/* Document Upload */}
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Upload Documents
+                </label>
+                <div className="border-2 border-dashed border-white/20 rounded-lg p-6 text-center hover:border-white/30 transition-colors">
+                  <input
+                    type="file"
+                    multiple
+                    onChange={handleDocumentUpload}
+                    className="block w-full text-sm text-gray-300 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-700 cursor-pointer"
+                    accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                    style={{ display: 'block' }}
+                    key={`file-input-${formData.documents?.length || 0}`}
+                  />
+                  <div className="mt-3 text-center">
+                    <p className="text-gray-400 text-sm">PDF, DOC, DOCX, JPG, PNG (Max 10MB each)</p>
+                    <p className="text-gray-400 text-xs mt-1">You can select multiple files at once</p>
+                    {formData.documents && formData.documents.length > 0 && (
+                      <p className="text-blue-400 text-xs mt-1">
+                        Currently uploaded: {formData.documents.length} file{formData.documents.length !== 1 ? 's' : ''}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Uploaded Documents List */}
+              {formData.documents && formData.documents.length > 0 && (
+                <div className="mb-6">
+                  <h4 className="text-sm font-medium text-gray-300 mb-3">Uploaded Documents</h4>
+                  <div className="space-y-3">
+                    {formData.documents.map((file, index) => (
+                      <div key={index} className="flex items-center justify-between bg-white/5 rounded-lg p-3 border border-white/10">
+                        <div className="flex items-center space-x-3">
+                          <div className="bg-blue-500/20 rounded p-2">
+                            <FileText className="h-4 w-4 text-blue-400" />
+              </div>
               <div>
-                {renderFormField('General Notes', 'generalNotes', 'textarea', null, false, Info)}
+                            <p className="text-white text-sm font-medium">{file.name}</p>
+                            <p className="text-gray-400 text-xs">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
               </div>
             </div>
+                        <div className="flex items-center space-x-2">
+                          <input
+                            type="text"
+                            placeholder="Add note..."
+                            value={documentNotes.find(note => note.fileIndex === index)?.note || ''}
+                            onChange={(e) => handleDocumentNoteChange(index, e.target.value)}
+                            className="bg-white/10 border border-white/20 rounded px-2 py-1 text-white text-xs placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                          />
+                          <button
+                            onClick={() => handleRemoveDocument(index)}
+                            className="text-red-400 hover:text-red-300 transition-colors"
+                          >
+                            <X className="h-4 w-4" />
+                          </button>
           </div>
-        ) : (
-          <div className="text-center py-12">
-            <Info className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-white mb-2">Documentation Not Required</h3>
-            <p className="text-gray-400">This deal type does not require documentation tracking.</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         );
       
@@ -1507,7 +1949,7 @@ ${currentUser.name}`;
     let steps = 2; // Always have vehicle info and deal config
     if (dealTypeFields.showFinancials) steps++;
     if (dealTypeFields.showSellerInfo) steps++;
-    if (dealTypeFields.showDocumentation) steps++;
+    steps++; // Add step for comments, description, and files
     return steps;
   };
 
@@ -1542,6 +1984,7 @@ ${currentUser.name}`;
     'deal-complete'
   ];
 
+  // Helper function to identify wholesale buy deals
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black">
       {/* Animated Background */}
@@ -1658,7 +2101,105 @@ ${currentUser.name}`;
                 </button>
               ) : (
                 <button
-                  onClick={() => handleSave(false)}
+                  onClick={() => {
+                    console.log('[SUBMIT] Submit button clicked');
+                    console.log('[SUBMIT] Current form data:', formData);
+                    console.log('[SUBMIT] Current user:', currentUser);
+                    console.log('[SUBMIT] Validation errors:', formErrors);
+                    
+                    // Check if user is logged in
+                    if (!currentUser) {
+                      console.log('[SUBMIT] No user logged in');
+                      alert('You must be logged in to submit a deal.');
+                      navigate('/login');
+                      return;
+                    }
+                    
+                    // Auto-set seller for wholesale-d2d sale deals (RP Exotics is always the seller)
+                    if (formData.dealType === 'wholesale-d2d' && formData.dealType2SubType === 'sale' && !formData.sellerName) {
+                      console.log('[SUBMIT] Auto-setting seller for wholesale-d2d sale deal');
+                      
+                      // Create updated form data with seller info
+                      const updatedFormData = {
+                        ...formData,
+                        sellerName: 'RP Exotics',
+                        sellerType: 'dealer',
+                        sellerPhone: '(314) 970-2427',
+                        sellerEmail: 'titling@rpexotics.com',
+                        sellerAddress: '1155 N Warson Rd, Saint Louis, MO 63132',
+                        sellerLicenseNumber: 'D4865',
+                        sellerTier: 'Tier 1'
+                      };
+                      
+                      // Update state
+                      setFormData(updatedFormData);
+                      
+                      // Validate with updated data immediately
+                      const errors = {};
+                      let requiredFields = ['vin', 'dealType', 'dealType2SubType', 'year', 'make', 'model', 'sellerName'];
+                      
+                      requiredFields.forEach(field => {
+                        const value = updatedFormData[field];
+                        console.log(`[SUBMIT] Checking field '${field}':`, value);
+                        
+                        if (!value || value.toString().trim() === '') {
+                          errors[field] = `${field.charAt(0).toUpperCase() + field.slice(1)} is required`;
+                          console.log(`[SUBMIT] ❌ Field '${field}' is missing or empty`);
+                        } else {
+                          console.log(`[SUBMIT] ✅ Field '${field}' is valid:`, value);
+                        }
+                      });
+                      
+                      // Additional validation checks
+                      if (updatedFormData.year && (updatedFormData.year < 1900 || updatedFormData.year > new Date().getFullYear() + 1)) {
+                        errors.year = 'Please enter a valid year';
+                        console.log('[SUBMIT] ❌ Invalid year:', updatedFormData.year);
+                      }
+                      
+                      if (updatedFormData.mileage && updatedFormData.mileage < 0) {
+                        errors.mileage = 'Mileage cannot be negative';
+                        console.log('[SUBMIT] ❌ Negative mileage:', updatedFormData.mileage);
+                      }
+                      
+                      const dealTypeFields = getDealTypeFields();
+                      if (dealTypeFields.showFinancials && updatedFormData.purchasePrice && updatedFormData.purchasePrice <= 0) {
+                        errors.purchasePrice = 'Purchase price must be greater than 0';
+                        console.log('[SUBMIT] ❌ Invalid purchase price:', updatedFormData.purchasePrice);
+                      }
+                      
+                      console.log('[SUBMIT] Validation errors:', errors);
+                      setFormErrors(errors);
+                      
+                      const isValid = Object.keys(errors).length === 0;
+                      console.log('[SUBMIT] Form validation result:', isValid);
+                      
+                      if (!isValid) {
+                        console.log('[SUBMIT] Form validation failed');
+                        console.log('[SUBMIT] Form errors:', errors);
+                        alert('Please fill in all required fields: ' + Object.keys(errors).join(', '));
+                        return;
+                      }
+                      
+                      console.log('[SUBMIT] Calling handleSave with updated form data...');
+                      // Call handleSave with the updated form data
+                      handleSaveWithData(updatedFormData, false);
+                      return;
+                    }
+                    
+                    // Check validation
+                    const isValid = validateForm();
+                    console.log('[SUBMIT] Form validation result:', isValid);
+                    
+                    if (!isValid) {
+                      console.log('[SUBMIT] Form validation failed');
+                      console.log('[SUBMIT] Form errors:', formErrors);
+                      alert('Please fill in all required fields: ' + Object.keys(formErrors).join(', '));
+                      return;
+                    }
+                    
+                    console.log('[SUBMIT] Calling handleSave...');
+                    handleSave(false);
+                  }}
                   disabled={saving}
                   className="flex items-center px-6 py-2 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white rounded-lg transition-colors disabled:opacity-50"
                 >

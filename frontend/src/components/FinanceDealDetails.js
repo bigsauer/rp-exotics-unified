@@ -22,7 +22,12 @@ const FinanceDealDetails = () => {
   // Add this helper function near the top of the file
   function getDocumentUrl(doc, API_BASE) {
     if (!doc) return '';
-    // If filePath is absolute, extract the filename and build the web path
+    
+    // Prioritize cloud URLs
+    if (doc.cloudUrl) return doc.cloudUrl;
+    if (doc.filePath && doc.filePath.startsWith('http')) return doc.filePath;
+    
+    // Fallback to local paths (for backward compatibility)
     if (doc.filePath && doc.filePath.startsWith('/uploads/')) {
       return `${API_BASE}${doc.filePath}`;
     }
@@ -34,7 +39,7 @@ const FinanceDealDetails = () => {
     if (doc.filePath && (doc.filePath.includes('Desktop') || doc.filePath.includes('rp-exotics-unified'))) {
       // Extract filename from absolute path
       const fileName = doc.fileName || doc.filePath.split('/').pop();
-      return `${API_BASE}/uploads/documents/${fileName}`;
+      return `${API_BASE}/api/documents/download/${fileName}`;
     }
     if (doc.downloadUrl) return doc.downloadUrl;
     if (doc.fileName) return `${API_BASE}/api/documents/download/${doc.fileName}`;
@@ -58,19 +63,23 @@ const FinanceDealDetails = () => {
         const vehicleDocs = Array.isArray(data.vehicleRecordDocuments) ? data.vehicleRecordDocuments : [];
         console.log('[FinanceDealDetails] Deal documents:', dealDocs);
         console.log('[FinanceDealDetails] Vehicle record documents:', vehicleDocs);
-        // Merge, avoiding duplicates by fileName, and only show current (latest) documents
+        console.log('[FinanceDealDetails] Deal documents length:', dealDocs.length);
+        console.log('[FinanceDealDetails] Vehicle record documents length:', vehicleDocs.length);
+        console.log('[FinanceDealDetails] Deal object structure:', Object.keys(deal || {}));
+        console.log('[FinanceDealDetails] Deal documents structure:', deal?.documents ? Object.keys(deal.documents[0] || {}) : 'No documents');
+        // Merge all documents, avoiding duplicates by fileName
         let allDocs = [...dealDocs];
         const vehicleDocFileNames = new Set(vehicleDocs.map(d => d.fileName));
+        
+        // Add vehicle record documents that aren't already in dealDocs
         vehicleDocs.forEach(doc => {
-          if (!allDocs.some(d => d.fileName === doc.fileName)) allDocs.push(doc);
+          if (!allDocs.some(d => d.fileName === doc.fileName)) {
+            allDocs.push(doc);
+          }
         });
-        // Filter out any docs whose fileName is not in the current vehicleDocs (for generated docs)
-        allDocs = allDocs.filter(doc => {
-          // Always show extra_doc (uploaded) files
-          if (doc.type === 'extra_doc' || doc.documentType === 'extra_doc') return true;
-          // For generated docs, only show if present in vehicleDocs
-          return vehicleDocFileNames.has(doc.fileName);
-        });
+        
+        // Show all documents - don't filter them out
+        // This ensures all documents are displayed properly
         console.log('[FinanceDealDetails] Filtered document list:', allDocs);
         setDeal(deal);
         setDocuments(prev => {
@@ -246,48 +255,54 @@ const FinanceDealDetails = () => {
     }
   };
 
-  const handleDownload = async (doc) => {
-    console.log('handleDownload called with doc:', doc);
-    let downloadUrl;
-    
-    // For extra_doc files (uploaded documents), use the backoffice endpoint
-    if (doc.type === 'extra_doc') {
-      // Use documentId if available (new format), otherwise use type (old format)
-      const identifier = doc.documentId || doc.type;
-      downloadUrl = `${API_BASE}/api/backoffice/deals/${dealId}/documents/${identifier}/download`;
-      console.log('extra_doc download URL:', downloadUrl);
+  const handleDownloadDocument = async (doc, dealId) => {
+    try {
+      let downloadUrl;
       
-      // For extra_doc files, use fetch with credentials since they require authentication
-      try {
-        const response = await fetch(downloadUrl, { credentials: 'include' });
-        if (response.ok) {
-          const blob = await response.blob();
-          const url = window.URL.createObjectURL(blob);
-          const link = document.createElement('a');
-          link.href = url;
-          link.download = doc.fileName || doc.name;
-          document.body.appendChild(link);
-          link.click();
-          window.URL.revokeObjectURL(url);
-          document.body.removeChild(link);
-        } else {
-          throw new Error('Failed to download document');
-        }
-      } catch (error) {
-        console.error('Error downloading document:', error);
-        alert('Error downloading document');
+      if (doc.type === 'extra_doc' && doc.documentId) {
+        // For new extra_doc files with documentId
+        downloadUrl = `${API_BASE}/api/backoffice/deals/${dealId}/documents/${doc.documentId}/download`;
+      } else if (doc.type === 'extra_doc') {
+        // For old extra_doc files without documentId
+        downloadUrl = `${API_BASE}/api/backoffice/deals/${dealId}/documents/extra_doc/download`;
+      } else if (doc.fileName) {
+        // For generated documents
+        downloadUrl = `${API_BASE}/api/documents/download/${doc.fileName || doc.name}`;
+      } else {
+        toast.error('Download URL not available for this document');
+        return;
       }
-    } else {
-      // For generated documents, use the documents endpoint with filename
-      downloadUrl = `${API_BASE}/api/documents/download/${doc.fileName || doc.name}`;
-      console.log('generated document download URL:', downloadUrl);
+
+      console.log('[FinanceDealDetails] Downloading document:', doc.type, downloadUrl);
       
-      const link = document.createElement('a');
-      link.href = downloadUrl;
-      link.download = doc.fileName || doc.name;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      const response = await fetch(downloadUrl, {
+        method: 'GET',
+        credentials: 'include',
+        headers: getAuthHeaders()
+      });
+
+      if (response.ok) {
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = doc.fileName || doc.name || `${doc.type}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+        toast.success('Document downloaded successfully!');
+      } else if (response.status === 404) {
+        console.warn('[FinanceDealDetails] Document not found (404):', doc.fileName || doc.name);
+        toast.error('Document not found. It may have been deleted or not yet generated.');
+      } else {
+        const errorText = await response.text();
+        console.error('[FinanceDealDetails] Download failed:', response.status, errorText);
+        toast.error('Failed to download document');
+      }
+    } catch (error) {
+      console.error('[FinanceDealDetails] Error downloading document:', error);
+      toast.error('Error downloading document');
     }
   };
 
@@ -302,22 +317,66 @@ const FinanceDealDetails = () => {
       viewUrl = `${API_BASE}/api/backoffice/deals/${dealId}/documents/${identifier}/download`;
       console.log('extra_doc view URL:', viewUrl);
       
-      // Navigate to the route without fileName for extra_doc files
-      const navigateUrl = `/deals/${dealId}/documents/view`;
+      // Navigate to the enhanced viewer for extra_doc files
+      const navigateUrl = `/deals/${dealId}/documents/enhanced-view`;
       console.log('Navigating to:', navigateUrl);
       navigate(navigateUrl, { 
-        state: { viewUrl } 
+        state: { 
+          viewUrl,
+          dealId,
+          documentType: doc.type
+        } 
       });
     } else {
       // For generated documents, use the documents endpoint with filename
       viewUrl = `${API_BASE}/api/documents/download/${doc.fileName || doc.name}`;
       console.log('generated document view URL:', viewUrl);
       
-      const navigateUrl = `/deals/${dealId}/documents/${encodeURIComponent(doc.fileName || doc.name)}/view`;
+      // Navigate to the enhanced viewer for generated documents
+      const navigateUrl = `/deals/${dealId}/documents/${encodeURIComponent(doc.fileName || doc.name)}/enhanced-view`;
       console.log('Navigating to:', navigateUrl);
       navigate(navigateUrl, { 
-        state: { viewUrl } 
+        state: { 
+          viewUrl,
+          dealId,
+          documentType: doc.type
+        } 
       });
+    }
+  };
+
+  const handleRetryDocumentGeneration = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch(`${API_BASE}/api/documents/generate/${dealId}`, {
+        method: 'POST',
+        headers: {
+          ...getAuthHeaders(),
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          dealType2SubType: deal.dealType2SubType,
+          dealType2: deal.dealType2,
+          sellerType: deal.sellerType || 'private',
+          buyerType: deal.buyerType || 'dealer'
+        }),
+        credentials: 'include'
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        toast.success(`Document generation retry successful! ${result.documentCount || 0} document(s) generated.`);
+        // Refresh the page to show new documents
+        window.location.reload();
+      } else {
+        const errorText = await response.text();
+        toast.error(`Document generation retry failed: ${errorText}`);
+      }
+    } catch (error) {
+      console.error('Error retrying document generation:', error);
+      toast.error('Failed to retry document generation');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -642,6 +701,14 @@ const FinanceDealDetails = () => {
             >
               {isEditing ? 'Cancel Edit' : 'Edit Deal'}
             </button>
+            {deal.documentGenerationStatus === 'failed' && (
+              <button
+                onClick={handleRetryDocumentGeneration}
+                className="px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition-colors"
+              >
+                Retry Document Generation
+              </button>
+            )}
           </div>
         </div>
 
@@ -674,6 +741,20 @@ const FinanceDealDetails = () => {
                 <span className="text-gray-300">Status:</span>
                 <div className="font-semibold">{deal.currentStage}</div>
               </div>
+              <div>
+                <span className="text-gray-300">Document Generation:</span>
+                <div className={`font-semibold ${
+                  deal.documentGenerationStatus === 'completed' ? 'text-green-400' :
+                  deal.documentGenerationStatus === 'failed' ? 'text-red-400' :
+                  deal.documentGenerationStatus === 'in_progress' ? 'text-yellow-400' :
+                  'text-gray-400'
+                }`}>
+                  {deal.documentGenerationStatus === 'completed' ? '✅ Completed' :
+                   deal.documentGenerationStatus === 'failed' ? '❌ Failed' :
+                   deal.documentGenerationStatus === 'in_progress' ? '⏳ In Progress' :
+                   '⏳ Pending'}
+                </div>
+              </div>
             </div>
           </div>
         )}
@@ -689,9 +770,22 @@ const FinanceDealDetails = () => {
           alignItems: 'center',
           marginTop: '32px',
         }}>
-          {documents.map((doc, idx) => {
-            const docType = doc.type || doc.documentType || 'unknown';
-            console.log(`[FinanceDealDetails] Rendering document ${idx}:`, doc);
+          {documents.length === 0 ? (
+            <div style={{
+              background: 'rgba(255,255,255,0.92)',
+              border: '1px solid #e2e8f0',
+              borderRadius: 16,
+              padding: '24px 28px',
+              textAlign: 'center',
+              color: '#666'
+            }}>
+              <h3>No documents found</h3>
+              <p>Documents will appear here once they are generated or uploaded.</p>
+            </div>
+          ) : (
+            documents.map((doc, idx) => {
+              const docType = doc.type || doc.documentType || 'unknown';
+              console.log(`[FinanceDealDetails] Rendering document ${idx}:`, doc);
             return (
               <div
                 key={doc.fileName || doc.documentNumber || idx}
@@ -843,9 +937,8 @@ const FinanceDealDetails = () => {
                   >
                     View
                   </button>
-                  <a
-                    href={getDocumentUrl(doc, API_BASE)}
-                    download
+                  <button
+                    onClick={() => handleDownloadDocument(doc, dealId)}
                     style={{
                       padding: '10px 22px',
                       background: 'linear-gradient(90deg, #667eea 0%, #5a67d8 100%)',
@@ -853,12 +946,10 @@ const FinanceDealDetails = () => {
                       borderRadius: 8,
                       fontWeight: 600,
                       fontSize: 15,
-                      textDecoration: 'none',
                       border: 'none',
                       cursor: 'pointer',
                       boxShadow: '0 2px 8px 0 rgba(102,126,234,0.13)',
                       transition: 'background 0.2s, box-shadow 0.2s',
-                      display: 'inline-block',
                     }}
                     onMouseOver={e => {
                       e.currentTarget.style.background = 'linear-gradient(90deg, #5a67d8 0%, #434190 100%)';
@@ -870,11 +961,12 @@ const FinanceDealDetails = () => {
                     }}
                   >
                     Download
-                  </a>
+                  </button>
                 </div>
               </div>
             );
-          })}
+          })
+          )}
         </div>
       </div>
     </div>

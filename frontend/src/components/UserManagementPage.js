@@ -49,6 +49,7 @@ const UserManagementPage = () => {
     lastName: '',
     email: '',
     username: '',
+    password: '',
     role: 'sales',
     department: 'Sales',
     phone: '',
@@ -63,7 +64,7 @@ const UserManagementPage = () => {
     }
   });
 
-  const API_BASE = process.env.REACT_APP_API_BASE || 'http://localhost:5001';
+  const API_BASE = process.env.REACT_APP_API_URL || 'https://astonishing-chicken-production.up.railway.app';
 
   // Fetch users
   const fetchUsers = async () => {
@@ -88,7 +89,7 @@ const UserManagementPage = () => {
       
       console.log('[USER MANAGEMENT] Request headers:', headers);
       
-      const response = await fetch(`/api/users`, {
+      const response = await fetch(`${API_BASE}/api/users`, {
         headers,
         credentials: 'include'
       });
@@ -139,7 +140,7 @@ const UserManagementPage = () => {
       setSaving(true);
       setError(null);
       
-      const response = await fetch(`/api/users`, {
+      const response = await fetch(`${API_BASE}/api/users`, {
         method: 'POST',
         headers: getAuthHeaders(),
         body: JSON.stringify(newUser)
@@ -157,6 +158,7 @@ const UserManagementPage = () => {
         lastName: '',
         email: '',
         username: '',
+        password: '',
         role: 'sales',
         department: 'Sales',
         phone: '',
@@ -185,7 +187,7 @@ const UserManagementPage = () => {
       setSaving(true);
       setError(null);
       
-      const response = await fetch(`/api/users/${editingUser._id}`, {
+      const response = await fetch(`${API_BASE}/api/users/${editingUser._id}`, {
         method: 'PUT',
         headers: getAuthHeaders(),
         body: JSON.stringify(editingUser)
@@ -215,7 +217,7 @@ const UserManagementPage = () => {
     }
     
     try {
-      const response = await fetch(`/api/users/${userId}`, {
+      const response = await fetch(`${API_BASE}/api/users/${userId}`, {
         method: 'DELETE',
         headers: getAuthHeaders()
       });
@@ -236,7 +238,7 @@ const UserManagementPage = () => {
   // Toggle user status
   const handleToggleStatus = async (user) => {
     try {
-      const response = await fetch(`/api/users/${user._id}`, {
+      const response = await fetch(`${API_BASE}/api/users/${user._id}`, {
         method: 'PUT',
         headers: getAuthHeaders(),
         body: JSON.stringify({
@@ -608,9 +610,10 @@ const UserManagementPage = () => {
             <div className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-1">First Name</label>
+                  <label className="block text-sm font-medium text-gray-300 mb-1">Name</label>
                   <input
                     type="text"
+                    placeholder="First Name"
                     value={newUser.firstName}
                     onChange={(e) => setNewUser(prev => ({ ...prev, firstName: e.target.value }))}
                     className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -620,6 +623,7 @@ const UserManagementPage = () => {
                   <label className="block text-sm font-medium text-gray-300 mb-1">Last Name</label>
                   <input
                     type="text"
+                    placeholder="Last Name"
                     value={newUser.lastName}
                     onChange={(e) => setNewUser(prev => ({ ...prev, lastName: e.target.value }))}
                     className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -628,47 +632,56 @@ const UserManagementPage = () => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-1">Email</label>
+                <label className="block text-sm font-medium text-gray-300 mb-1">Email (Username)</label>
                 <input
                   type="email"
+                  placeholder="Enter email address"
                   value={newUser.email}
-                  onChange={(e) => setNewUser(prev => ({ ...prev, email: e.target.value }))}
+                  onChange={(e) => {
+                    setNewUser(prev => ({ 
+                      ...prev, 
+                      email: e.target.value,
+                      username: e.target.value // Auto-set username to email
+                    }))
+                  }}
                   className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-1">Username</label>
+                <label className="block text-sm font-medium text-gray-300 mb-1">Password</label>
                 <input
-                  type="text"
-                  value={newUser.username}
-                  onChange={(e) => setNewUser(prev => ({ ...prev, username: e.target.value }))}
+                  type="password"
+                  placeholder="Enter password"
+                  value={newUser.password}
+                  onChange={(e) => setNewUser(prev => ({ ...prev, password: e.target.value }))}
                   className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
+                <p className="text-xs text-gray-400 mt-1">Password must be at least 6 characters long</p>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-1">Role</label>
-                  <select
-                    value={newUser.role}
-                    onChange={(e) => handleRoleChange(e.target.value)}
-                    className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  >
-                    <option value="sales">Sales</option>
-                    <option value="finance">Finance</option>
-                    <option value="admin">Admin</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-1">Phone</label>
-                  <input
-                    type="tel"
-                    value={newUser.phone}
-                    onChange={(e) => setNewUser(prev => ({ ...prev, phone: e.target.value }))}
-                    className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-1">Role</label>
+                <select
+                  value={newUser.role}
+                  onChange={(e) => handleRoleChange(e.target.value)}
+                  className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="sales">Sales</option>
+                  <option value="finance">Finance</option>
+                  <option value="admin">Admin</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-1">Phone (Optional)</label>
+                <input
+                  type="tel"
+                  placeholder="Enter phone number"
+                  value={newUser.phone}
+                  onChange={(e) => setNewUser(prev => ({ ...prev, phone: e.target.value }))}
+                  className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
               </div>
 
               <div className="flex items-center">
@@ -694,7 +707,7 @@ const UserManagementPage = () => {
               </button>
               <button
                 onClick={handleCreateUser}
-                disabled={saving || !newUser.firstName || !newUser.lastName || !newUser.email}
+                disabled={saving || !newUser.firstName || !newUser.lastName || !newUser.email || !newUser.password}
                 className="flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors disabled:opacity-50"
               >
                 {saving ? <RefreshCw className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}

@@ -496,7 +496,7 @@ const FinanceStatusDashboard = () => {
                 <span>Back</span>
               </button>
               <div>
-                <h1 className="text-3xl font-bold text-white mb-2">Finance Status Dashboard</h1>
+                <h1 className="text-3xl font-bold text-white mb-2">Finance Deal Status</h1>
                 <p className="text-gray-300">Track and update deal progression through the pipeline</p>
               </div>
             </div>

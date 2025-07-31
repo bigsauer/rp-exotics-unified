@@ -17,57 +17,56 @@ const PDFViewer = () => {
   const documentTitle = fileName || 'Document';
 
   useEffect(() => {
-    console.log('[PDFViewer] Component mounted');
-    console.log('[PDFViewer] fileName:', fileName);
-    console.log('[PDFViewer] location.state:', location.state);
-    console.log('[PDFViewer] viewUrl:', viewUrl);
-    console.log('[PDFViewer] Token exists:', !!token);
-    console.log('[PDFViewer] User exists:', !!user);
-    console.log('[PDFViewer] Auth headers:', getAuthHeaders());
-    console.log('[PDFViewer] Full token:', token); // Add this to see the actual token
+    const fetchPDF = async () => {
+      if (!fileName) {
+        console.error('[PDFViewer] No fileName provided');
+        setError('No document specified');
+        return;
+      }
 
-    const loadPDF = async () => {
       try {
         setLoading(true);
+        setError(null);
+        
+        console.log('[PDFViewer] Auth headers:', getAuthHeaders());
+        console.log('[PDFViewer] Full token:', token);
         console.log('[PDFViewer] Fetching PDF from:', viewUrl);
         
-        const headers = { ...getAuthHeaders() };
-        console.log('[PDFViewer] Request headers:', headers);
-        console.log('[PDFViewer] Request URL:', viewUrl);
-        console.log('[PDFViewer] Request method: GET');
-        console.log('[PDFViewer] Request credentials: include');
-        
-        const response = await fetch(viewUrl, { 
+        const response = await fetch(viewUrl, {
           method: 'GET',
           credentials: 'include',
-          headers
+          headers: getAuthHeaders()
         });
-        
+
+        console.log('[PDFViewer] Request headers:', getAuthHeaders());
+        console.log('[PDFViewer] Request URL:', viewUrl);
+        console.log('[PDFViewer] Request method:', 'GET');
+        console.log('[PDFViewer] Request credentials:', 'include');
         console.log('[PDFViewer] Response status:', response.status);
-        console.log('[PDFViewer] Response status text:', response.statusText);
         console.log('[PDFViewer] Response headers:', response.headers);
-        
-        if (!response.ok) {
+
+        if (response.ok) {
+          const blob = await response.blob();
+          const url = URL.createObjectURL(blob);
+          setPdfUrl(url);
+        } else if (response.status === 404) {
+          console.warn('[PDFViewer] Document not found (404):', fileName);
+          setError('Document not found. It may have been deleted or not yet generated.');
+        } else {
           const errorText = await response.text();
           console.error('[PDFViewer] Response error text:', errorText);
-          throw new Error(`Failed to load PDF: ${response.status} ${response.statusText}`);
+          setError(`Failed to load PDF: ${response.status} ${response.statusText}`);
         }
-        
-        const blob = await response.blob();
-        const dataUrl = URL.createObjectURL(blob);
-        console.log('[PDFViewer] PDF loaded successfully, data URL created');
-        setPdfUrl(dataUrl);
-        setError(null);
-      } catch (err) {
-        console.error('[PDFViewer] Error loading PDF:', err);
-        setError(err.message);
+      } catch (error) {
+        console.error('[PDFViewer] Error loading PDF:', error);
+        setError(`Error loading PDF: ${error.message}`);
       } finally {
         setLoading(false);
       }
     };
 
-    loadPDF();
-  }, [viewUrl, token, user, getAuthHeaders]);
+    fetchPDF();
+  }, [fileName, viewUrl, getAuthHeaders, token, user]);
 
   const handleIframeError = () => {
     console.error('[PDFViewer] Iframe failed to load:', pdfUrl);

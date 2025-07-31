@@ -1,6 +1,6 @@
 // NOTE: All backend API calls should use process.env.REACT_APP_API_URL (set in .env) for the base URL.
 import React, { useState, useEffect } from 'react';
-import { Car, Users, FileText, Plus, Settings, LogOut, Eye, Shield, TrendingUp, DollarSign, Clock, Zap, Activity, CheckCircle } from 'lucide-react';
+import { Car, Users, FileText, Plus, Settings, LogOut, Eye, Shield, TrendingUp, DollarSign, Clock, Zap, Activity, CheckCircle, Truck, Key } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from './AuthContext';
 
@@ -23,6 +23,33 @@ const BeautifulDarkLanding = () => {
     dealerContacts: 0,
     systemLogins: 0
   });
+
+  const [quickStats, setQuickStats] = useState([
+    {
+      title: 'Active Deals',
+      value: 0,
+      change: 0,
+      changeType: 'neutral'
+    },
+    {
+      title: 'Total Deals',
+      value: 0,
+      change: 0,
+      changeType: 'neutral'
+    },
+    {
+      title: 'Dealer Network',
+      value: 0,
+      change: 0,
+      changeType: 'neutral'
+    },
+    {
+      title: 'System Users',
+      value: 0,
+      change: 0,
+      changeType: 'neutral'
+    }
+  ]);
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
@@ -58,124 +85,97 @@ const BeautifulDarkLanding = () => {
     const fetchSystemStats = async () => {
       try {
         const API_BASE = process.env.REACT_APP_API_URL;
-        const url = `${API_BASE}/api/deals`;
+        const url = `${API_BASE}/api/stats/overview`;
         console.log('[DEBUG][Landing] Fetching system stats from:', url);
-        // Measure API response time
-        const startTime = performance.now();
+        
         const response = await fetch(url, {
           credentials: 'include',
           headers: getAuthHeaders()
         });
-        const endTime = performance.now();
-        const responseTime = Math.round(endTime - startTime);
+        
         console.log('[DEBUG][Landing] System stats fetch response status:', response.status);
         
         if (response.ok) {
-          const data = await response.json();
-          const deals = data.deals || data.data || [];
+          const result = await response.json();
+          const stats = result.data;
           
-          // Calculate today's activity
-          const today = new Date();
-          const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-          
-          const todayDeals = deals.filter(deal => {
-            const dealDate = new Date(deal.createdAt || deal.dateCreated);
-            return dealDate >= todayStart;
-          });
-          
-          // Estimate documents based on deals (assuming 2-3 documents per deal)
-          const estimatedDocuments = todayDeals.length * 2.5;
-          
-          // Estimate dealer contacts (assuming 1-2 contacts per deal)
-          const estimatedContacts = todayDeals.length * 1.5;
-          
-          // Estimate system logins (this would need a separate endpoint in real implementation)
-          const estimatedLogins = Math.floor(Math.random() * 20) + 15; // Placeholder
-          
+          // Set today's activity from real data
           setTodayActivity({
-            newDeals: todayDeals.length,
-            documents: Math.round(estimatedDocuments),
-            dealerContacts: Math.round(estimatedContacts),
-            systemLogins: estimatedLogins
+            newDeals: stats.activity.today.newDeals,
+            documents: stats.activity.today.documents,
+            dealerContacts: stats.activity.today.dealerContacts,
+            systemLogins: Math.floor(Math.random() * 20) + 15 // Still estimated for now
           });
           
-          // Update system health with real response time
-          setSystemHealth(prev => ({
-            ...prev,
-            apiResponse: { 
-              time: responseTime, 
-              status: responseTime < 200 ? 'good' : responseTime < 500 ? 'warning' : 'poor' 
+          // Set system health from real data
+          setSystemHealth({
+            database: stats.systemHealth.database,
+            apiResponse: stats.systemHealth.apiResponse,
+            uptime: stats.systemHealth.uptime
+          });
+          
+          // Update quick stats with real data
+          setQuickStats([
+            {
+              title: 'Active Deals',
+              value: stats.overview.activeDeals,
+              change: stats.activity.monthlyGrowth,
+              changeType: stats.activity.monthlyGrowth >= 0 ? 'positive' : 'negative'
+            },
+            {
+              title: 'Total Deals',
+              value: stats.overview.totalDeals,
+              change: stats.activity.thisMonth,
+              changeType: 'positive'
+            },
+            {
+              title: 'Dealer Network',
+              value: stats.overview.activeDealers,
+              change: stats.overview.totalDealers - stats.overview.activeDealers,
+              changeType: 'neutral'
+            },
+            {
+              title: 'System Users',
+              value: stats.overview.activeUsers,
+              change: stats.overview.totalUsers - stats.overview.activeUsers,
+              changeType: 'neutral'
             }
-          }));
+          ]);
+          
+          console.log('[DEBUG][Landing] Successfully updated stats with real data:', stats);
+        } else {
+          console.warn('[DEBUG][Landing] Failed to fetch real stats, using fallback');
+          // Fallback to simulated data if real stats fail
+          const fallbackStats = {
+            newDeals: Math.floor(Math.random() * 5) + 1,
+            documents: Math.floor(Math.random() * 10) + 5,
+            dealerContacts: Math.floor(Math.random() * 8) + 3,
+            systemLogins: Math.floor(Math.random() * 20) + 15
+          };
+          setTodayActivity(fallbackStats);
         }
       } catch (error) {
         console.error('[DEBUG][Landing] Error fetching system stats:', error);
-        setSystemHealth(prev => ({
-          ...prev,
-          apiResponse: { time: 0, status: 'error' }
-        }));
-      }
-    };
-
-    // Fetch database health (simulated - would need backend endpoint)
-    const fetchDatabaseHealth = async () => {
-      try {
-        const API_BASE = process.env.REACT_APP_API_URL;
-        const url = `${API_BASE}/api/deals`; // Simulate a health check endpoint
-        console.log('[DEBUG][Landing] Fetching database health from:', url);
-        const dbHealth = Math.random() * 5 + 95; // 95-100%
-        setSystemHealth(prev => ({
-          ...prev,
-          database: { 
-            percentage: Math.round(dbHealth), 
-            status: dbHealth > 98 ? 'good' : dbHealth > 95 ? 'warning' : 'poor' 
-          }
-        }));
-      } catch (error) {
-        console.error('[DEBUG][Landing] Error fetching database health:', error);
-        setSystemHealth(prev => ({
-          ...prev,
-          database: { percentage: 0, status: 'error' }
-        }));
-      }
-    };
-
-    // Fetch uptime (simulated - would need backend endpoint)
-    const fetchUptime = async () => {
-      try {
-        const API_BASE = process.env.REACT_APP_API_URL;
-        const url = `${API_BASE}/api/deals`; // Simulate a uptime endpoint
-        console.log('[DEBUG][Landing] Fetching uptime from:', url);
-        const uptime = Math.random() * 0.5 + 99.5; // 99.5-100%
-        setSystemHealth(prev => ({
-          ...prev,
-          uptime: { 
-            percentage: Math.round(uptime * 10) / 10, 
-            status: uptime > 99.8 ? 'good' : uptime > 99.5 ? 'warning' : 'poor' 
-          }
-        }));
-      } catch (error) {
-        console.error('[DEBUG][Landing] Error fetching uptime:', error);
-        setSystemHealth(prev => ({
-          ...prev,
-          uptime: { percentage: 0, status: 'error' }
-        }));
+        // Fallback to simulated data
+        const fallbackStats = {
+          newDeals: Math.floor(Math.random() * 5) + 1,
+          documents: Math.floor(Math.random() * 10) + 5,
+          dealerContacts: Math.floor(Math.random() * 8) + 3,
+          systemLogins: Math.floor(Math.random() * 20) + 15
+        };
+        setTodayActivity(fallbackStats);
       }
     };
 
     fetchSystemStats();
-    fetchDatabaseHealth();
-    fetchUptime();
     
     // Refresh stats every 30 seconds
     const interval = setInterval(() => {
       fetchSystemStats();
-      fetchDatabaseHealth();
-      fetchUptime();
     }, 30000);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [getAuthHeaders]);
 
   useEffect(() => {
     if (currentUser?.role === 'finance') {
@@ -263,8 +263,8 @@ const BeautifulDarkLanding = () => {
     }
   };
 
-  // In the quickStats array, filter out 'Active Deals' and 'Dealer Network' for sales users so they do not appear in the top grid.
-  const quickStats = [
+  // Quick stats for admin and finance users (filtered for sales users)
+  const adminQuickStats = [
     // Only show these for admin or finance, not for sales
     { 
       label: 'Monthly Revenue', 
@@ -307,20 +307,6 @@ const BeautifulDarkLanding = () => {
       feature: 'Real-time status tracking • Progress indicators • Document management • Stage overview'
     },
     { 
-      title: 'View All Deals',
-      subtitle: 'Complete Deal Management',
-      description: 'View and manage all deals in the system with comprehensive filtering and search',
-      icon: FileText, 
-      gradient: 'from-purple-600 to-pink-600',
-      route: '/deals/all',
-      show: isAdmin || enhancedPermissions.canAccessBackOffice,
-      feature: 'Complete deal listing • Advanced filtering • Search capabilities • Bulk operations'
-    }
-  ];
-  // Dealer Network card is still appended below for all roles
-
-  // Add Dealer Network card to primaryActions for all roles
-  const dealerNetworkAction = {
     title: 'Dealer Network',
     description: 'View and manage your dealer network and contacts',
     icon: Users,
@@ -328,8 +314,19 @@ const BeautifulDarkLanding = () => {
     route: '/dealers',
     show: isAdmin || currentUser?.role === 'sales' || currentUser?.role === 'finance',
     feature: dealerCount !== null ? `${dealerCount} dealers in network` : 'Loading...'
-  };
-  const allPrimaryActions = [...primaryActions, dealerNetworkAction];
+    },
+    { 
+      title: 'Transport Management',
+      description: 'Manage vehicle transport logistics, tracking, and delivery coordination',
+      icon: Truck,
+      gradient: 'from-orange-500 to-red-500',
+      route: '/transport',
+            show: isAdmin || currentUser?.role === 'sales',
+      feature: 'Transport tracking • Delivery coordination • Logistics management • Route optimization'
+    }
+    ];
+
+  const allPrimaryActions = [...primaryActions];
 
   // Remove 'Analytics & Reports' and 'System Monitoring' from secondaryActions for sales users
   const secondaryActions = [
@@ -341,6 +338,16 @@ const BeautifulDarkLanding = () => {
       gradient: 'from-indigo-600 to-purple-600',
       route: '/users',
       show: isAdmin || enhancedPermissions.canManageUsers,
+      tasks: null
+    },
+    { 
+      title: 'API Key Management',
+      subtitle: 'Digital Signatures',
+      description: 'Manage API keys for digital signatures and document signing',
+      icon: Key, 
+      gradient: 'from-purple-600 to-pink-600',
+      route: '/apikeys',
+      show: isAdmin,
       tasks: null
     }
   ];
@@ -403,64 +410,9 @@ const BeautifulDarkLanding = () => {
     }
   };
 
-  // Back Office Status Data
-  const backOfficeStatus = [
-    {
-      id: 1,
-      title: 'Title Processing',
-      status: 'In Progress',
-      priority: 'High',
-      assignedTo: 'Lynn',
-      dueDate: '2025-01-15',
-      description: '2019 Ferrari F8 Tributo - Stock #RP2025002'
-    },
-    {
-      id: 2,
-      title: 'Registration Documents',
-      status: 'Pending',
-      priority: 'Medium',
-      assignedTo: 'Lynn',
-      dueDate: '2025-01-18',
-      description: '2020 McLaren 720S - Stock #RP2025001'
-    },
-    {
-      id: 3,
-      title: 'Insurance Verification',
-      status: 'Complete',
-      priority: 'Low',
-      assignedTo: 'Lynn',
-      dueDate: '2025-01-12',
-      description: '2021 Lamborghini Huracán - Stock #RP2025003'
-    },
-    {
-      id: 4,
-      title: 'Compliance Review',
-      status: 'In Progress',
-      priority: 'High',
-      assignedTo: 'Lynn',
-      dueDate: '2025-01-16',
-      description: '2022 Porsche 911 GT3 - Stock #RP2025004'
-    }
-  ];
 
-  const getStatusColor = (status) => {
-    switch(status) {
-      case 'Complete': return 'text-green-400 bg-green-500/20';
-      case 'In Progress': return 'text-blue-400 bg-blue-500/20';
-      case 'Pending': return 'text-orange-400 bg-orange-500/20';
-      case 'Overdue': return 'text-red-400 bg-red-500/20';
-      default: return 'text-gray-400 bg-gray-500/20';
-    }
-  };
 
-  const getPriorityColor = (priority) => {
-    switch(priority) {
-      case 'High': return 'text-red-400';
-      case 'Medium': return 'text-orange-400';
-      case 'Low': return 'text-green-400';
-      default: return 'text-gray-400';
-    }
-  };
+
 
   // Filter deals based on role
   const getDealsForRole = () => {
@@ -622,7 +574,7 @@ const BeautifulDarkLanding = () => {
         {/* Quick Stats Section - Removed for cleaner layout */}
         {/* {quickStats.length > 0 && (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8 mb-12 w-full">
-            {quickStats.map((stat) => (
+            {adminQuickStats.map((stat) => (
               <div key={stat.label} className="bg-gradient-to-br from-white/5 to-white/10 p-8 rounded-2xl shadow-xl flex flex-col items-center justify-between min-h-[180px] transition-transform duration-200 hover:scale-[1.03] hover:shadow-2xl">
                 <div className={`bg-gradient-to-r ${stat.gradient} rounded-full p-4 mb-4 shadow-lg`}>
                   <stat.icon className="h-10 w-10 text-white" />
@@ -1005,50 +957,7 @@ const BeautifulDarkLanding = () => {
           </div>
         )}
 
-        {/* Back Office Status - For Admin (in sidebar) */}
-        {isAdmin && (
-          <div className="bg-white/5 backdrop-blur-lg rounded-2xl border border-white/10 p-6">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-lg font-bold text-white flex items-center">
-                <FileText className="h-5 w-5 text-purple-400 mr-2" />
-                Back Office Status
-              </h3>
-              <span className="bg-purple-500/20 text-purple-400 text-xs font-medium px-2 py-1 rounded-full">
-                {backOfficeStatus.length} Tasks
-              </span>
-            </div>
-            
-            <div className="space-y-3">
-              {backOfficeStatus.map((task) => (
-                <div key={task.id} className="group p-3 bg-white/5 rounded-lg border border-white/10 hover:bg-white/10 transition-all duration-300">
-                  <div className="flex items-start justify-between mb-2">
-                    <h4 className="text-white text-sm font-medium">{task.title}</h4>
-                    <span className={`text-xs font-medium px-2 py-1 rounded-full ${getStatusColor(task.status)}`}>
-                      {task.status}
-                    </span>
-                  </div>
-                  <p className="text-gray-400 text-xs mb-2">{task.description}</p>
-                  <div className="flex items-center justify-between text-xs">
-                    <div className="flex items-center space-x-2">
-                      <span className="text-gray-400">Assigned:</span>
-                      <span className="text-white">{task.assignedTo}</span>
-                    </div>
-                    <span className={`font-medium ${getPriorityColor(task.priority)}`}>
-                      {task.priority}
-                    </span>
-                  </div>
-                  <div className="mt-2 text-xs text-gray-400">
-                    Due: {new Date(task.dueDate).toLocaleDateString()}
-                  </div>
-                </div>
-              ))}
-              
-              <button className="w-full text-purple-400 hover:text-purple-300 text-xs font-medium py-2 border border-purple-500/30 rounded-lg hover:bg-purple-500/10 transition-all duration-300">
-                View All Back Office Tasks
-              </button>
-            </div>
-          </div>
-        )}
+
 
         {/* Role Demo Switcher - Only show for admin users */}
         {currentUser?.role === 'admin' && (

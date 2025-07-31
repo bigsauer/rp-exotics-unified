@@ -45,7 +45,7 @@ const AllDealsPage = () => {
     pending: 0
   });
 
-  const API_BASE = process.env.REACT_APP_API_BASE || 'http://localhost:3000';
+  const API_BASE = process.env.REACT_APP_API_URL || 'https://astonishing-chicken-production.up.railway.app';
 
   // Fetch all deals
   const fetchDeals = async () => {
@@ -188,6 +188,7 @@ const AllDealsPage = () => {
       'wholesale-private': 'bg-indigo-100 text-indigo-800 border-indigo-200',
       'wholesale-flip': 'bg-pink-100 text-pink-800 border-pink-200',
       'retail-pp': 'bg-orange-100 text-orange-800 border-orange-200',
+      'retail-d2d': 'bg-cyan-100 text-cyan-800 border-cyan-200',
       'retail-auction': 'bg-teal-100 text-teal-800 border-teal-200',
       'retail-dtod': 'bg-cyan-100 text-cyan-800 border-cyan-200'
     };
@@ -363,6 +364,7 @@ const AllDealsPage = () => {
               <option value="wholesale-private">Wholesale Private</option>
               <option value="wholesale-flip">Wholesale Flip</option>
               <option value="retail-pp">Retail PP</option>
+              <option value="retail-d2d">Retail D2D</option>
               <option value="retail-auction">Retail Auction</option>
               <option value="retail-dtod">Retail D2D</option>
             </select>
