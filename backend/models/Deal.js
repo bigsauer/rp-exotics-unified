@@ -130,7 +130,7 @@ const dealSchema = new mongoose.Schema({
   // Deal Classification
   dealType: {
     type: String,
-    enum: ['wholesale', 'wholesale-d2d', 'wholesale-pp', 'wholesale-flip', 'retail', 'retail-pp', 'consignment', 'auction'],
+    enum: ['wholesale', 'wholesale-d2d', 'wholesale-pp', 'wholesale-flip', 'retail', 'retail-pp', 'retail-d2d', 'consignment', 'auction'],
     default: 'retail'
   },
   dealType2SubType: {
@@ -212,6 +212,21 @@ const dealSchema = new mongoose.Schema({
       default: 1
     }
   }],
+
+  // Document generation tracking
+  documentGenerationStatus: {
+    type: String,
+    enum: ['pending', 'in_progress', 'completed', 'failed'],
+    default: 'pending'
+  },
+  documentGenerationError: {
+    type: String,
+    default: null
+  },
+  lastDocumentGenerationAttempt: {
+    type: Date,
+    default: null
+  },
 
   // Title Information
   titleInfo: {
@@ -398,21 +413,30 @@ dealSchema.pre('save', async function(next) {
   try {
     // Generate dealId if not present
     if (!this.dealId) {
-      // Find the highest existing dealId and increment it
-      const lastDeal = await mongoose.models.Deal.findOne({ dealId: { $regex: /^D\d{4}$/ } })
+      // Get current month (01-12)
+      const currentMonth = String(new Date().getMonth() + 1).padStart(2, '0');
+      
+      // Determine deal type letter (W for wholesale, R for retail)
+      const dealTypeLetter = this.dealType && this.dealType.startsWith('wholesale') ? 'W' : 'R';
+      
+      // Find the highest existing dealId for this month and deal type
+      const monthPattern = new RegExp(`^${currentMonth}-\\d{4}-${dealTypeLetter}$`);
+      const lastDeal = await mongoose.models.Deal.findOne({ dealId: monthPattern })
         .sort({ dealId: -1 })
         .select('dealId')
         .lean();
+      
       let newIdNum = 1;
       if (lastDeal && lastDeal.dealId) {
-        const match = lastDeal.dealId.match(/^D(\d{4})$/);
+        const match = lastDeal.dealId.match(new RegExp(`^${currentMonth}-(\\d{4})-${dealTypeLetter}$`));
         if (match) {
           newIdNum = parseInt(match[1], 10) + 1;
         }
       }
-      const newId = `D${String(newIdNum).padStart(4, '0')}`; // D0001, D0002, etc.
+      
+      const newId = `${currentMonth}-${String(newIdNum).padStart(4, '0')}-${dealTypeLetter}`; // 07-0003-W, 06-0001-R, etc.
       this.dealId = newId;
-      console.log(`Generated dealId: ${newId}`);
+      console.log(`Generated dealId: ${newId} (Month: ${currentMonth}, Deal #: ${newIdNum}, Type: ${dealTypeLetter})`);
     }
     // Add workflow history if stage changed
     if (this.isModified('currentStage')) {

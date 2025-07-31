@@ -5,7 +5,7 @@ const Dealer = require('../models/Dealer');
 const Deal = require('../models/Deal');
 const { authenticateToken } = require('../middleware/auth');
 const mongoose = require('mongoose');
-const DocumentGenerator = require('../services/documentGenerator');
+const documentGenerator = require('../services/documentGenerator');
 const emailService = require('../services/emailService');
 
 // Add the compatibility mapping here so it's available everywhere
@@ -344,12 +344,19 @@ router.post('/', authenticateToken, async (req, res) => {
       model: dealData.model,
       dealType: dealData.dealType,
       dealType2SubType: dealData.dealType2SubType,
+      dealType2: dealData.dealType2,
       salesperson: dealData.salesperson,
       purchasePrice: dealData.purchasePrice,
       listPrice: dealData.listPrice,
       killPrice: dealData.killPrice,
       seller: dealData.seller
     });
+    
+    console.log('[DEAL CREATION] 🔍 DEAL TYPE DEBUGGING:');
+    console.log('[DEAL CREATION] 🔍 - dealType:', dealData.dealType);
+    console.log('[DEAL CREATION] 🔍 - dealType2SubType:', dealData.dealType2SubType);
+    console.log('[DEAL CREATION] 🔍 - dealType2:', dealData.dealType2);
+    console.log('[DEAL CREATION] 🔍 - Full dealData object:', JSON.stringify(dealData, null, 2));
     
     console.log('[DEAL CREATION] ✅ Basic validation passed');
     
@@ -409,6 +416,7 @@ router.post('/', authenticateToken, async (req, res) => {
     const isPrivateSeller = (seller.name && seller.name.toLowerCase() === 'private seller') || 
                            (seller.type && seller.type.toLowerCase() === 'private') || 
                            (dealData.dealType && dealData.dealType.toLowerCase() === 'retail-pp') ||
+                           (dealData.dealType && dealData.dealType.toLowerCase() === 'retail-d2d') ||
                            (dealData.dealType && dealData.dealType.toLowerCase() === 'wholesale-private');
     // Always attempt to create or update the seller dealer if a name is provided and not a private seller
     // Prevent adding seller to dealer network for private sellers and retail-pp deals
@@ -435,7 +443,7 @@ router.post('/', authenticateToken, async (req, res) => {
       if (isPrivateSeller) {
         console.log('[DEAL CREATION] 👤 Using private seller (name: ' + seller.name + ', type: ' + seller.type + ')');
       } else {
-        console.log('[DEAL CREATION] 🚫 Skipping dealer creation for retail-pp deal.');
+        console.log('[DEAL CREATION] 🚫 Skipping dealer creation for retail-pp or retail-d2d deal.');
       }
     }
     // Debug log for final seller.type
@@ -721,23 +729,7 @@ router.post('/', authenticateToken, async (req, res) => {
     await newDeal.save();
     console.log(`[DEAL CREATION] ✅ Deal updated with vehicleRecordId: ${vehicleRecord._id}`);
 
-    // Auto-populate required document placeholders
-    const DocumentType = require('../models/DocumentType');
-    const docTypes = await DocumentType.find({ isActive: true }).lean();
-    let updated = false;
-    for (const docType of docTypes) {
-      if (!newDeal.documents.some(doc => doc.type === docType.type)) {
-        newDeal.documents.push({
-          type: docType.type,
-          required: docType.required,
-          uploaded: false,
-          approved: false,
-          version: 1
-        });
-        updated = true;
-      }
-    }
-    if (updated) await newDeal.save();
+    // Note: Removed auto-population of document placeholders to prevent unwanted empty documents
 
     // === Helper: Normalize for robust dealer matching ===
     function normalizeName(name) {
@@ -861,6 +853,7 @@ router.post('/', authenticateToken, async (req, res) => {
     console.log('[PDF GEN] Full deal data for document generation:', {
       dealType: newDeal.dealType,
       dealType2SubType: dealData.dealType2SubType,
+      dealType2: mappedDealType2, // Use the mapped value
       sellerType: sellerType,
       buyerType: buyerType,
       seller: seller,
@@ -880,6 +873,7 @@ router.post('/', authenticateToken, async (req, res) => {
           stockNumber: newDeal.rpStockNumber,
           dealType: newDeal.dealType,
           dealType2SubType: dealData.dealType2SubType,
+          dealType2: mappedDealType2, // Use the mapped value
           salesperson: newDeal.salesperson,
           notes: newDeal.notes,
           generalNotes: newDeal.generalNotes,
@@ -913,6 +907,7 @@ router.post('/', authenticateToken, async (req, res) => {
           stockNumber: newDeal.rpStockNumber,
           dealType: newDeal.dealType,
           dealType2SubType: dealData.dealType2SubType,
+          dealType2: mappedDealType2, // Use the mapped value
           salesperson: newDeal.salesperson,
           notes: newDeal.notes,
           generalNotes: newDeal.generalNotes,
@@ -933,6 +928,7 @@ router.post('/', authenticateToken, async (req, res) => {
           stockNumber: newDeal.rpStockNumber,
           dealType: newDeal.dealType,
           dealType2SubType: dealData.dealType2SubType,
+          dealType2: mappedDealType2, // Use the mapped value
           salesperson: newDeal.salesperson,
           notes: newDeal.notes,
           generalNotes: newDeal.generalNotes,
@@ -953,6 +949,7 @@ router.post('/', authenticateToken, async (req, res) => {
           stockNumber: newDeal.rpStockNumber,
           dealType: newDeal.dealType,
           dealType2SubType: dealData.dealType2SubType,
+          dealType2: mappedDealType2, // Use the mapped value
           salesperson: newDeal.salesperson,
           notes: newDeal.notes,
           generalNotes: newDeal.generalNotes,
@@ -967,8 +964,7 @@ router.post('/', authenticateToken, async (req, res) => {
     if (!pdfInfo && !purchaseContractPdfInfo) {
       console.log('[PDF GEN] ⚠️ No documents generated, creating fallback document...');
       try {
-        const docGen = new DocumentGenerator();
-        pdfInfo = await docGen.generateStandardVehicleRecord({
+        pdfInfo = await documentGenerator.generateStandardVehicleRecord({
           ...dealData,
           seller,
           buyer,
@@ -976,6 +972,7 @@ router.post('/', authenticateToken, async (req, res) => {
           stockNumber: newDeal.rpStockNumber,
           dealType: newDeal.dealType,
           dealType2SubType: dealData.dealType2SubType,
+          dealType2: mappedDealType2, // Use the mapped value
           salesperson: newDeal.salesperson,
           notes: newDeal.notes,
           generalNotes: newDeal.generalNotes,

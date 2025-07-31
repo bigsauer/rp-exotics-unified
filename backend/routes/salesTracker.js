@@ -106,54 +106,90 @@ router.get('/deals', authenticateToken, async (req, res) => {
     console.log('[SALES] User permissions:', req.user.permissions);
     console.log('[SALES] User object:', JSON.stringify(req.user, null, 2));
     
-    // Simple query to get all deals first (for debugging)
+    // IMPORTANT: All sales people can see ALL deals - no filtering by user
+    // This ensures that every sales person has full visibility of all deals
     let query = {};
     
-    // Filter by sales person (if not admin/manager, only show their deals)
-    if (req.user.role === 'sales' && !req.user.permissions?.viewAllDeals) {
-      query['salesPerson.id'] = req.user._id;
-      console.log('[SALES] Filtering by sales person:', req.user._id);
-    } else {
-      console.log('[SALES] No filtering applied - user can view all deals');
-    }
+    // No user-based filtering - all users can view all deals
+    // This is the key requirement: all sales people must see all deals
+    console.log('[SALES] ✅ NO FILTERING APPLIED - All sales people can view all deals');
+    console.log('[SALES] ✅ This ensures full visibility for all sales team members');
 
     console.log('[SALES] Final query:', JSON.stringify(query));
 
-    // First, let's check if there are any sales deals at all
-    const totalDeals = await SalesDeal.countDocuments({});
-    console.log('[SALES] Total sales deals in database:', totalDeals);
+    // Fetch from the main deals collection (same as finance page)
+    // This ensures sales people see the same deals that finance people see
+    const mongoose = require('mongoose');
+    const db = mongoose.connection.db;
     
-    // Check deals without any filtering
-    const allDeals = await SalesDeal.find({});
-    console.log('[SALES] All deals (no filter):', allDeals.length);
+    // First, let's check if there are any deals in the main collection
+    const totalDeals = await db.collection('deals').countDocuments({});
+    console.log('[SALES] Total deals in main collection:', totalDeals);
+    
+    // Get all deals from the main collection (same as finance endpoint)
+    const allDeals = await db.collection('deals').find({}).toArray();
+    console.log('[SALES] All deals from main collection:', allDeals.length);
+    
     if (allDeals.length > 0) {
-      console.log('[SALES] Sample deal salesPerson:', allDeals[0].salesPerson);
+      console.log('[SALES] Sample deal:', allDeals[0].vehicle || allDeals[0].rpStockNumber);
     }
 
-    const deals = await SalesDeal.find(query)
-      .populate('salesPerson.id', 'name email')
-      .sort({ updatedAt: -1 });
+    // Apply the same query as the endpoint but to main deals collection
+    const deals = await db.collection('deals').find(query)
+      .sort({ createdAt: -1 })
+      .toArray();
 
     console.log('[SALES] Found deals with filter:', deals.length);
-    console.log('[SALES] Deals found:', deals.map(d => ({ id: d._id, salesPerson: d.salesPerson })));
+    console.log('[SALES] Deals found:', deals.map(d => ({ 
+      id: d._id, 
+      vehicle: d.vehicle || `${d.year} ${d.make} ${d.model}`,
+      stockNumber: d.rpStockNumber 
+    })));
 
-    // Calculate metrics for each deal
-    const dealsWithMetrics = deals.map(deal => ({
-      ...deal.toObject(),
-      calculatedMetrics: {
-        daysInCurrentStage: calculateDaysInStage(deal),
-        estimatedCompletion: calculateEstimatedCompletion(deal),
-        progressPercentage: calculateProgressPercentage(deal),
-        timelineStatus: getTimelineStatus(deal)
-      }
-    }));
+    // Transform deals to match sales format
+    const transformedDeals = deals.map(deal => {
+      // Calculate basic metrics for each deal
+      const now = new Date();
+      const createdDate = new Date(deal.createdAt || deal.purchaseDate || now);
+      const daysInProcess = Math.ceil((now - createdDate) / (1000 * 60 * 60 * 24));
+      
+      return {
+        _id: deal._id,
+        vehicle: deal.vehicle || `${deal.year || ''} ${deal.make || ''} ${deal.model || ''}`.trim(),
+        vin: deal.vin,
+        stockNumber: deal.rpStockNumber,
+        dealType: deal.dealType || 'wholesale',
+        currentStage: deal.currentStage || 'contract-received',
+        seller: deal.seller?.name || 'Unknown',
+        buyer: deal.buyer?.name || 'Pending',
+        purchasePrice: deal.purchasePrice || 0,
+        listPrice: deal.listPrice || 0,
+        priority: deal.priority || 'medium',
+        notes: deal.generalNotes || '',
+        createdAt: deal.createdAt,
+        updatedAt: deal.updatedAt,
+        purchaseDate: deal.purchaseDate,
+        salesPerson: {
+          id: deal.salesperson || null,
+          name: deal.salesperson || 'Unknown',
+          email: ''
+        },
+        // Add calculated metrics
+        calculatedMetrics: {
+          daysInCurrentStage: daysInProcess,
+          estimatedCompletion: new Date(createdDate.getTime() + (30 * 24 * 60 * 60 * 1000)), // 30 days from creation
+          progressPercentage: Math.min(Math.round((daysInProcess / 30) * 100), 100),
+          timelineStatus: daysInProcess > 30 ? 'overdue' : 'on-track'
+        }
+      };
+    });
 
-    const total = deals.length;
+    const total = transformedDeals.length;
 
-    console.log('[SALES] Returning deals:', total);
+    console.log('[SALES] ✅ Returning ALL deals to user:', total, 'deals');
 
     res.json({
-      deals: dealsWithMetrics,
+      deals: transformedDeals,
       totalPages: 1,
       currentPage: 1,
       total
@@ -169,10 +205,9 @@ router.get('/deals/:id', authenticateToken, async (req, res) => {
   try {
     let query = { _id: req.params.id };
     
-    // Restrict to user's deals if not admin/manager
-    if (req.user.role === 'sales' && !req.user.permissions?.viewAllDeals) {
-      query['salesPerson.id'] = req.user.id;
-    }
+    // IMPORTANT: No restrictions - all sales people can view any deal
+    // This ensures full visibility across the entire sales team
+    console.log('[SALES] ✅ NO RESTRICTIONS - All sales people can view any deal');
 
     const deal = await SalesDeal.findOne(query)
       .populate('salesPerson.id', 'name email phone')
@@ -209,10 +244,7 @@ router.get('/dashboard/stats', authenticateToken, async (req, res) => {
   try {
     let salesPersonFilter = {};
     
-    // Filter by user if not admin/manager
-    if (req.user.role === 'sales' && !req.user.permissions?.viewAllDeals) {
-      salesPersonFilter = { 'salesPerson.id': req.user.id };
-    }
+    // No filtering - show all deals to all users
 
     const stats = await SalesDeal.aggregate([
       { $match: salesPersonFilter },
@@ -287,7 +319,7 @@ router.get('/notifications', authenticateToken, async (req, res) => {
   try {
     const { unreadOnly = false, limit = 50 } = req.query;
     
-    let query = { 'salesPerson.id': req.user.id };
+    let query = {};
     if (unreadOnly === 'true') {
       query['notifications.read'] = false;
     }
@@ -328,9 +360,7 @@ router.get('/deals/:id/communications', authenticateToken, async (req, res) => {
     const { page = 1, limit = 20 } = req.query;
     
     let query = { _id: req.params.id };
-    if (req.user.role === 'sales' && !req.user.permissions?.viewAllDeals) {
-      query['salesPerson.id'] = req.user.id;
-    }
+    // No restrictions - all users can view any deal
 
     const deal = await SalesDeal.findOne(query, {
       communications: { 

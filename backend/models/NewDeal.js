@@ -31,11 +31,6 @@ const NewDealSchema = new mongoose.Schema({
   rpStockNumber: String,
   vehicleDescription: String,
   generalNotes: String,
-  contractRequired: Boolean,
-  titlePresent: Boolean,
-  driverLicensePresent: Boolean,
-  odometerPresent: Boolean,
-  dealerLicensePresent: Boolean,
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now }
 });

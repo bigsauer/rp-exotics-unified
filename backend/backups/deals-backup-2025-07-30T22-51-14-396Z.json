@@ -1,0 +1,3306 @@
+{
+  "timestamp": "2025-07-30T22:51:14.401Z",
+  "totalDeals": 69,
+  "deals": [
+    {
+      "_id": "688946cf260efc49e2014cfc",
+      "dealType": "wholesale-flip",
+      "dealType2SubType": "buy",
+      "vin": "WBS4Y9C57JAC87298",
+      "purchasePrice": 10000,
+      "listPrice": 0,
+      "seller": {
+        "name": "bren",
+        "type": "private",
+        "contact": {
+          "address": {
+            "street": "1732 Belmont Crest Drive Riverside",
+            "city": "CA 92506",
+            "state": "",
+            "zip": ""
+          },
+          "phone": "123-456-7890",
+          "email": "brennan@rpexotics.com"
+        },
+        "company": "",
+        "tier": "Tier 1"
+      },
+      "buyer": {
+        "name": "MILEONE AUTO GROUP LLC",
+        "type": "dealer",
+        "contact": {
+          "address": {
+            "street": "908 W GORDON AVE STE 8 LAYTON UT 84041-5277",
+            "city": "",
+            "state": "",
+            "zip": ""
+          },
+          "phone": "‭+1 (385) 451-7130‬",
+          "email": "sales@mileoneautogroups.com"
+        },
+        "licenseNumber": "944B",
+        "tier": "Tier 1",
+        "company": "MILEONE AUTO GROUP LLC",
+        "dealerId": null
+      },
+      "currentStage": "contract-received",
+      "salesperson": "Unknown",
+      "createdAt": "2025-07-29T22:10:23.129Z",
+      "updatedAt": "2025-07-29T22:10:28.181Z",
+      "documents": 16
+    },
+    {
+      "_id": "68894791260efc49e2014dc9",
+      "dealType": "retail-pp",
+      "dealType2SubType": "buy",
+      "vin": "WBS4Y9C57JAC87298",
+      "purchasePrice": 100000,
+      "listPrice": 125995,
+      "seller": {
+        "name": "Mily",
+        "type": "private",
+        "contact": {
+          "address": {
+            "street": "1732 Belmont Crest Drive Riverside",
+            "city": "CA 92506",
+            "state": "",
+            "zip": ""
+          },
+          "phone": "123-456-7890",
+          "email": "brennan@rpexotics.com"
+        },
+        "company": "",
+        "tier": "Tier 1"
+      },
+      "buyer": {
+        "name": "",
+        "type": "dealer",
+        "contact": {
+          "address": {
+            "street": "",
+            "city": "",
+            "state": "",
+            "zip": ""
+          },
+          "phone": "",
+          "email": ""
+        },
+        "licenseNumber": "",
+        "tier": "Tier 1",
+        "company": "",
+        "dealerId": null
+      },
+      "currentStage": "title-processing",
+      "salesperson": "Unknown",
+      "createdAt": "2025-07-29T22:13:37.579Z",
+      "updatedAt": "2025-07-29T22:27:17.538Z",
+      "documents": 15
+    },
+    {
+      "_id": "688948f3584c1904d5feb01a",
+      "dealType": "wholesale-flip",
+      "dealType2SubType": "buy",
+      "vin": "WBS4Y9C57JAC87298",
+      "purchasePrice": 45600,
+      "listPrice": null,
+      "seller": {
+        "name": "mike",
+        "type": "private",
+        "contact": {
+          "address": {
+            "street": "1732 Belmont Crest Drive Riverside",
+            "city": "CA 92506",
+            "state": "",
+            "zip": ""
+          },
+          "phone": "580-789-6305",
+          "email": "brennan@rp"
+        },
+        "company": "",
+        "tier": "Tier 1",
+        "licenseNumber": ""
+      },
+      "buyer": {
+        "name": "MILEONE AUTO GROUP LLC",
+        "type": "dealer",
+        "contact": {
+          "address": {
+            "street": "908 W GORDON AVE STE 8 LAYTON UT 84041-5277",
+            "city": "",
+            "state": "",
+            "zip": ""
+          },
+          "phone": "‭+1 (385) 451-7130‬",
+          "email": "sales@mileoneautogroups.com"
+        },
+        "licenseNumber": "944B",
+        "tier": "Tier 1",
+        "company": "MILEONE AUTO GROUP LLC",
+        "dealerId": null
+      },
+      "currentStage": "title-processing",
+      "salesperson": "Unknown",
+      "createdAt": "2025-07-29T22:19:31.203Z",
+      "updatedAt": "2025-07-29T22:59:00.003Z",
+      "documents": 16
+    },
+    {
+      "_id": "68895ad9fcb8e8553f979316",
+      "dealType": "wholesale-flip",
+      "dealType2SubType": "buy",
+      "vin": "WBS4Y9C57JAC87298",
+      "purchasePrice": 2000000,
+      "listPrice": 0,
+      "seller": {
+        "name": "MILEONE AUTO GROUP LLC",
+        "type": "dealer",
+        "contact": {
+          "address": {
+            "street": "908 W GORDON AVE STE 8 LAYTON UT 84041-5277",
+            "city": "",
+            "state": "",
+            "zip": ""
+          },
+          "phone": "‭+1 (385) 451-7130‬",
+          "email": "sales@mileoneautogroups.com"
+        },
+        "company": "MILEONE AUTO GROUP LLC",
+        "tier": "Tier 1",
+        "licenseNumber": "944B"
+      },
+      "buyer": {
+        "name": "Exotic Motorsports of Oklahoma",
+        "type": "dealer",
+        "contact": {
+          "address": {
+            "street": "800 Hundred Oaks Dr",
+            "city": "Edmond",
+            "state": "OK",
+            "zip": "73013"
+          },
+          "phone": "405-664-2073",
+          "email": "eliud@exoticmotorsportsok.com"
+        },
+        "licenseNumber": "UD-05513",
+        "tier": "Tier 1",
+        "company": "Exotic Motorsports of Oklahoma",
+        "dealerId": null
+      },
+      "currentStage": "contract-received",
+      "salesperson": "Unknown",
+      "createdAt": "2025-07-29T23:35:53.489Z",
+      "updatedAt": "2025-07-29T23:35:58.193Z",
+      "documents": 16
+    },
+    {
+      "_id": "688a1c4ee521503bc7e6dcac",
+      "dealType": "wholesale-flip",
+      "dealType2SubType": "buy",
+      "vin": "WBS4Y9C57JAC87298",
+      "purchasePrice": 125000,
+      "listPrice": 0,
+      "seller": {
+        "name": "MILEONE AUTO GROUP LLC",
+        "type": "dealer",
+        "contact": {
+          "address": {
+            "street": "908 W GORDON AVE STE 8 LAYTON UT 84041-5277",
+            "city": "",
+            "state": "",
+            "zip": ""
+          },
+          "phone": "‭+1 (385) 451-7130‬",
+          "email": "sales@mileoneautogroups.com"
+        },
+        "company": "MILEONE AUTO GROUP LLC",
+        "tier": "Tier 1",
+        "licenseNumber": "944B"
+      },
+      "buyer": {
+        "name": "Exotic Motorsports of Oklahoma",
+        "type": "dealer",
+        "contact": {
+          "address": {
+            "street": "800 Hundred Oaks Dr",
+            "city": "Edmond",
+            "state": "OK",
+            "zip": "73013"
+          },
+          "phone": "405-664-2073",
+          "email": "eliud@exoticmotorsportsok.com"
+        },
+        "licenseNumber": "UD-05513",
+        "tier": "Tier 1",
+        "company": "Exotic Motorsports of Oklahoma",
+        "dealerId": null
+      },
+      "currentStage": "contract-received",
+      "salesperson": "Unknown",
+      "createdAt": "2025-07-30T13:21:18.749Z",
+      "updatedAt": "2025-07-30T13:21:23.999Z",
+      "documents": 16
+    },
+    {
+      "_id": "688a220de521503bc7e6dd9f",
+      "dealType": "wholesale-d2d",
+      "dealType2SubType": "buy",
+      "vin": "1C3BDECZ7GV100151",
+      "purchasePrice": 195000,
+      "listPrice": 0,
+      "seller": {
+        "name": "Earth Motor Cars",
+        "type": "dealer",
+        "contact": {
+          "address": {
+            "street": "3216 Kellway Dr",
+            "city": "Carrollton",
+            "state": "TX 75006",
+            "zip": ""
+          },
+          "phone": "‭+1 (214) 406-3336‬",
+          "email": "alex@earthmotorcars.com"
+        },
+        "company": "Earth Motor Cars",
+        "tier": "Tier 1",
+        "licenseNumber": "P125565"
+      },
+      "buyer": {
+        "name": "",
+        "type": "dealer",
+        "contact": {
+          "address": {
+            "street": "",
+            "city": "",
+            "state": "",
+            "zip": ""
+          },
+          "phone": "",
+          "email": ""
+        },
+        "licenseNumber": "",
+        "tier": "Tier 1",
+        "company": "",
+        "dealerId": null
+      },
+      "currentStage": "contract-received",
+      "salesperson": "Unknown",
+      "createdAt": "2025-07-30T13:45:49.189Z",
+      "updatedAt": "2025-07-30T13:45:53.526Z",
+      "documents": 15
+    },
+    {
+      "_id": "688a2288e521503bc7e6de6c",
+      "dealType": "wholesale-d2d",
+      "dealType2SubType": "buy",
+      "vin": "1C3BDECZ7GV100151",
+      "purchasePrice": 120000,
+      "listPrice": 0,
+      "seller": {
+        "name": "Exotic Motorsports of Oklahoma",
+        "type": "dealer",
+        "contact": {
+          "address": {
+            "street": "800 Hundred Oaks Dr",
+            "city": "Edmond",
+            "state": "OK",
+            "zip": "73013"
+          },
+          "phone": "405-664-2073",
+          "email": "eliud@exoticmotorsportsok.com"
+        },
+        "company": "Exotic Motorsports of Oklahoma",
+        "tier": "Tier 1",
+        "licenseNumber": "UD-05513"
+      },
+      "buyer": {
+        "name": "",
+        "type": "dealer",
+        "contact": {
+          "address": {
+            "street": "",
+            "city": "",
+            "state": "",
+            "zip": ""
+          },
+          "phone": "",
+          "email": ""
+        },
+        "licenseNumber": "",
+        "tier": "Tier 1",
+        "company": "",
+        "dealerId": null
+      },
+      "currentStage": "contract-received",
+      "salesperson": "Unknown",
+      "createdAt": "2025-07-30T13:47:52.513Z",
+      "updatedAt": "2025-07-30T13:47:57.110Z",
+      "documents": 15
+    },
+    {
+      "_id": "688a22fbe521503bc7e6df44",
+      "dealType": "wholesale-d2d",
+      "dealType2SubType": "buy",
+      "vin": "1C3BDECZ7GV100151",
+      "purchasePrice": 12000,
+      "listPrice": 0,
+      "seller": {
+        "name": "Exotic Motorsports of Oklahoma",
+        "type": "dealer",
+        "contact": {
+          "address": {
+            "street": "800 Hundred Oaks Dr",
+            "city": "Edmond",
+            "state": "OK",
+            "zip": "73013"
+          },
+          "phone": "405-664-2073",
+          "email": "eliud@exoticmotorsportsok.com"
+        },
+        "company": "Exotic Motorsports of Oklahoma",
+        "tier": "Tier 1"
+      },
+      "buyer": {
+        "name": "",
+        "type": "dealer",
+        "contact": {
+          "address": {
+            "street": "",
+            "city": "",
+            "state": "",
+            "zip": ""
+          },
+          "phone": "",
+          "email": ""
+        },
+        "licenseNumber": "",
+        "tier": "Tier 1",
+        "company": "",
+        "dealerId": null
+      },
+      "currentStage": "contract-received",
+      "salesperson": "Unknown",
+      "createdAt": "2025-07-30T13:49:47.617Z",
+      "updatedAt": "2025-07-30T13:49:49.255Z",
+      "documents": 13
+    },
+    {
+      "_id": "688a274d5dd3cdcb8f7bfe6a",
+      "dealType": "wholesale-d2d",
+      "dealType2SubType": "buy",
+      "vin": "ZHWBU16M55LA01321",
+      "purchasePrice": 120000,
+      "listPrice": 135995,
+      "seller": {
+        "name": "MILEONE AUTO GROUP LLC",
+        "type": "dealer",
+        "contact": {
+          "address": {
+            "street": "908 W GORDON AVE STE 8 LAYTON UT 84041-5277",
+            "city": "",
+            "state": "",
+            "zip": ""
+          },
+          "phone": "‭+1 (385) 451-7130‬",
+          "email": "sales@mileoneautogroups.com"
+        },
+        "company": "MILEONE AUTO GROUP LLC",
+        "tier": "Tier 1",
+        "licenseNumber": "944B"
+      },
+      "buyer": {
+        "name": "",
+        "type": "dealer",
+        "contact": {
+          "address": {
+            "street": "",
+            "city": "",
+            "state": "",
+            "zip": ""
+          },
+          "phone": "",
+          "email": ""
+        },
+        "licenseNumber": "",
+        "tier": "Tier 1",
+        "company": "",
+        "dealerId": null
+      },
+      "currentStage": "title-processing",
+      "salesperson": "Unknown",
+      "createdAt": "2025-07-30T14:08:13.879Z",
+      "updatedAt": "2025-07-30T14:28:18.752Z",
+      "documents": 15
+    },
+    {
+      "_id": "688a2f2c63f1e80704c94daf",
+      "dealType": "wholesale-flip",
+      "dealType2SubType": "buy",
+      "vin": "JN1AR54FX9M252613",
+      "purchasePrice": 10000,
+      "listPrice": 0,
+      "seller": {
+        "name": "MILEONE AUTO GROUP LLC",
+        "type": "dealer",
+        "contact": {
+          "address": {
+            "street": "908 W GORDON AVE STE 8 LAYTON UT 84041-5277",
+            "city": "",
+            "state": "",
+            "zip": ""
+          },
+          "phone": "‭+1 (385) 451-7130‬",
+          "email": "sales@mileoneautogroups.com"
+        },
+        "company": "MILEONE AUTO GROUP LLC",
+        "tier": "Tier 1",
+        "licenseNumber": "944B"
+      },
+      "buyer": {
+        "name": "Exotic Motorsports of Oklahoma",
+        "type": "dealer",
+        "contact": {
+          "address": {
+            "street": "800 Hundred Oaks Dr",
+            "city": "Edmond",
+            "state": "OK",
+            "zip": "73013"
+          },
+          "phone": "405-664-2073",
+          "email": "eliud@exoticmotorsportsok.com"
+        },
+        "licenseNumber": "UD-05513",
+        "tier": "Tier 1",
+        "company": "Exotic Motorsports of Oklahoma",
+        "dealerId": null
+      },
+      "currentStage": "contract-received",
+      "salesperson": "Unknown",
+      "createdAt": "2025-07-30T14:41:48.684Z",
+      "updatedAt": "2025-07-30T14:41:54.009Z",
+      "documents": 16
+    },
+    {
+      "_id": "688a2fe8056c449e5a72fe72",
+      "dealType": "wholesale-d2d",
+      "dealType2SubType": "buy",
+      "vin": "SADCZ2EE5LA635513",
+      "purchasePrice": 10000,
+      "listPrice": 0,
+      "seller": {
+        "name": "RP Exotics",
+        "type": "dealer",
+        "contact": {
+          "address": {
+            "street": "1155 N Warson Rd",
+            "city": "Saint Louis",
+            "state": "MO 63132",
+            "zip": ""
+          },
+          "phone": "(314) 970-2427",
+          "email": "titling@rpexotics.com"
+        },
+        "company": "",
+        "tier": "Tier 1",
+        "licenseNumber": "D4865"
+      },
+      "buyer": {
+        "name": "Exotic Motorsports of Oklahoma",
+        "type": "dealer",
+        "contact": {
+          "address": {
+            "street": "800 Hundred Oaks Dr",
+            "city": "Edmond",
+            "state": "OK",
+            "zip": "73013"
+          },
+          "phone": "405-664-2073",
+          "email": "eliud@exoticmotorsportsok.com"
+        },
+        "licenseNumber": "UD-05513",
+        "tier": "Tier 1",
+        "company": "Exotic Motorsports of Oklahoma",
+        "dealerId": null
+      },
+      "currentStage": "contract-received",
+      "salesperson": "Unknown",
+      "createdAt": "2025-07-30T14:44:56.737Z",
+      "updatedAt": "2025-07-30T14:45:01.205Z",
+      "documents": 15
+    },
+    {
+      "_id": "688a30a6056c449e5a72ffb5",
+      "dealType": "wholesale-flip",
+      "dealType2SubType": "buy",
+      "vin": "SADCZ2EE5LA635513",
+      "purchasePrice": 100000,
+      "listPrice": 0,
+      "seller": {
+        "name": "MILEONE AUTO GROUP LLC",
+        "type": "dealer",
+        "contact": {
+          "address": {
+            "street": "908 W GORDON AVE STE 8 LAYTON UT 84041-5277",
+            "city": "",
+            "state": "",
+            "zip": ""
+          },
+          "phone": "‭+1 (385) 451-7130‬",
+          "email": "sales@mileoneautogroups.com"
+        },
+        "company": "MILEONE AUTO GROUP LLC",
+        "tier": "Tier 1",
+        "licenseNumber": "944B"
+      },
+      "buyer": {
+        "name": "Exotic Motorsports of Oklahoma",
+        "type": "dealer",
+        "contact": {
+          "address": {
+            "street": "800 Hundred Oaks Dr",
+            "city": "Edmond",
+            "state": "OK",
+            "zip": "73013"
+          },
+          "phone": "405-664-2073",
+          "email": "eliud@exoticmotorsportsok.com"
+        },
+        "licenseNumber": "UD-05513",
+        "tier": "Tier 1",
+        "company": "Exotic Motorsports of Oklahoma",
+        "dealerId": null
+      },
+      "currentStage": "funds-disbursed",
+      "salesperson": "Unknown",
+      "createdAt": "2025-07-30T14:48:06.116Z",
+      "updatedAt": "2025-07-30T15:02:49.975Z",
+      "documents": 16
+    },
+    {
+      "_id": "688a3511fdbcc69fd7d0c833",
+      "dealType": "wholesale-flip",
+      "dealType2SubType": "buy",
+      "vin": "WDCYC5FH4JX289097",
+      "purchasePrice": 125000,
+      "listPrice": 0,
+      "seller": {
+        "name": "MILEONE AUTO GROUP LLC",
+        "type": "dealer",
+        "contact": {
+          "address": {
+            "street": "908 W GORDON AVE STE 8 LAYTON UT 84041-5277",
+            "city": "",
+            "state": "",
+            "zip": ""
+          },
+          "phone": "‭+1 (385) 451-7130‬",
+          "email": "sales@mileoneautogroups.com"
+        },
+        "company": "MILEONE AUTO GROUP LLC",
+        "tier": "Tier 1",
+        "licenseNumber": "944B"
+      },
+      "buyer": {
+        "name": "Exotic Motorsports of Oklahoma",
+        "type": "dealer",
+        "contact": {
+          "address": {
+            "street": "800 Hundred Oaks Dr",
+            "city": "Edmond",
+            "state": "OK",
+            "zip": "73013"
+          },
+          "phone": "405-664-2073",
+          "email": "eliud@exoticmotorsportsok.com"
+        },
+        "licenseNumber": "UD-05513",
+        "tier": "Tier 1",
+        "company": "Exotic Motorsports of Oklahoma",
+        "dealerId": null
+      },
+      "currentStage": "contract-received",
+      "salesperson": "Unknown",
+      "createdAt": "2025-07-30T15:06:57.794Z",
+      "updatedAt": "2025-07-30T15:07:02.094Z",
+      "documents": 15
+    },
+    {
+      "_id": "688a384877fcbd895b5509f4",
+      "dealType": "wholesale-flip",
+      "dealType2SubType": "buy",
+      "vin": "WDCYC5FH4JX289097",
+      "purchasePrice": 120000,
+      "listPrice": 0,
+      "seller": {
+        "name": "MILEONE AUTO GROUP LLC",
+        "type": "dealer",
+        "contact": {
+          "address": {
+            "street": "908 W GORDON AVE STE 8 LAYTON UT 84041-5277",
+            "city": "",
+            "state": "",
+            "zip": ""
+          },
+          "phone": "‭+1 (385) 451-7130‬",
+          "email": "sales@mileoneautogroups.com"
+        },
+        "company": "MILEONE AUTO GROUP LLC",
+        "tier": "Tier 1",
+        "licenseNumber": "944B"
+      },
+      "buyer": {
+        "name": "Exotic Motorsports of Oklahoma",
+        "type": "dealer",
+        "contact": {
+          "address": {
+            "street": "800 Hundred Oaks Dr",
+            "city": "Edmond",
+            "state": "OK",
+            "zip": "73013"
+          },
+          "phone": "405-664-2073",
+          "email": "eliud@exoticmotorsportsok.com"
+        },
+        "licenseNumber": "UD-05513",
+        "tier": "Tier 1",
+        "company": "Exotic Motorsports of Oklahoma",
+        "dealerId": null
+      },
+      "currentStage": "contract-received",
+      "salesperson": "Unknown",
+      "createdAt": "2025-07-30T15:20:41.003Z",
+      "updatedAt": "2025-07-30T15:20:44.932Z",
+      "documents": 15
+    },
+    {
+      "_id": "688a391453fc3b21160d43ee",
+      "dealType": "wholesale-d2d",
+      "dealType2SubType": "buy",
+      "vin": "WDCYC5FH4JX289097",
+      "purchasePrice": 1200000,
+      "listPrice": 0,
+      "seller": {
+        "name": "RP Exotics",
+        "type": "dealer",
+        "contact": {
+          "address": {
+            "street": "1155 N Warson Rd",
+            "city": "Saint Louis",
+            "state": "MO 63132",
+            "zip": ""
+          },
+          "phone": "(314) 970-2427",
+          "email": "titling@rpexotics.com"
+        },
+        "company": "",
+        "tier": "Tier 1",
+        "licenseNumber": "D4865"
+      },
+      "buyer": {
+        "name": "Exotic Motorsports of Oklahoma",
+        "type": "dealer",
+        "contact": {
+          "address": {
+            "street": "800 Hundred Oaks Dr",
+            "city": "Edmond",
+            "state": "OK",
+            "zip": "73013"
+          },
+          "phone": "405-664-2073",
+          "email": "eliud@exoticmotorsportsok.com"
+        },
+        "licenseNumber": "UD-05513",
+        "tier": "Tier 1",
+        "company": "Exotic Motorsports of Oklahoma",
+        "dealerId": null
+      },
+      "currentStage": "contract-received",
+      "salesperson": "Unknown",
+      "createdAt": "2025-07-30T15:24:04.570Z",
+      "updatedAt": "2025-07-30T15:24:09.049Z",
+      "documents": 15
+    },
+    {
+      "_id": "688a3c7974ed167106a31610",
+      "dealType": "retail-pp",
+      "dealType2SubType": "buy",
+      "vin": "WDCYC5FH4JX289097",
+      "purchasePrice": 125000,
+      "listPrice": 138995,
+      "seller": {
+        "name": "Mike W",
+        "type": "private",
+        "contact": {
+          "address": {
+            "street": "1732 Belmont Crest Drive Riverside",
+            "city": "CA 92506",
+            "state": "",
+            "zip": ""
+          },
+          "phone": "555) 327-8914",
+          "email": "jordan.mercer@examplemail.com"
+        },
+        "company": "",
+        "tier": "Tier 1"
+      },
+      "buyer": {
+        "name": "",
+        "type": "dealer",
+        "contact": {
+          "address": {
+            "street": "",
+            "city": "",
+            "state": "",
+            "zip": ""
+          },
+          "phone": "",
+          "email": ""
+        },
+        "licenseNumber": "",
+        "tier": "Tier 1",
+        "company": "",
+        "dealerId": null
+      },
+      "currentStage": "deal-complete",
+      "salesperson": "Unknown",
+      "createdAt": "2025-07-30T15:38:33.922Z",
+      "updatedAt": "2025-07-30T15:41:14.369Z",
+      "documents": 15
+    },
+    {
+      "_id": "688a3d8ec4cca04f64e59b47",
+      "dealType": "wholesale-d2d",
+      "dealType2SubType": "buy",
+      "vin": "WDCYC5FH4JX289097",
+      "purchasePrice": 120000,
+      "listPrice": 135000,
+      "seller": {
+        "name": "Exotic Motorsports of Oklahoma",
+        "type": "dealer",
+        "contact": {
+          "address": {
+            "street": "800 Hundred Oaks Dr",
+            "city": "Edmond",
+            "state": "OK",
+            "zip": "73013"
+          },
+          "phone": "405-664-2073",
+          "email": "eliud@exoticmotorsportsok.com"
+        },
+        "company": "Exotic Motorsports of Oklahoma",
+        "tier": "Tier 1",
+        "licenseNumber": "UD-05513"
+      },
+      "buyer": {
+        "name": "",
+        "type": "dealer",
+        "contact": {
+          "address": {
+            "street": "",
+            "city": "",
+            "state": "",
+            "zip": ""
+          },
+          "phone": "",
+          "email": ""
+        },
+        "licenseNumber": "",
+        "tier": "Tier 1",
+        "company": "",
+        "dealerId": null
+      },
+      "currentStage": "funds-disbursed",
+      "salesperson": "Unknown",
+      "createdAt": "2025-07-30T15:43:10.382Z",
+      "updatedAt": "2025-07-30T15:44:19.007Z",
+      "documents": 15
+    },
+    {
+      "_id": "688a3e7ec4cca04f64e59cb0",
+      "dealType": "wholesale-d2d",
+      "dealType2SubType": "buy",
+      "vin": "WDCYC5FH4JX289097",
+      "purchasePrice": 120000,
+      "listPrice": 0,
+      "seller": {
+        "name": "RP Exotics",
+        "type": "dealer",
+        "contact": {
+          "address": {
+            "street": "1155 N Warson Rd",
+            "city": "Saint Louis",
+            "state": "MO 63132",
+            "zip": ""
+          },
+          "phone": "(314) 970-2427",
+          "email": "titling@rpexotics.com"
+        },
+        "company": "",
+        "tier": "Tier 1",
+        "licenseNumber": "D4865"
+      },
+      "buyer": {
+        "name": "Earth Motor Cars",
+        "type": "dealer",
+        "contact": {
+          "address": {
+            "street": "3216 Kellway Dr",
+            "city": "Carrollton",
+            "state": "TX 75006",
+            "zip": ""
+          },
+          "phone": "‭+1 (214) 406-3336‬",
+          "email": "alex@earthmotorcars.com"
+        },
+        "licenseNumber": "P125565",
+        "tier": "Tier 1",
+        "company": "Earth Motor Cars",
+        "dealerId": null
+      },
+      "currentStage": "contract-received",
+      "salesperson": "Unknown",
+      "createdAt": "2025-07-30T15:47:10.403Z",
+      "updatedAt": "2025-07-30T15:47:15.039Z",
+      "documents": 15
+    },
+    {
+      "_id": "688a4068c4cca04f64e59da4",
+      "dealType": "wholesale-flip",
+      "dealType2SubType": "buy",
+      "vin": "WDCYC5FH4JX289097",
+      "purchasePrice": 125000,
+      "listPrice": 0,
+      "seller": {
+        "name": "MILEONE AUTO GROUP LLC",
+        "type": "dealer",
+        "contact": {
+          "address": {
+            "street": "908 W GORDON AVE STE 8 LAYTON UT 84041-5277",
+            "city": "",
+            "state": "",
+            "zip": ""
+          },
+          "phone": "‭+1 (385) 451-7130‬",
+          "email": "sales@mileoneautogroups.com"
+        },
+        "company": "MILEONE AUTO GROUP LLC",
+        "tier": "Tier 1",
+        "licenseNumber": "944B"
+      },
+      "buyer": {
+        "name": "Exotic Motorsports of Oklahoma",
+        "type": "dealer",
+        "contact": {
+          "address": {
+            "street": "800 Hundred Oaks Dr",
+            "city": "Edmond",
+            "state": "OK",
+            "zip": "73013"
+          },
+          "phone": "405-664-2073",
+          "email": "eliud@exoticmotorsportsok.com"
+        },
+        "licenseNumber": "UD-05513",
+        "tier": "Tier 1",
+        "company": "Exotic Motorsports of Oklahoma",
+        "dealerId": null
+      },
+      "currentStage": "contract-received",
+      "salesperson": "Unknown",
+      "createdAt": "2025-07-30T15:55:20.945Z",
+      "updatedAt": "2025-07-30T15:55:24.331Z",
+      "documents": 15
+    },
+    {
+      "_id": "688a42647eb4859427d4762f",
+      "dealType": "wholesale-flip",
+      "dealType2SubType": "buy",
+      "vin": "wuavnafg9cn003071",
+      "purchasePrice": 120000,
+      "listPrice": 0,
+      "seller": {
+        "name": "JOHN DOE",
+        "type": "private",
+        "contact": {
+          "address": {
+            "street": "1732 Belmont Crest Drive Riverside",
+            "city": "CA 92506",
+            "state": "",
+            "zip": ""
+          },
+          "phone": "(555) 327-8914",
+          "email": "jordan.mercer@examplemail.com"
+        },
+        "company": "",
+        "tier": "Tier 1"
+      },
+      "buyer": {
+        "name": "Exotic Motorsports of Oklahoma",
+        "type": "dealer",
+        "contact": {
+          "address": {
+            "street": "800 Hundred Oaks Dr",
+            "city": "Edmond",
+            "state": "OK",
+            "zip": "73013"
+          },
+          "phone": "405-664-2073",
+          "email": "eliud@exoticmotorsportsok.com"
+        },
+        "licenseNumber": "UD-05513",
+        "tier": "Tier 1",
+        "company": "Exotic Motorsports of Oklahoma",
+        "dealerId": null
+      },
+      "currentStage": "contract-received",
+      "salesperson": "Unknown",
+      "createdAt": "2025-07-30T16:03:48.142Z",
+      "updatedAt": "2025-07-30T16:03:52.722Z",
+      "documents": 16
+    },
+    {
+      "_id": "688a4704a672bd19792a250d",
+      "dealType": "wholesale-d2d",
+      "dealType2SubType": "buy",
+      "vin": "WBAJE7C54KWW20885",
+      "purchasePrice": 120000,
+      "listPrice": 0,
+      "seller": {
+        "name": "RP Exotics",
+        "type": "dealer",
+        "contact": {
+          "address": {
+            "street": "1155 N Warson Rd",
+            "city": "Saint Louis",
+            "state": "MO 63132",
+            "zip": ""
+          },
+          "phone": "(314) 970-2427",
+          "email": "titling@rpexotics.com"
+        },
+        "company": "",
+        "tier": "Tier 1",
+        "licenseNumber": "D4865"
+      },
+      "buyer": {
+        "name": "Exotic Motorsports of Oklahoma",
+        "type": "dealer",
+        "contact": {
+          "address": {
+            "street": "800 Hundred Oaks Dr",
+            "city": "Edmond",
+            "state": "OK",
+            "zip": "73013"
+          },
+          "phone": "405-664-2073",
+          "email": "eliud@exoticmotorsportsok.com"
+        },
+        "licenseNumber": "UD-05513",
+        "tier": "Tier 1",
+        "company": "Exotic Motorsports of Oklahoma",
+        "dealerId": null
+      },
+      "currentStage": "contract-received",
+      "salesperson": "Unknown",
+      "createdAt": "2025-07-30T16:23:32.882Z",
+      "updatedAt": "2025-07-30T16:26:08.491Z",
+      "documents": 15
+    },
+    {
+      "_id": "688a4897a672bd19792a26a0",
+      "dealType": "wholesale-flip",
+      "dealType2SubType": "buy",
+      "vin": "WBAJE7C54KWW20885",
+      "purchasePrice": 125000,
+      "listPrice": 0,
+      "seller": {
+        "name": "MILEONE AUTO GROUP LLC",
+        "type": "dealer",
+        "contact": {
+          "address": {
+            "street": "908 W GORDON AVE STE 8 LAYTON UT 84041-5277",
+            "city": "",
+            "state": "",
+            "zip": ""
+          },
+          "phone": "‭+1 (385) 451-7130‬",
+          "email": "sales@mileoneautogroups.com"
+        },
+        "company": "MILEONE AUTO GROUP LLC",
+        "tier": "Tier 1",
+        "licenseNumber": "944B"
+      },
+      "buyer": {
+        "name": "Exotic Motorsports of Oklahoma",
+        "type": "dealer",
+        "contact": {
+          "address": {
+            "street": "800 Hundred Oaks Dr",
+            "city": "Edmond",
+            "state": "OK",
+            "zip": "73013"
+          },
+          "phone": "405-664-2073",
+          "email": "eliud@exoticmotorsportsok.com"
+        },
+        "licenseNumber": "UD-05513",
+        "tier": "Tier 1",
+        "company": "Exotic Motorsports of Oklahoma",
+        "dealerId": null
+      },
+      "currentStage": "contract-received",
+      "salesperson": "Unknown",
+      "createdAt": "2025-07-30T16:30:15.390Z",
+      "updatedAt": "2025-07-30T16:30:18.555Z",
+      "documents": 15
+    },
+    {
+      "_id": "688a4b603ec56583c3a42fee",
+      "dealType": "wholesale-d2d",
+      "dealType2SubType": "buy",
+      "vin": "WBSGV0C09NCJ47640",
+      "purchasePrice": 119998,
+      "listPrice": 0,
+      "seller": {
+        "name": "RP Exotics",
+        "type": "dealer",
+        "contact": {
+          "address": {
+            "street": "1155 N Warson Rd",
+            "city": "Saint Louis",
+            "state": "MO 63132",
+            "zip": ""
+          },
+          "phone": "(314) 970-2427",
+          "email": "titling@rpexotics.com"
+        },
+        "company": "",
+        "tier": "Tier 1",
+        "licenseNumber": "D4865"
+      },
+      "buyer": {
+        "name": "Exotic Motorsports of Oklahoma",
+        "type": "dealer",
+        "contact": {
+          "address": {
+            "street": "800 Hundred Oaks Dr",
+            "city": "Edmond",
+            "state": "OK",
+            "zip": "73013"
+          },
+          "phone": "405-664-2073",
+          "email": "eliud@exoticmotorsportsok.com"
+        },
+        "licenseNumber": "UD-05513",
+        "tier": "Tier 1",
+        "company": "Exotic Motorsports of Oklahoma",
+        "dealerId": null
+      },
+      "currentStage": "contract-received",
+      "salesperson": "Unknown",
+      "createdAt": "2025-07-30T16:42:08.226Z",
+      "updatedAt": "2025-07-30T16:42:13.118Z",
+      "documents": 15
+    },
+    {
+      "_id": "688a4c093ec56583c3a430df",
+      "dealType": "retail-pp",
+      "dealType2SubType": "buy",
+      "vin": "WBSGV0C09NCJ47640",
+      "purchasePrice": 125000,
+      "listPrice": 0,
+      "seller": {
+        "name": "Mike",
+        "type": "private",
+        "contact": {
+          "address": {
+            "street": "2947 Westover Hollow Road Knoxville",
+            "city": "TN 37920",
+            "state": "",
+            "zip": ""
+          },
+          "phone": "123-456-7890",
+          "email": "brennan@rpexotics.com"
+        },
+        "company": "",
+        "tier": "Tier 1"
+      },
+      "buyer": {
+        "name": "",
+        "type": "dealer",
+        "contact": {
+          "address": {
+            "street": "",
+            "city": "",
+            "state": "",
+            "zip": ""
+          },
+          "phone": "",
+          "email": ""
+        },
+        "licenseNumber": "",
+        "tier": "Tier 1",
+        "company": "",
+        "dealerId": null
+      },
+      "currentStage": "contract-received",
+      "salesperson": "Unknown",
+      "createdAt": "2025-07-30T16:44:57.648Z",
+      "updatedAt": "2025-07-30T16:45:02.480Z",
+      "documents": 15
+    },
+    {
+      "_id": "688a4dd1d2f4a286c739b282",
+      "dealType": "wholesale-flip",
+      "dealType2SubType": "buy",
+      "vin": "WBSGV0C09NCJ47640",
+      "purchasePrice": 125000,
+      "listPrice": 0,
+      "seller": {
+        "name": "Earth Motor Cars",
+        "type": "dealer",
+        "contact": {
+          "address": {
+            "street": "3216 Kellway Dr",
+            "city": "Carrollton",
+            "state": "TX 75006",
+            "zip": ""
+          },
+          "phone": "‭+1 (214) 406-3336‬",
+          "email": "alex@earthmotorcars.com"
+        },
+        "company": "Earth Motor Cars",
+        "tier": "Tier 1",
+        "licenseNumber": "P125565"
+      },
+      "buyer": {
+        "name": "Exotic Motorsports of Oklahoma",
+        "type": "dealer",
+        "contact": {
+          "address": {
+            "street": "800 Hundred Oaks Dr",
+            "city": "Edmond",
+            "state": "OK",
+            "zip": "73013"
+          },
+          "phone": "405-664-2073",
+          "email": "eliud@exoticmotorsportsok.com"
+        },
+        "licenseNumber": "UD-05513",
+        "tier": "Tier 1",
+        "company": "Exotic Motorsports of Oklahoma",
+        "dealerId": null
+      },
+      "currentStage": "contract-received",
+      "salesperson": "Unknown",
+      "createdAt": "2025-07-30T16:52:33.127Z",
+      "updatedAt": "2025-07-30T16:52:36.553Z",
+      "documents": 15
+    },
+    {
+      "_id": "688a4e3fd2f4a286c739b364",
+      "dealType": "wholesale-d2d",
+      "dealType2SubType": "buy",
+      "vin": "WBSGV0C09NCJ47640",
+      "purchasePrice": 120000,
+      "listPrice": 0,
+      "seller": {
+        "name": "RP Exotics",
+        "type": "dealer",
+        "contact": {
+          "address": {
+            "street": "1155 N Warson Rd",
+            "city": "Saint Louis",
+            "state": "MO 63132",
+            "zip": ""
+          },
+          "phone": "(314) 970-2427",
+          "email": "titling@rpexotics.com"
+        },
+        "company": "",
+        "tier": "Tier 1",
+        "licenseNumber": "D4865"
+      },
+      "buyer": {
+        "name": "Exotic Motorsports of Oklahoma",
+        "type": "dealer",
+        "contact": {
+          "address": {
+            "street": "800 Hundred Oaks Dr",
+            "city": "Edmond",
+            "state": "OK",
+            "zip": "73013"
+          },
+          "phone": "405-664-2073",
+          "email": "eliud@exoticmotorsportsok.com"
+        },
+        "licenseNumber": "UD-05513",
+        "tier": "Tier 1",
+        "company": "Exotic Motorsports of Oklahoma",
+        "dealerId": null
+      },
+      "currentStage": "contract-received",
+      "salesperson": "Unknown",
+      "createdAt": "2025-07-30T16:54:23.832Z",
+      "updatedAt": "2025-07-30T16:54:28.334Z",
+      "documents": 15
+    },
+    {
+      "_id": "688a4f74d2f4a286c739b45b",
+      "dealType": "wholesale-flip",
+      "dealType2SubType": "buy",
+      "vin": "WBSGV0C09NCJ47640",
+      "purchasePrice": 120000,
+      "listPrice": 0,
+      "seller": {
+        "name": "MILEONE AUTO GROUP LLC",
+        "type": "dealer",
+        "contact": {
+          "address": {
+            "street": "908 W GORDON AVE STE 8 LAYTON UT 84041-5277",
+            "city": "",
+            "state": "",
+            "zip": ""
+          },
+          "phone": "‭+1 (385) 451-7130‬",
+          "email": "sales@mileoneautogroups.com"
+        },
+        "company": "MILEONE AUTO GROUP LLC",
+        "tier": "Tier 1",
+        "licenseNumber": "944B"
+      },
+      "buyer": {
+        "name": "Exotic Motorsports of Oklahoma",
+        "type": "dealer",
+        "contact": {
+          "address": {
+            "street": "800 Hundred Oaks Dr",
+            "city": "Edmond",
+            "state": "OK",
+            "zip": "73013"
+          },
+          "phone": "405-664-2073",
+          "email": "eliud@exoticmotorsportsok.com"
+        },
+        "licenseNumber": "UD-05513",
+        "tier": "Tier 1",
+        "company": "Exotic Motorsports of Oklahoma",
+        "dealerId": null
+      },
+      "currentStage": "contract-received",
+      "salesperson": "Unknown",
+      "createdAt": "2025-07-30T16:59:32.535Z",
+      "updatedAt": "2025-07-30T16:59:35.668Z",
+      "documents": 15
+    },
+    {
+      "_id": "688a500fd8eca8f214963537",
+      "dealType": "wholesale-flip",
+      "dealType2SubType": "buy",
+      "vin": "WBSGV0C09NCJ47640",
+      "purchasePrice": 120000,
+      "listPrice": 0,
+      "seller": {
+        "name": "Prestige Imports",
+        "type": "dealer",
+        "contact": {
+          "address": {
+            "street": "15050 Biscayne Blvd",
+            "city": "North Miami Beach",
+            "state": "FL 33181",
+            "zip": ""
+          },
+          "phone": "786-681-3832",
+          "email": "dbendjouia@prestigeimports.com"
+        },
+        "company": "Prestige Imports",
+        "tier": "Tier 1",
+        "licenseNumber": "VF/1002298/1"
+      },
+      "buyer": {
+        "name": "Earth Motor Cars",
+        "type": "dealer",
+        "contact": {
+          "address": {
+            "street": "3216 Kellway Dr",
+            "city": "Carrollton",
+            "state": "TX 75006",
+            "zip": ""
+          },
+          "phone": "‭+1 (214) 406-3336‬",
+          "email": "alex@earthmotorcars.com"
+        },
+        "licenseNumber": "P125565",
+        "tier": "Tier 1",
+        "company": "Earth Motor Cars",
+        "dealerId": null
+      },
+      "currentStage": "title-processing",
+      "salesperson": "Unknown",
+      "createdAt": "2025-07-30T17:02:07.338Z",
+      "updatedAt": "2025-07-30T17:04:48.646Z",
+      "documents": 16
+    },
+    {
+      "_id": "688a5116d8eca8f2149636bb",
+      "dealType": "wholesale-flip",
+      "dealType2SubType": "buy",
+      "vin": "WBSGV0C09NCJ47640",
+      "purchasePrice": 130000,
+      "listPrice": 0,
+      "seller": {
+        "name": "Mike",
+        "type": "private",
+        "contact": {
+          "address": {
+            "street": "2947 Westover Hollow Road Knoxville",
+            "city": "TN 37920",
+            "state": "",
+            "zip": ""
+          },
+          "phone": "123-456-7890",
+          "email": "brennan@rpexotics.com"
+        },
+        "company": "",
+        "tier": "Tier 1"
+      },
+      "buyer": {
+        "name": "Exotic Motorsports of Oklahoma",
+        "type": "dealer",
+        "contact": {
+          "address": {
+            "street": "800 Hundred Oaks Dr",
+            "city": "Edmond",
+            "state": "OK",
+            "zip": "73013"
+          },
+          "phone": "405-664-2073",
+          "email": "eliud@exoticmotorsportsok.com"
+        },
+        "licenseNumber": "UD-05513",
+        "tier": "Tier 1",
+        "company": "Exotic Motorsports of Oklahoma",
+        "dealerId": null
+      },
+      "currentStage": "contract-received",
+      "salesperson": "Unknown",
+      "createdAt": "2025-07-30T17:06:30.995Z",
+      "updatedAt": "2025-07-30T17:06:35.392Z",
+      "documents": 16
+    },
+    {
+      "_id": "688a532cadd731a655607bcb",
+      "dealType": "wholesale-flip",
+      "dealType2SubType": "buy",
+      "vin": "5YM13ET05S9W63879",
+      "purchasePrice": 120000,
+      "listPrice": 0,
+      "seller": {
+        "name": "MILEONE AUTO GROUP LLC",
+        "type": "dealer",
+        "contact": {
+          "address": {
+            "street": "908 W GORDON AVE STE 8 LAYTON UT 84041-5277",
+            "city": "",
+            "state": "",
+            "zip": ""
+          },
+          "phone": "‭+1 (385) 451-7130‬",
+          "email": "sales@mileoneautogroups.com"
+        },
+        "company": "MILEONE AUTO GROUP LLC",
+        "tier": "Tier 1",
+        "licenseNumber": "944B"
+      },
+      "buyer": {
+        "name": "Exotic Motorsports of Oklahoma",
+        "type": "dealer",
+        "contact": {
+          "address": {
+            "street": "800 Hundred Oaks Dr",
+            "city": "Edmond",
+            "state": "OK",
+            "zip": "73013"
+          },
+          "phone": "405-664-2073",
+          "email": "eliud@exoticmotorsportsok.com"
+        },
+        "licenseNumber": "UD-05513",
+        "tier": "Tier 1",
+        "company": "Exotic Motorsports of Oklahoma",
+        "dealerId": null
+      },
+      "currentStage": "contract-received",
+      "salesperson": "Unknown",
+      "createdAt": "2025-07-30T17:15:24.242Z",
+      "updatedAt": "2025-07-30T17:15:28.939Z",
+      "documents": 16
+    },
+    {
+      "_id": "688a54caadd731a655607d2a",
+      "dealType": "wholesale-flip",
+      "dealType2SubType": "buy",
+      "vin": "5YM13ET05S9W63879",
+      "purchasePrice": 100000,
+      "listPrice": 0,
+      "seller": {
+        "name": "Mike",
+        "type": "private",
+        "contact": {
+          "address": {
+            "street": "2947 Westover Hollow Road Knoxville",
+            "city": "TN 37920",
+            "state": "",
+            "zip": ""
+          },
+          "phone": "123-456-7890",
+          "email": "joe@gmail.com"
+        },
+        "company": "",
+        "tier": "Tier 1"
+      },
+      "buyer": {
+        "name": "Exotic Motorsports of Oklahoma",
+        "type": "dealer",
+        "contact": {
+          "address": {
+            "street": "800 Hundred Oaks Dr",
+            "city": "Edmond",
+            "state": "OK",
+            "zip": "73013"
+          },
+          "phone": "405-664-2073",
+          "email": "eliud@exoticmotorsportsok.com"
+        },
+        "licenseNumber": "UD-05513",
+        "tier": "Tier 1",
+        "company": "Exotic Motorsports of Oklahoma",
+        "dealerId": null
+      },
+      "currentStage": "contract-received",
+      "salesperson": "Unknown",
+      "createdAt": "2025-07-30T17:22:18.477Z",
+      "updatedAt": "2025-07-30T17:22:23.529Z",
+      "documents": 16
+    },
+    {
+      "_id": "688a559dadd731a655607e4b",
+      "dealType": "wholesale-d2d",
+      "dealType2SubType": "buy",
+      "vin": "5YM13ET05S9W63879",
+      "purchasePrice": 100000,
+      "listPrice": 125995,
+      "seller": {
+        "name": "Exotic Motorsports of Oklahoma",
+        "type": "dealer",
+        "contact": {
+          "address": {
+            "street": "800 Hundred Oaks Dr",
+            "city": "Edmond",
+            "state": "OK",
+            "zip": "73013"
+          },
+          "phone": "405-664-2073",
+          "email": "eliud@exoticmotorsportsok.com"
+        },
+        "company": "Exotic Motorsports of Oklahoma",
+        "tier": "Tier 1",
+        "licenseNumber": "UD-05513"
+      },
+      "buyer": {
+        "name": "",
+        "type": "dealer",
+        "contact": {
+          "address": {
+            "street": "",
+            "city": "",
+            "state": "",
+            "zip": ""
+          },
+          "phone": "",
+          "email": ""
+        },
+        "licenseNumber": "",
+        "tier": "Tier 1",
+        "company": "",
+        "dealerId": null
+      },
+      "currentStage": "contract-received",
+      "salesperson": "Unknown",
+      "createdAt": "2025-07-30T17:25:49.388Z",
+      "updatedAt": "2025-07-30T17:25:53.692Z",
+      "documents": 15
+    },
+    {
+      "_id": "688a5f1f760db101e6bb8291",
+      "dealType": "wholesale-d2d",
+      "dealType2SubType": "buy",
+      "vin": "WP0AD2A99MS258562",
+      "purchasePrice": 120000,
+      "listPrice": 0,
+      "seller": {
+        "name": "Exotic Motorsports of Oklahoma",
+        "type": "dealer",
+        "contact": {
+          "address": {
+            "street": "800 Hundred Oaks Dr",
+            "city": "Edmond",
+            "state": "OK",
+            "zip": "73013"
+          },
+          "phone": "405-664-2073",
+          "email": "eliud@exoticmotorsportsok.com"
+        },
+        "company": "Exotic Motorsports of Oklahoma",
+        "tier": "Tier 1",
+        "licenseNumber": "UD-05513"
+      },
+      "buyer": {
+        "name": "",
+        "type": "dealer",
+        "contact": {
+          "address": {
+            "street": "",
+            "city": "",
+            "state": "",
+            "zip": ""
+          },
+          "phone": "",
+          "email": ""
+        },
+        "licenseNumber": "",
+        "tier": "Tier 1",
+        "company": "",
+        "dealerId": null
+      },
+      "currentStage": "contract-received",
+      "salesperson": "Unknown",
+      "createdAt": "2025-07-30T18:06:23.959Z",
+      "updatedAt": "2025-07-30T18:06:28.527Z",
+      "documents": 15
+    },
+    {
+      "_id": "688a5f8d760db101e6bb838c",
+      "dealType": "wholesale-d2d",
+      "dealType2SubType": "buy",
+      "vin": "WP0AD2A99MS258562",
+      "purchasePrice": 200000,
+      "listPrice": 0,
+      "seller": {
+        "name": "RP Exotics",
+        "type": "dealer",
+        "contact": {
+          "address": {
+            "street": "1155 N Warson Rd",
+            "city": "Saint Louis",
+            "state": "MO 63132",
+            "zip": ""
+          },
+          "phone": "(314) 970-2427",
+          "email": "titling@rpexotics.com"
+        },
+        "company": "",
+        "tier": "Tier 1",
+        "licenseNumber": "D4865"
+      },
+      "buyer": {
+        "name": "Exotic Motorsports of Oklahoma",
+        "type": "dealer",
+        "contact": {
+          "address": {
+            "street": "800 Hundred Oaks Dr",
+            "city": "Edmond",
+            "state": "OK",
+            "zip": "73013"
+          },
+          "phone": "405-664-2073",
+          "email": "eliud@exoticmotorsportsok.com"
+        },
+        "licenseNumber": "UD-05513",
+        "tier": "Tier 1",
+        "company": "Exotic Motorsports of Oklahoma",
+        "dealerId": null
+      },
+      "currentStage": "contract-received",
+      "salesperson": "Unknown",
+      "createdAt": "2025-07-30T18:08:13.384Z",
+      "updatedAt": "2025-07-30T18:08:18.022Z",
+      "documents": 15
+    },
+    {
+      "_id": "688a604b760db101e6bb848f",
+      "dealType": "wholesale-flip",
+      "dealType2SubType": "buy",
+      "vin": "WP0AD2A99MS258562",
+      "purchasePrice": 120000,
+      "listPrice": 0,
+      "seller": {
+        "name": "Benji",
+        "type": "private",
+        "contact": {
+          "address": {
+            "street": "8612 Copper Creek Trail Plano",
+            "city": "TX 75024",
+            "state": "",
+            "zip": ""
+          },
+          "phone": "123-456-7890",
+          "email": "brennan@rpexotics.com"
+        },
+        "company": "",
+        "tier": "Tier 1"
+      },
+      "buyer": {
+        "name": "Prestige Motorsports",
+        "type": "dealer",
+        "contact": {
+          "address": {
+            "street": "9711 Plymouth Rd",
+            "city": "San Antonio",
+            "state": "TX 78216",
+            "zip": ""
+          },
+          "phone": "(210) 900-2014",
+          "email": "aejones_jw@yahoo.com"
+        },
+        "licenseNumber": "P169528",
+        "tier": "Tier 1",
+        "company": "Prestige Motorsports",
+        "dealerId": null
+      },
+      "currentStage": "title-processing",
+      "salesperson": "Unknown",
+      "createdAt": "2025-07-30T18:11:23.092Z",
+      "updatedAt": "2025-07-30T18:14:24.916Z",
+      "documents": 16
+    },
+    {
+      "_id": "688a60bd760db101e6bb85a6",
+      "dealType": "wholesale-flip",
+      "dealType2SubType": "buy",
+      "vin": "WP0AD2A99MS258562",
+      "purchasePrice": 120000,
+      "listPrice": 0,
+      "seller": {
+        "name": "Earth Motor Cars",
+        "type": "dealer",
+        "contact": {
+          "address": {
+            "street": "3216 Kellway Dr",
+            "city": "Carrollton",
+            "state": "TX 75006",
+            "zip": ""
+          },
+          "phone": "‭+1 (214) 406-3336‬",
+          "email": "alex@earthmotorcars.com"
+        },
+        "company": "Earth Motor Cars",
+        "tier": "Tier 1",
+        "licenseNumber": "P125565"
+      },
+      "buyer": {
+        "name": "Exotic Motorsports of Oklahoma",
+        "type": "dealer",
+        "contact": {
+          "address": {
+            "street": "800 Hundred Oaks Dr",
+            "city": "Edmond",
+            "state": "OK",
+            "zip": "73013"
+          },
+          "phone": "405-664-2073",
+          "email": "eliud@exoticmotorsportsok.com"
+        },
+        "licenseNumber": "UD-05513",
+        "tier": "Tier 1",
+        "company": "Exotic Motorsports of Oklahoma",
+        "dealerId": null
+      },
+      "currentStage": "title-processing",
+      "salesperson": "Unknown",
+      "createdAt": "2025-07-30T18:13:17.755Z",
+      "updatedAt": "2025-07-30T18:13:59.096Z",
+      "documents": 16
+    },
+    {
+      "_id": "688a6241760db101e6bb8821",
+      "dealType": "retail-pp",
+      "dealType2SubType": "buy",
+      "vin": "WP0AD2A99MS258562",
+      "purchasePrice": 120000,
+      "listPrice": 129995,
+      "seller": {
+        "name": "Mike",
+        "type": "private",
+        "contact": {
+          "address": {
+            "street": "8612 Copper Creek Trail Plano",
+            "city": "TX 75024",
+            "state": "",
+            "zip": ""
+          },
+          "phone": "123-456-7890",
+          "email": "brennan@rpexotics.com"
+        },
+        "company": "",
+        "tier": "Tier 1"
+      },
+      "buyer": {
+        "name": "",
+        "type": "dealer",
+        "contact": {
+          "address": {
+            "street": "",
+            "city": "",
+            "state": "",
+            "zip": ""
+          },
+          "phone": "",
+          "email": ""
+        },
+        "licenseNumber": "",
+        "tier": "Tier 1",
+        "company": "",
+        "dealerId": null
+      },
+      "currentStage": "contract-received",
+      "salesperson": "Unknown",
+      "createdAt": "2025-07-30T18:19:45.184Z",
+      "updatedAt": "2025-07-30T18:19:49.818Z",
+      "documents": 15
+    },
+    {
+      "_id": "688a63fd6ed84fe8da1bcb6e",
+      "dealType": "wholesale-d2d",
+      "dealType2SubType": "buy",
+      "vin": "WP0AD2A99MS258562",
+      "purchasePrice": 120000,
+      "listPrice": 135995,
+      "seller": {
+        "name": "Exotic Motorsports of Oklahoma",
+        "type": "dealer",
+        "contact": {
+          "address": {
+            "street": "800 Hundred Oaks Dr",
+            "city": "Edmond",
+            "state": "OK",
+            "zip": "73013"
+          },
+          "phone": "405-664-2073",
+          "email": "eliud@exoticmotorsportsok.com"
+        },
+        "company": "Exotic Motorsports of Oklahoma",
+        "tier": "Tier 1",
+        "licenseNumber": "UD-05513"
+      },
+      "buyer": {
+        "name": "",
+        "type": "dealer",
+        "contact": {
+          "address": {
+            "street": "",
+            "city": "",
+            "state": "",
+            "zip": ""
+          },
+          "phone": "",
+          "email": ""
+        },
+        "licenseNumber": "",
+        "tier": "Tier 1",
+        "company": "",
+        "dealerId": null
+      },
+      "currentStage": "contract-received",
+      "salesperson": "Unknown",
+      "createdAt": "2025-07-30T18:27:09.862Z",
+      "updatedAt": "2025-07-30T18:27:14.572Z",
+      "documents": 15
+    },
+    {
+      "_id": "688a646e6ed84fe8da1bcc77",
+      "dealType": "wholesale-d2d",
+      "dealType2SubType": "buy",
+      "vin": "WP0AD2A99MS258562",
+      "purchasePrice": 195000,
+      "listPrice": 0,
+      "seller": {
+        "name": "RP Exotics",
+        "type": "dealer",
+        "contact": {
+          "address": {
+            "street": "1155 N Warson Rd",
+            "city": "Saint Louis",
+            "state": "MO 63132",
+            "zip": ""
+          },
+          "phone": "(314) 970-2427",
+          "email": "titling@rpexotics.com"
+        },
+        "company": "",
+        "tier": "Tier 1",
+        "licenseNumber": "D4865"
+      },
+      "buyer": {
+        "name": "Earth Motor Cars",
+        "type": "dealer",
+        "contact": {
+          "address": {
+            "street": "3216 Kellway Dr",
+            "city": "Carrollton",
+            "state": "TX 75006",
+            "zip": ""
+          },
+          "phone": "‭+1 (214) 406-3336‬",
+          "email": "alex@earthmotorcars.com"
+        },
+        "licenseNumber": "P125565",
+        "tier": "Tier 2",
+        "company": "Earth Motor Cars",
+        "dealerId": null
+      },
+      "currentStage": "contract-received",
+      "salesperson": "Unknown",
+      "createdAt": "2025-07-30T18:29:02.844Z",
+      "updatedAt": "2025-07-30T18:29:07.200Z",
+      "documents": 15
+    },
+    {
+      "_id": "688a66dd99c7217b1c0f8f45",
+      "dealType": "wholesale-flip",
+      "dealType2SubType": "buy",
+      "vin": "WP0AD2A99MS258562",
+      "purchasePrice": 120000,
+      "listPrice": 0,
+      "seller": {
+        "name": "MILEONE AUTO GROUP LLC",
+        "type": "dealer",
+        "contact": {
+          "address": {
+            "street": "908 W GORDON AVE STE 8 LAYTON UT 84041-5277",
+            "city": "",
+            "state": "",
+            "zip": ""
+          },
+          "phone": "‭+1 (385) 451-7130‬",
+          "email": "sales@mileoneautogroups.com"
+        },
+        "company": "MILEONE AUTO GROUP LLC",
+        "tier": "Tier 1",
+        "licenseNumber": "944B"
+      },
+      "buyer": {
+        "name": "Exotic Motorsports of Oklahoma",
+        "type": "dealer",
+        "contact": {
+          "address": {
+            "street": "800 Hundred Oaks Dr",
+            "city": "Edmond",
+            "state": "OK",
+            "zip": "73013"
+          },
+          "phone": "405-664-2073",
+          "email": "eliud@exoticmotorsportsok.com"
+        },
+        "licenseNumber": "UD-05513",
+        "tier": "Tier 1",
+        "company": "Exotic Motorsports of Oklahoma",
+        "dealerId": null
+      },
+      "currentStage": "contract-received",
+      "salesperson": "Unknown",
+      "createdAt": "2025-07-30T18:39:25.319Z",
+      "updatedAt": "2025-07-30T18:39:30.178Z",
+      "documents": 16
+    },
+    {
+      "_id": "688a67a999c7217b1c0f91ac",
+      "dealType": "retail-pp",
+      "dealType2SubType": "buy",
+      "vin": "WP0AD2A99MS258562",
+      "purchasePrice": 120000,
+      "listPrice": 135000,
+      "seller": {
+        "name": "MIke",
+        "type": "private",
+        "contact": {
+          "address": {
+            "street": "123",
+            "city": "Litcheford court",
+            "state": "",
+            "zip": ""
+          },
+          "phone": "123",
+          "email": "bre"
+        },
+        "company": "",
+        "tier": "Tier 1"
+      },
+      "buyer": {
+        "name": "",
+        "type": "dealer",
+        "contact": {
+          "address": {
+            "street": "",
+            "city": "",
+            "state": "",
+            "zip": ""
+          },
+          "phone": "",
+          "email": ""
+        },
+        "licenseNumber": "",
+        "tier": "Tier 1",
+        "company": "",
+        "dealerId": null
+      },
+      "currentStage": "contract-received",
+      "salesperson": "Unknown",
+      "createdAt": "2025-07-30T18:42:49.877Z",
+      "updatedAt": "2025-07-30T18:42:54.345Z",
+      "documents": 15
+    },
+    {
+      "_id": "688a681a99c7217b1c0f92fe",
+      "dealType": "wholesale-d2d",
+      "dealType2SubType": "buy",
+      "vin": "WP0AD2A99MS258562",
+      "purchasePrice": 1200000,
+      "listPrice": 0,
+      "seller": {
+        "name": "RP Exotics",
+        "type": "dealer",
+        "contact": {
+          "address": {
+            "street": "1155 N Warson Rd",
+            "city": "Saint Louis",
+            "state": "MO 63132",
+            "zip": ""
+          },
+          "phone": "(314) 970-2427",
+          "email": "titling@rpexotics.com"
+        },
+        "company": "",
+        "tier": "Tier 1",
+        "licenseNumber": "D4865"
+      },
+      "buyer": {
+        "name": "Exotic Motorsports of Oklahoma",
+        "type": "dealer",
+        "contact": {
+          "address": {
+            "street": "800 Hundred Oaks Dr",
+            "city": "Edmond",
+            "state": "OK",
+            "zip": "73013"
+          },
+          "phone": "405-664-2073",
+          "email": "eliud@exoticmotorsportsok.com"
+        },
+        "licenseNumber": "UD-05513",
+        "tier": "Tier 1",
+        "company": "Exotic Motorsports of Oklahoma",
+        "dealerId": null
+      },
+      "currentStage": "title-processing",
+      "salesperson": "Unknown",
+      "createdAt": "2025-07-30T18:44:42.739Z",
+      "updatedAt": "2025-07-30T18:46:09.806Z",
+      "documents": 15
+    },
+    {
+      "_id": "688a693c99c7217b1c0f94f9",
+      "dealType": "wholesale-flip",
+      "dealType2SubType": "buy",
+      "vin": "WP0AD2A99MS258562",
+      "purchasePrice": 120000,
+      "listPrice": 0,
+      "seller": {
+        "name": "MILEONE AUTO GROUP LLC",
+        "type": "dealer",
+        "contact": {
+          "address": {
+            "street": "908 W GORDON AVE STE 8 LAYTON UT 84041-5277",
+            "city": "",
+            "state": "",
+            "zip": ""
+          },
+          "phone": "‭+1 (385) 451-7130‬",
+          "email": "sales@mileoneautogroups.com"
+        },
+        "company": "MILEONE AUTO GROUP LLC",
+        "tier": "Tier 1",
+        "licenseNumber": "944B"
+      },
+      "buyer": {
+        "name": "Exotic Motorsports of Oklahoma",
+        "type": "dealer",
+        "contact": {
+          "address": {
+            "street": "800 Hundred Oaks Dr",
+            "city": "Edmond",
+            "state": "OK",
+            "zip": "73013"
+          },
+          "phone": "405-664-2073",
+          "email": "eliud@exoticmotorsportsok.com"
+        },
+        "licenseNumber": "UD-05513",
+        "tier": "Tier 1",
+        "company": "Exotic Motorsports of Oklahoma",
+        "dealerId": null
+      },
+      "currentStage": "contract-received",
+      "salesperson": "Unknown",
+      "createdAt": "2025-07-30T18:49:32.148Z",
+      "updatedAt": "2025-07-30T18:49:36.493Z",
+      "documents": 16
+    },
+    {
+      "_id": "688a6999306fbc6c74a9d736",
+      "dealType": "wholesale-flip",
+      "dealType2SubType": "buy",
+      "vin": "WP0AD2A99MS258562",
+      "purchasePrice": 125000,
+      "listPrice": 0,
+      "seller": {
+        "name": "Mike",
+        "type": "private",
+        "contact": {
+          "address": {
+            "street": "123 Litheford court",
+            "city": "",
+            "state": "",
+            "zip": ""
+          },
+          "phone": "123-456-7890",
+          "email": "mie"
+        },
+        "company": "",
+        "tier": "Tier 1"
+      },
+      "buyer": {
+        "name": "Earth Motor Cars",
+        "type": "dealer",
+        "contact": {
+          "address": {
+            "street": "3216 Kellway Dr",
+            "city": "Carrollton",
+            "state": "TX 75006",
+            "zip": ""
+          },
+          "phone": "‭+1 (214) 406-3336‬",
+          "email": "alex@earthmotorcars.com"
+        },
+        "licenseNumber": "P125565",
+        "tier": "Tier 1",
+        "company": "Earth Motor Cars",
+        "dealerId": null
+      },
+      "currentStage": "contract-received",
+      "salesperson": "Unknown",
+      "createdAt": "2025-07-30T18:51:05.835Z",
+      "updatedAt": "2025-07-30T18:51:12.833Z",
+      "documents": 16
+    },
+    {
+      "_id": "688a6a0d5321f75475d9d836",
+      "dealType": "wholesale-d2d",
+      "dealType2SubType": "buy",
+      "vin": "WP0AD2A99MS258562",
+      "purchasePrice": 100000,
+      "listPrice": 0,
+      "seller": {
+        "name": "RP Exotics",
+        "type": "dealer",
+        "contact": {
+          "address": {
+            "street": "1155 N Warson Rd",
+            "city": "Saint Louis",
+            "state": "MO 63132",
+            "zip": ""
+          },
+          "phone": "(314) 970-2427",
+          "email": "titling@rpexotics.com"
+        },
+        "company": "",
+        "tier": "Tier 1",
+        "licenseNumber": "D4865"
+      },
+      "buyer": {
+        "name": "Exotic Motorsports of Oklahoma",
+        "type": "dealer",
+        "contact": {
+          "address": {
+            "street": "800 Hundred Oaks Dr",
+            "city": "Edmond",
+            "state": "OK",
+            "zip": "73013"
+          },
+          "phone": "405-664-2073",
+          "email": "eliud@exoticmotorsportsok.com"
+        },
+        "licenseNumber": "UD-05513",
+        "tier": "Tier 1",
+        "company": "Exotic Motorsports of Oklahoma",
+        "dealerId": null
+      },
+      "currentStage": "contract-received",
+      "salesperson": "Unknown",
+      "createdAt": "2025-07-30T18:53:01.297Z",
+      "updatedAt": "2025-07-30T18:53:06.304Z",
+      "documents": 15
+    },
+    {
+      "_id": "688a6a345321f75475d9d870",
+      "dealType": "wholesale-d2d",
+      "dealType2SubType": "buy",
+      "vin": "WP0AD2A99MS258562",
+      "purchasePrice": 12000000,
+      "listPrice": 0,
+      "seller": {
+        "name": "RP Exotics",
+        "type": "dealer",
+        "contact": {
+          "address": {
+            "street": "1155 N Warson Rd",
+            "city": "Saint Louis",
+            "state": "MO 63132",
+            "zip": ""
+          },
+          "phone": "(314) 970-2427",
+          "email": "titling@rpexotics.com"
+        },
+        "company": "",
+        "tier": "Tier 1",
+        "licenseNumber": "D4865"
+      },
+      "buyer": {
+        "name": "Earth Motor Cars",
+        "type": "dealer",
+        "contact": {
+          "address": {
+            "street": "3216 Kellway Dr",
+            "city": "Carrollton",
+            "state": "TX 75006",
+            "zip": ""
+          },
+          "phone": "‭+1 (214) 406-3336‬",
+          "email": "alex@earthmotorcars.com"
+        },
+        "licenseNumber": "P125565",
+        "tier": "Tier 1",
+        "company": "Earth Motor Cars",
+        "dealerId": null
+      },
+      "currentStage": "contract-received",
+      "salesperson": "Unknown",
+      "createdAt": "2025-07-30T18:53:40.843Z",
+      "updatedAt": "2025-07-30T18:53:45.468Z",
+      "documents": 15
+    },
+    {
+      "_id": "688a6bf33ef9830a072f887b",
+      "dealType": "wholesale-d2d",
+      "dealType2SubType": "buy",
+      "vin": "WP0AD2A99MS258562",
+      "purchasePrice": 124998,
+      "listPrice": 0,
+      "seller": {
+        "name": "RP Exotics",
+        "type": "dealer",
+        "contact": {
+          "address": {
+            "street": "1155 N Warson Rd",
+            "city": "Saint Louis",
+            "state": "MO 63132",
+            "zip": ""
+          },
+          "phone": "(314) 970-2427",
+          "email": "titling@rpexotics.com"
+        },
+        "company": "",
+        "tier": "Tier 1",
+        "licenseNumber": "D4865"
+      },
+      "buyer": {
+        "name": "Exotic Motorsports of Oklahoma",
+        "type": "dealer",
+        "contact": {
+          "address": {
+            "street": "800 Hundred Oaks Dr",
+            "city": "Edmond",
+            "state": "OK",
+            "zip": "73013"
+          },
+          "phone": "405-664-2073",
+          "email": "eliud@exoticmotorsportsok.com"
+        },
+        "licenseNumber": "UD-05513",
+        "tier": "Tier 1",
+        "company": "Exotic Motorsports of Oklahoma",
+        "dealerId": null
+      },
+      "currentStage": "contract-received",
+      "salesperson": "Unknown",
+      "createdAt": "2025-07-30T19:01:07.385Z",
+      "updatedAt": "2025-07-30T19:01:12.048Z",
+      "documents": 15
+    },
+    {
+      "_id": "688a6c41633d5d2ab8419131",
+      "dealType": "wholesale-d2d",
+      "dealType2SubType": "buy",
+      "vin": "WP0AD2A99MS258562",
+      "purchasePrice": 124999,
+      "listPrice": 0,
+      "seller": {
+        "name": "RP Exotics",
+        "type": "dealer",
+        "contact": {
+          "address": {
+            "street": "1155 N Warson Rd",
+            "city": "Saint Louis",
+            "state": "MO 63132",
+            "zip": ""
+          },
+          "phone": "(314) 970-2427",
+          "email": "titling@rpexotics.com"
+        },
+        "company": "",
+        "tier": "Tier 1",
+        "licenseNumber": "D4865"
+      },
+      "buyer": {
+        "name": "Exotic Motorsports of Oklahoma",
+        "type": "dealer",
+        "contact": {
+          "address": {
+            "street": "800 Hundred Oaks Dr",
+            "city": "Edmond",
+            "state": "OK",
+            "zip": "73013"
+          },
+          "phone": "405-664-2073",
+          "email": "eliud@exoticmotorsportsok.com"
+        },
+        "licenseNumber": "UD-05513",
+        "tier": "Tier 1",
+        "company": "Exotic Motorsports of Oklahoma",
+        "dealerId": null
+      },
+      "currentStage": "contract-received",
+      "salesperson": "Unknown",
+      "createdAt": "2025-07-30T19:02:25.399Z",
+      "updatedAt": "2025-07-30T19:02:29.938Z",
+      "documents": 15
+    },
+    {
+      "_id": "688a6d00bebc419e2624f06c",
+      "dealType": "wholesale-d2d",
+      "dealType2SubType": "buy",
+      "vin": "WP0AD2A99MS258562",
+      "purchasePrice": 1199999,
+      "listPrice": 0,
+      "seller": {
+        "name": "RP Exotics",
+        "type": "dealer",
+        "contact": {
+          "address": {
+            "street": "1155 N Warson Rd",
+            "city": "Saint Louis",
+            "state": "MO 63132",
+            "zip": ""
+          },
+          "phone": "(314) 970-2427",
+          "email": "titling@rpexotics.com"
+        },
+        "company": "",
+        "tier": "Tier 1",
+        "licenseNumber": "D4865"
+      },
+      "buyer": {
+        "name": "MILEONE AUTO GROUP LLC",
+        "type": "dealer",
+        "contact": {
+          "address": {
+            "street": "908 W GORDON AVE STE 8 LAYTON UT 84041-5277",
+            "city": "",
+            "state": "",
+            "zip": ""
+          },
+          "phone": "‭+1 (385) 451-7130‬",
+          "email": "sales@mileoneautogroups.com"
+        },
+        "licenseNumber": "944B",
+        "tier": "Tier 1",
+        "company": "MILEONE AUTO GROUP LLC",
+        "dealerId": null
+      },
+      "currentStage": "contract-received",
+      "salesperson": "Unknown",
+      "createdAt": "2025-07-30T19:05:36.586Z",
+      "updatedAt": "2025-07-30T19:05:41.283Z",
+      "documents": 15
+    },
+    {
+      "_id": "688a6d95bebc419e2624f16b",
+      "dealType": "wholesale-flip",
+      "dealType2SubType": "buy",
+      "vin": "WP0AD2A99MS258562",
+      "purchasePrice": 1250000,
+      "listPrice": 0,
+      "seller": {
+        "name": "MILEONE AUTO GROUP LLC",
+        "type": "dealer",
+        "contact": {
+          "address": {
+            "street": "908 W GORDON AVE STE 8 LAYTON UT 84041-5277",
+            "city": "",
+            "state": "",
+            "zip": ""
+          },
+          "phone": "‭+1 (385) 451-7130‬",
+          "email": "sales@mileoneautogroups.com"
+        },
+        "company": "MILEONE AUTO GROUP LLC",
+        "tier": "Tier 1",
+        "licenseNumber": "944B"
+      },
+      "buyer": {
+        "name": "Exotic Motorsports of Oklahoma",
+        "type": "dealer",
+        "contact": {
+          "address": {
+            "street": "800 Hundred Oaks Dr",
+            "city": "Edmond",
+            "state": "OK",
+            "zip": "73013"
+          },
+          "phone": "405-664-2073",
+          "email": "eliud@exoticmotorsportsok.com"
+        },
+        "licenseNumber": "UD-05513",
+        "tier": "Tier 1",
+        "company": "Exotic Motorsports of Oklahoma",
+        "dealerId": null
+      },
+      "currentStage": "contract-received",
+      "salesperson": "Unknown",
+      "createdAt": "2025-07-30T19:08:05.347Z",
+      "updatedAt": "2025-07-30T19:08:09.945Z",
+      "documents": 16
+    },
+    {
+      "_id": "688a6eaa8d50cf41d2bde64c",
+      "dealType": "wholesale-d2d",
+      "dealType2SubType": "buy",
+      "vin": "WP0AD2A99MS258562",
+      "purchasePrice": 124996,
+      "listPrice": 0,
+      "seller": {
+        "name": "RP Exotics",
+        "type": "dealer",
+        "contact": {
+          "address": {
+            "street": "1155 N Warson Rd",
+            "city": "Saint Louis",
+            "state": "MO 63132",
+            "zip": ""
+          },
+          "phone": "(314) 970-2427",
+          "email": "titling@rpexotics.com"
+        },
+        "company": "",
+        "tier": "Tier 1",
+        "licenseNumber": "D4865"
+      },
+      "buyer": {
+        "name": "MILEONE AUTO GROUP LLC",
+        "type": "dealer",
+        "contact": {
+          "address": {
+            "street": "908 W GORDON AVE STE 8 LAYTON UT 84041-5277",
+            "city": "",
+            "state": "",
+            "zip": ""
+          },
+          "phone": "‭+1 (385) 451-7130‬",
+          "email": "sales@mileoneautogroups.com"
+        },
+        "licenseNumber": "944B",
+        "tier": "Tier 1",
+        "company": "MILEONE AUTO GROUP LLC",
+        "dealerId": null
+      },
+      "currentStage": "contract-received",
+      "salesperson": "Unknown",
+      "createdAt": "2025-07-30T19:12:42.289Z",
+      "updatedAt": "2025-07-30T19:12:47.041Z",
+      "documents": 15
+    },
+    {
+      "_id": "688a70108d50cf41d2bde75b",
+      "dealType": "wholesale-flip",
+      "dealType2SubType": "buy",
+      "vin": "WP0AD2A99MS258562",
+      "purchasePrice": 120000,
+      "listPrice": 0,
+      "seller": {
+        "name": "MILEONE AUTO GROUP LLC",
+        "type": "dealer",
+        "contact": {
+          "address": {
+            "street": "908 W GORDON AVE STE 8 LAYTON UT 84041-5277",
+            "city": "",
+            "state": "",
+            "zip": ""
+          },
+          "phone": "‭+1 (385) 451-7130‬",
+          "email": "sales@mileoneautogroups.com"
+        },
+        "company": "MILEONE AUTO GROUP LLC",
+        "tier": "Tier 1",
+        "licenseNumber": "944B"
+      },
+      "buyer": {
+        "name": "Exotic Motorsports of Oklahoma",
+        "type": "dealer",
+        "contact": {
+          "address": {
+            "street": "800 Hundred Oaks Dr",
+            "city": "Edmond",
+            "state": "OK",
+            "zip": "73013"
+          },
+          "phone": "405-664-2073",
+          "email": "eliud@exoticmotorsportsok.com"
+        },
+        "licenseNumber": "UD-05513",
+        "tier": "Tier 1",
+        "company": "Exotic Motorsports of Oklahoma",
+        "dealerId": null
+      },
+      "currentStage": "contract-received",
+      "salesperson": "Unknown",
+      "createdAt": "2025-07-30T19:18:41.002Z",
+      "updatedAt": "2025-07-30T19:18:45.827Z",
+      "documents": 16
+    },
+    {
+      "_id": "688a71a8e9d7122b17b08c77",
+      "dealType": "wholesale-d2d",
+      "dealType2SubType": "buy",
+      "vin": "WP0AD2A99MS258562",
+      "purchasePrice": 119996,
+      "listPrice": 0,
+      "seller": {
+        "name": "RP Exotics",
+        "type": "dealer",
+        "contact": {
+          "address": {
+            "street": "1155 N Warson Rd",
+            "city": "Saint Louis",
+            "state": "MO 63132",
+            "zip": ""
+          },
+          "phone": "(314) 970-2427",
+          "email": "titling@rpexotics.com"
+        },
+        "company": "",
+        "tier": "Tier 1",
+        "licenseNumber": "D4865"
+      },
+      "buyer": {
+        "name": "MILEONE AUTO GROUP LLC",
+        "type": "dealer",
+        "contact": {
+          "address": {
+            "street": "908 W GORDON AVE STE 8 LAYTON UT 84041-5277",
+            "city": "",
+            "state": "",
+            "zip": ""
+          },
+          "phone": "‭+1 (385) 451-7130‬",
+          "email": "sales@mileoneautogroups.com"
+        },
+        "licenseNumber": "944B",
+        "tier": "Tier 1",
+        "company": "MILEONE AUTO GROUP LLC",
+        "dealerId": null
+      },
+      "currentStage": "contract-received",
+      "salesperson": "Unknown",
+      "createdAt": "2025-07-30T19:25:28.789Z",
+      "updatedAt": "2025-07-30T19:25:33.315Z",
+      "documents": 15
+    },
+    {
+      "_id": "688a71e2e9d7122b17b08d70",
+      "dealType": "wholesale-d2d",
+      "dealType2SubType": "buy",
+      "vin": "WP0AD2A99MS258562",
+      "purchasePrice": 119999,
+      "listPrice": 0,
+      "seller": {
+        "name": "RP Exotics",
+        "type": "dealer",
+        "contact": {
+          "address": {
+            "street": "1155 N Warson Rd",
+            "city": "Saint Louis",
+            "state": "MO 63132",
+            "zip": ""
+          },
+          "phone": "(314) 970-2427",
+          "email": "titling@rpexotics.com"
+        },
+        "company": "",
+        "tier": "Tier 1",
+        "licenseNumber": "D4865"
+      },
+      "buyer": {
+        "name": "Exotic Motorsports of Oklahoma",
+        "type": "dealer",
+        "contact": {
+          "address": {
+            "street": "800 Hundred Oaks Dr",
+            "city": "Edmond",
+            "state": "OK",
+            "zip": "73013"
+          },
+          "phone": "405-664-2073",
+          "email": "eliud@exoticmotorsportsok.com"
+        },
+        "licenseNumber": "UD-05513",
+        "tier": "Tier 1",
+        "company": "Exotic Motorsports of Oklahoma",
+        "dealerId": null
+      },
+      "currentStage": "contract-received",
+      "salesperson": "Unknown",
+      "createdAt": "2025-07-30T19:26:26.431Z",
+      "updatedAt": "2025-07-30T19:26:30.697Z",
+      "documents": 15
+    },
+    {
+      "_id": "688a73db19b20c9fedf226fd",
+      "dealType": "wholesale-d2d",
+      "dealType2SubType": "buy",
+      "vin": "3C4RJNAKXRT174241",
+      "purchasePrice": 128000,
+      "listPrice": 0,
+      "seller": {
+        "name": "Exotic Motorsports of Oklahoma",
+        "type": "dealer",
+        "contact": {
+          "address": {
+            "street": "800 Hundred Oaks Dr",
+            "city": "Edmond",
+            "state": "OK",
+            "zip": "73013"
+          },
+          "phone": "405-664-2073",
+          "email": "eliud@exoticmotorsportsok.com"
+        },
+        "company": "Exotic Motorsports of Oklahoma",
+        "tier": "Tier 1",
+        "licenseNumber": "UD-05513"
+      },
+      "buyer": {
+        "name": "",
+        "type": "dealer",
+        "contact": {
+          "address": {
+            "street": "",
+            "city": "",
+            "state": "",
+            "zip": ""
+          },
+          "phone": "",
+          "email": ""
+        },
+        "licenseNumber": "",
+        "tier": "Tier 1",
+        "company": "",
+        "dealerId": null
+      },
+      "currentStage": "contract-received",
+      "salesperson": "Unknown",
+      "createdAt": "2025-07-30T19:34:51.347Z",
+      "updatedAt": "2025-07-30T19:34:57.098Z",
+      "documents": 15
+    },
+    {
+      "_id": "688a741f19b20c9fedf22842",
+      "dealType": "wholesale-d2d",
+      "dealType2SubType": "buy",
+      "vin": "3C4RJNAKXRT174241",
+      "purchasePrice": 1200,
+      "listPrice": 0,
+      "seller": {
+        "name": "RP Exotics",
+        "type": "dealer",
+        "contact": {
+          "address": {
+            "street": "1155 N Warson Rd",
+            "city": "Saint Louis",
+            "state": "MO 63132",
+            "zip": ""
+          },
+          "phone": "(314) 970-2427",
+          "email": "titling@rpexotics.com"
+        },
+        "company": "",
+        "tier": "Tier 1",
+        "licenseNumber": "D4865"
+      },
+      "buyer": {
+        "name": "Exotic Motorsports of Oklahoma",
+        "type": "dealer",
+        "contact": {
+          "address": {
+            "street": "800 Hundred Oaks Dr",
+            "city": "Edmond",
+            "state": "OK",
+            "zip": "73013"
+          },
+          "phone": "405-664-2073",
+          "email": "eliud@exoticmotorsportsok.com"
+        },
+        "licenseNumber": "UD-05513",
+        "tier": "Tier 1",
+        "company": "Exotic Motorsports of Oklahoma",
+        "dealerId": null
+      },
+      "currentStage": "contract-received",
+      "salesperson": "Unknown",
+      "createdAt": "2025-07-30T19:35:59.271Z",
+      "updatedAt": "2025-07-30T19:36:04.711Z",
+      "documents": 15
+    },
+    {
+      "_id": "688a75766f13c4fb93e4b5d0",
+      "dealType": "wholesale-d2d",
+      "dealType2SubType": "buy",
+      "vin": "3C4RJNAKXRT174241",
+      "purchasePrice": 120000,
+      "listPrice": 0,
+      "seller": {
+        "name": "Exotic Motorsports of Oklahoma",
+        "type": "dealer",
+        "contact": {
+          "address": {
+            "street": "800 Hundred Oaks Dr",
+            "city": "Edmond",
+            "state": "OK",
+            "zip": "73013"
+          },
+          "phone": "405-664-2073",
+          "email": "eliud@exoticmotorsportsok.com"
+        },
+        "company": "Exotic Motorsports of Oklahoma",
+        "tier": "Tier 1",
+        "licenseNumber": "UD-05513"
+      },
+      "buyer": {
+        "name": "",
+        "type": "dealer",
+        "contact": {
+          "address": {
+            "street": "",
+            "city": "",
+            "state": "",
+            "zip": ""
+          },
+          "phone": "",
+          "email": ""
+        },
+        "licenseNumber": "",
+        "tier": "Tier 1",
+        "company": "",
+        "dealerId": null
+      },
+      "currentStage": "contract-received",
+      "salesperson": "Unknown",
+      "createdAt": "2025-07-30T19:41:42.421Z",
+      "updatedAt": "2025-07-30T19:41:48.463Z",
+      "documents": 15
+    },
+    {
+      "_id": "688a75ba6f13c4fb93e4b6c2",
+      "dealType": "wholesale-d2d",
+      "dealType2SubType": "buy",
+      "vin": "3C4RJNAKXRT174241",
+      "purchasePrice": 100000,
+      "listPrice": 0,
+      "seller": {
+        "name": "RP Exotics",
+        "type": "dealer",
+        "contact": {
+          "address": {
+            "street": "1155 N Warson Rd",
+            "city": "Saint Louis",
+            "state": "MO 63132",
+            "zip": ""
+          },
+          "phone": "(314) 970-2427",
+          "email": "titling@rpexotics.com"
+        },
+        "company": "",
+        "tier": "Tier 1",
+        "licenseNumber": "D4865"
+      },
+      "buyer": {
+        "name": "MILEONE AUTO GROUP LLC",
+        "type": "dealer",
+        "contact": {
+          "address": {
+            "street": "908 W GORDON AVE STE 8 LAYTON UT 84041-5277",
+            "city": "",
+            "state": "",
+            "zip": ""
+          },
+          "phone": "‭+1 (385) 451-7130‬",
+          "email": "sales@mileoneautogroups.com"
+        },
+        "licenseNumber": "944B",
+        "tier": "Tier 2",
+        "company": "MILEONE AUTO GROUP LLC",
+        "dealerId": null
+      },
+      "currentStage": "contract-received",
+      "salesperson": "Unknown",
+      "createdAt": "2025-07-30T19:42:50.900Z",
+      "updatedAt": "2025-07-30T19:42:56.515Z",
+      "documents": 15
+    },
+    {
+      "_id": "688a76726f13c4fb93e4b7bc",
+      "dealType": "wholesale-flip",
+      "dealType2SubType": "buy",
+      "vin": "3C4RJNAKXRT174241",
+      "purchasePrice": 120000,
+      "listPrice": 0,
+      "seller": {
+        "name": "Earth Motor Cars",
+        "type": "dealer",
+        "contact": {
+          "address": {
+            "street": "3216 Kellway Dr",
+            "city": "Carrollton",
+            "state": "TX 75006",
+            "zip": ""
+          },
+          "phone": "‭+1 (214) 406-3336‬",
+          "email": "alex@earthmotorcars.com"
+        },
+        "company": "Earth Motor Cars",
+        "tier": "Tier 1",
+        "licenseNumber": "P125565"
+      },
+      "buyer": {
+        "name": "Exotic Motorsports of Oklahoma",
+        "type": "dealer",
+        "contact": {
+          "address": {
+            "street": "800 Hundred Oaks Dr",
+            "city": "Edmond",
+            "state": "OK",
+            "zip": "73013"
+          },
+          "phone": "405-664-2073",
+          "email": "eliud@exoticmotorsportsok.com"
+        },
+        "licenseNumber": "UD-05513",
+        "tier": "Tier 1",
+        "company": "Exotic Motorsports of Oklahoma",
+        "dealerId": null
+      },
+      "currentStage": "contract-received",
+      "salesperson": "Unknown",
+      "createdAt": "2025-07-30T19:45:54.203Z",
+      "updatedAt": "2025-07-30T19:45:59.954Z",
+      "documents": 16
+    },
+    {
+      "_id": "688a78587ebfb3d9cf17c8a8",
+      "dealType": "wholesale-d2d",
+      "dealType2SubType": "buy",
+      "vin": "3C4RJNAKXRT174241",
+      "purchasePrice": 11998,
+      "listPrice": 0,
+      "seller": {
+        "name": "RP Exotics",
+        "type": "dealer",
+        "contact": {
+          "address": {
+            "street": "1155 N Warson Rd",
+            "city": "Saint Louis",
+            "state": "MO 63132",
+            "zip": ""
+          },
+          "phone": "(314) 970-2427",
+          "email": "titling@rpexotics.com"
+        },
+        "company": "",
+        "tier": "Tier 1",
+        "licenseNumber": "D4865"
+      },
+      "buyer": {
+        "name": "Exotic Motorsports of Oklahoma",
+        "type": "dealer",
+        "contact": {
+          "address": {
+            "street": "800 Hundred Oaks Dr",
+            "city": "Edmond",
+            "state": "OK",
+            "zip": "73013"
+          },
+          "phone": "405-664-2073",
+          "email": "eliud@exoticmotorsportsok.com"
+        },
+        "licenseNumber": "UD-05513",
+        "tier": "Tier 1",
+        "company": "Exotic Motorsports of Oklahoma",
+        "dealerId": null
+      },
+      "currentStage": "contract-received",
+      "salesperson": "Unknown",
+      "createdAt": "2025-07-30T19:54:00.438Z",
+      "updatedAt": "2025-07-30T19:54:06.372Z",
+      "documents": 15
+    },
+    {
+      "_id": "688a78b7fb866a19951bce22",
+      "dealType": "wholesale-flip",
+      "dealType2SubType": "buy",
+      "vin": "3C4RJNAKXRT174241",
+      "purchasePrice": 1199998,
+      "listPrice": 0,
+      "seller": {
+        "name": "Exotic Motorsports of Oklahoma",
+        "type": "dealer",
+        "contact": {
+          "address": {
+            "street": "800 Hundred Oaks Dr",
+            "city": "Edmond",
+            "state": "OK",
+            "zip": "73013"
+          },
+          "phone": "405-664-2073",
+          "email": "eliud@exoticmotorsportsok.com"
+        },
+        "company": "Exotic Motorsports of Oklahoma",
+        "tier": "Tier 1",
+        "licenseNumber": "UD-05513"
+      },
+      "buyer": {
+        "name": "MILEONE AUTO GROUP LLC",
+        "type": "dealer",
+        "contact": {
+          "address": {
+            "street": "908 W GORDON AVE STE 8 LAYTON UT 84041-5277",
+            "city": "",
+            "state": "",
+            "zip": ""
+          },
+          "phone": "‭+1 (385) 451-7130‬",
+          "email": "sales@mileoneautogroups.com"
+        },
+        "licenseNumber": "944B",
+        "tier": "Tier 1",
+        "company": "MILEONE AUTO GROUP LLC",
+        "dealerId": null
+      },
+      "currentStage": "contract-received",
+      "salesperson": "Unknown",
+      "createdAt": "2025-07-30T19:55:35.448Z",
+      "updatedAt": "2025-07-30T19:55:41.612Z",
+      "documents": 16
+    },
+    {
+      "_id": "688a7930fb866a19951bcf32",
+      "dealType": "wholesale-d2d",
+      "dealType2SubType": "buy",
+      "vin": "WA1CGAFE3FD010700",
+      "purchasePrice": 135000,
+      "listPrice": 0,
+      "seller": {
+        "name": "RP Exotics",
+        "type": "dealer",
+        "contact": {
+          "address": {
+            "street": "1155 N Warson Rd",
+            "city": "Saint Louis",
+            "state": "MO 63132",
+            "zip": ""
+          },
+          "phone": "(314) 970-2427",
+          "email": "titling@rpexotics.com"
+        },
+        "company": "",
+        "tier": "Tier 1",
+        "licenseNumber": "D4865"
+      },
+      "buyer": {
+        "name": "MILEONE AUTO GROUP LLC",
+        "type": "dealer",
+        "contact": {
+          "address": {
+            "street": "908 W GORDON AVE STE 8 LAYTON UT 84041-5277",
+            "city": "",
+            "state": "",
+            "zip": ""
+          },
+          "phone": "‭+1 (385) 451-7130‬",
+          "email": "sales@mileoneautogroups.com"
+        },
+        "licenseNumber": "944B",
+        "tier": "Tier 1",
+        "company": "MILEONE AUTO GROUP LLC",
+        "dealerId": null
+      },
+      "currentStage": "contract-received",
+      "salesperson": "Unknown",
+      "createdAt": "2025-07-30T19:57:36.867Z",
+      "updatedAt": "2025-07-30T19:57:42.500Z",
+      "documents": 15
+    },
+    {
+      "_id": "688a7bc376493635cfb8c3a9",
+      "dealType": "wholesale-d2d",
+      "dealType2SubType": "buy",
+      "vin": "WA1CGAFE3FD010700",
+      "purchasePrice": 9999,
+      "listPrice": 0,
+      "seller": {
+        "name": "RP Exotics",
+        "type": "dealer",
+        "contact": {
+          "address": {
+            "street": "1155 N Warson Rd",
+            "city": "Saint Louis",
+            "state": "MO 63132",
+            "zip": ""
+          },
+          "phone": "(314) 970-2427",
+          "email": "titling@rpexotics.com"
+        },
+        "company": "",
+        "tier": "Tier 1",
+        "licenseNumber": "D4865"
+      },
+      "buyer": {
+        "name": "Exotic Motorsports of Oklahoma",
+        "type": "dealer",
+        "contact": {
+          "address": {
+            "street": "800 Hundred Oaks Dr",
+            "city": "Edmond",
+            "state": "OK",
+            "zip": "73013"
+          },
+          "phone": "405-664-2073",
+          "email": "eliud@exoticmotorsportsok.com"
+        },
+        "licenseNumber": "UD-05513",
+        "tier": "Tier 1",
+        "company": "Exotic Motorsports of Oklahoma",
+        "dealerId": null
+      },
+      "currentStage": "contract-received",
+      "salesperson": "Unknown",
+      "createdAt": "2025-07-30T20:08:35.854Z",
+      "updatedAt": "2025-07-30T20:08:41.834Z",
+      "documents": 15
+    },
+    {
+      "_id": "688a7bfe4bbb874aeea075ce",
+      "dealType": "wholesale-d2d",
+      "dealType2SubType": "buy",
+      "vin": "WA1CGAFE3FD010700",
+      "purchasePrice": 120000,
+      "listPrice": 0,
+      "seller": {
+        "name": "RP Exotics",
+        "type": "dealer",
+        "contact": {
+          "address": {
+            "street": "1155 N Warson Rd",
+            "city": "Saint Louis",
+            "state": "MO 63132",
+            "zip": ""
+          },
+          "phone": "(314) 970-2427",
+          "email": "titling@rpexotics.com"
+        },
+        "company": "",
+        "tier": "Tier 1",
+        "licenseNumber": "D4865"
+      },
+      "buyer": {
+        "name": "Exotic Motorsports of Oklahoma",
+        "type": "dealer",
+        "contact": {
+          "address": {
+            "street": "800 Hundred Oaks Dr",
+            "city": "Edmond",
+            "state": "OK",
+            "zip": "73013"
+          },
+          "phone": "405-664-2073",
+          "email": "eliud@exoticmotorsportsok.com"
+        },
+        "licenseNumber": "UD-05513",
+        "tier": "Tier 1",
+        "company": "Exotic Motorsports of Oklahoma",
+        "dealerId": null
+      },
+      "currentStage": "contract-received",
+      "salesperson": "Unknown",
+      "createdAt": "2025-07-30T20:09:34.690Z",
+      "updatedAt": "2025-07-30T20:09:40.742Z",
+      "documents": 15
+    },
+    {
+      "_id": "688a7cf39edd818e84073851",
+      "dealType": "wholesale-d2d",
+      "dealType2SubType": "buy",
+      "vin": "WA1CGAFE3FD010700",
+      "purchasePrice": 1200000,
+      "listPrice": 0,
+      "seller": {
+        "name": "RP Exotics",
+        "type": "dealer",
+        "contact": {
+          "address": {
+            "street": "1155 N Warson Rd",
+            "city": "Saint Louis",
+            "state": "MO 63132",
+            "zip": ""
+          },
+          "phone": "(314) 970-2427",
+          "email": "titling@rpexotics.com"
+        },
+        "company": "",
+        "tier": "Tier 1",
+        "licenseNumber": "D4865"
+      },
+      "buyer": {
+        "name": "Exotic Motorsports of Oklahoma",
+        "type": "dealer",
+        "contact": {
+          "address": {
+            "street": "800 Hundred Oaks Dr",
+            "city": "Edmond",
+            "state": "OK",
+            "zip": "73013"
+          },
+          "phone": "405-664-2073",
+          "email": "eliud@exoticmotorsportsok.com"
+        },
+        "licenseNumber": "UD-05513",
+        "tier": "Tier 1",
+        "company": "Exotic Motorsports of Oklahoma",
+        "dealerId": null
+      },
+      "currentStage": "contract-received",
+      "salesperson": "Unknown",
+      "createdAt": "2025-07-30T20:13:39.915Z",
+      "updatedAt": "2025-07-30T20:13:44.628Z",
+      "documents": 14
+    },
+    {
+      "_id": "688a81c7166a8579eb98d724",
+      "dealType": "wholesale-d2d",
+      "dealType2SubType": "buy",
+      "vin": "WP0AD2A99MS257170",
+      "purchasePrice": 119997,
+      "listPrice": 0,
+      "seller": {
+        "name": "RP Exotics",
+        "type": "dealer",
+        "contact": {
+          "address": {
+            "street": "1155 N Warson Rd",
+            "city": "Saint Louis",
+            "state": "MO 63132",
+            "zip": ""
+          },
+          "phone": "(314) 970-2427",
+          "email": "titling@rpexotics.com"
+        },
+        "company": "",
+        "tier": "Tier 1",
+        "licenseNumber": "D4865"
+      },
+      "buyer": {
+        "name": "Exotic Motorsports of Oklahoma",
+        "type": "dealer",
+        "contact": {
+          "address": {
+            "street": "800 Hundred Oaks Dr",
+            "city": "Edmond",
+            "state": "OK",
+            "zip": "73013"
+          },
+          "phone": "405-664-2073",
+          "email": "eliud@exoticmotorsportsok.com"
+        },
+        "licenseNumber": "UD-05513",
+        "tier": "Tier 1",
+        "company": "Exotic Motorsports of Oklahoma",
+        "dealerId": null
+      },
+      "currentStage": "contract-received",
+      "salesperson": "Unknown",
+      "createdAt": "2025-07-30T20:34:15.504Z",
+      "updatedAt": "2025-07-30T20:34:21.446Z",
+      "documents": 15
+    },
+    {
+      "_id": "688a82ff3ba7f81a0d3361a9",
+      "dealType": "wholesale-d2d",
+      "dealType2SubType": "buy",
+      "vin": "WP0AD2A99MS257170",
+      "purchasePrice": 119998,
+      "listPrice": 0,
+      "seller": {
+        "name": "RP Exotics",
+        "type": "dealer",
+        "contact": {
+          "address": {
+            "street": "1155 N Warson Rd",
+            "city": "Saint Louis",
+            "state": "MO 63132",
+            "zip": ""
+          },
+          "phone": "(314) 970-2427",
+          "email": "titling@rpexotics.com"
+        },
+        "company": "",
+        "tier": "Tier 1",
+        "licenseNumber": "D4865"
+      },
+      "buyer": {
+        "name": "Exotic Motorsports of Oklahoma",
+        "type": "dealer",
+        "contact": {
+          "address": {
+            "street": "800 Hundred Oaks Dr",
+            "city": "Edmond",
+            "state": "OK",
+            "zip": "73013"
+          },
+          "phone": "405-664-2073",
+          "email": "eliud@exoticmotorsportsok.com"
+        },
+        "licenseNumber": "UD-05513",
+        "tier": "Tier 1",
+        "company": "Exotic Motorsports of Oklahoma",
+        "dealerId": null
+      },
+      "currentStage": "contract-received",
+      "salesperson": "Unknown",
+      "createdAt": "2025-07-30T20:39:27.393Z",
+      "updatedAt": "2025-07-30T20:39:33.361Z",
+      "documents": 15
+    },
+    {
+      "_id": "688a845d3ba7f81a0d33629c",
+      "dealType": "wholesale-d2d",
+      "dealType2SubType": "buy",
+      "vin": "WP0AD2A99MS257170",
+      "purchasePrice": 120000,
+      "listPrice": 0,
+      "seller": {
+        "name": "RP Exotics",
+        "type": "dealer",
+        "contact": {
+          "address": {
+            "street": "1155 N Warson Rd",
+            "city": "Saint Louis",
+            "state": "MO 63132",
+            "zip": ""
+          },
+          "phone": "(314) 970-2427",
+          "email": "titling@rpexotics.com"
+        },
+        "company": "",
+        "tier": "Tier 1",
+        "licenseNumber": "D4865"
+      },
+      "buyer": {
+        "name": "MILEONE AUTO GROUP LLC",
+        "type": "dealer",
+        "contact": {
+          "address": {
+            "street": "908 W GORDON AVE STE 8 LAYTON UT 84041-5277",
+            "city": "",
+            "state": "",
+            "zip": ""
+          },
+          "phone": "‭+1 (385) 451-7130‬",
+          "email": "sales@mileoneautogroups.com"
+        },
+        "licenseNumber": "944B",
+        "tier": "Tier 1",
+        "company": "MILEONE AUTO GROUP LLC",
+        "dealerId": null
+      },
+      "currentStage": "contract-received",
+      "salesperson": "Unknown",
+      "createdAt": "2025-07-30T20:45:17.242Z",
+      "updatedAt": "2025-07-30T20:45:24.173Z",
+      "documents": 15
+    },
+    {
+      "_id": "688a85064d9d851ad741706e",
+      "dealType": "wholesale-d2d",
+      "dealType2SubType": "buy",
+      "vin": "WP0AD2A99MS257170",
+      "purchasePrice": 119998,
+      "listPrice": 0,
+      "seller": {
+        "name": "RP Exotics",
+        "type": "dealer",
+        "contact": {
+          "address": {
+            "street": "1155 N Warson Rd",
+            "city": "Saint Louis",
+            "state": "MO 63132",
+            "zip": ""
+          },
+          "phone": "(314) 970-2427",
+          "email": "titling@rpexotics.com"
+        },
+        "company": "",
+        "tier": "Tier 1",
+        "licenseNumber": "D4865"
+      },
+      "buyer": {
+        "name": "MILEONE AUTO GROUP LLC",
+        "type": "dealer",
+        "contact": {
+          "address": {
+            "street": "908 W GORDON AVE STE 8 LAYTON UT 84041-5277",
+            "city": "",
+            "state": "",
+            "zip": ""
+          },
+          "phone": "‭+1 (385) 451-7130‬",
+          "email": "sales@mileoneautogroups.com"
+        },
+        "licenseNumber": "944B",
+        "tier": "Tier 1",
+        "company": "MILEONE AUTO GROUP LLC",
+        "dealerId": null
+      },
+      "currentStage": "contract-received",
+      "salesperson": "Unknown",
+      "createdAt": "2025-07-30T20:48:06.532Z",
+      "updatedAt": "2025-07-30T20:48:12.410Z",
+      "documents": 15
+    }
+  ]
+}

@@ -14,7 +14,7 @@ async function addUsers() {
       lastName: 'Guzdial',
       email: 'Clayton@rpexotics.com',
       password: '123123',
-      role: 'sales',
+      role: 'admin', // Changed from 'sales' to 'admin' for IT page access
       isActive: true
     },
     {

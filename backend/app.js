@@ -11,7 +11,7 @@ const axios = require('axios');
 require('dotenv').config();
 
 const app = express();
-const PORT = process.env.PORT || 5001;
+const PORT = process.env.PORT || 3001;
 const JWT_SECRET = process.env.JWT_SECRET || 'rp_exotics_super_secret_key_2025_change_this_in_production';
 
 // Enable JSON body parsing for all routes (must be before any routes)
@@ -174,11 +174,15 @@ app.use(cookieParser());
 // Mount other routes
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/users', require('./routes/users'));  // User management (admin only)
+app.use('/api/apikeys', require('./routes/apiKeys'));  // API key management
+app.use('/api/signatures', require('./routes/signatures'));  // Digital signatures
 app.use('/api', require('./routes/deals'));  // This includes VIN decode and dealer search
 app.use('/api/back-office', require('./routes/backOffice'));  // Back office deal tracking
 app.use('/api/sales', require('./routes/salesTracker'));  // Sales deal tracking
 app.use('/api/documents', require('./routes/documents'));  // Document generation and vehicle records
 app.use('/api/email', require('./routes/email'));  // Email notifications
+app.use('/api/it', require('./routes/it'));  // IT management and deployment controls
+app.use('/api/stats', require('./routes/stats'));  // System statistics
 
 // Status sync endpoints
 const StatusSyncService = require('./services/statusSyncService');

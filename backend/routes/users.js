@@ -1,20 +1,8 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const { ObjectId, MongoClient } = require('mongodb');
+const User = require('../models/User');
 const router = express.Router();
-
-// Get database connection
-let db;
-const client = new MongoClient(process.env.MONGODB_URI);
-
-async function getDb() {
-  if (!db) {
-    await client.connect();
-    db = client.db('test');
-  }
-  return db;
-}
 
 // Authentication middleware
 const authenticateToken = (req, res, next) => {
@@ -49,14 +37,9 @@ const authenticateToken = (req, res, next) => {
     console.log('[AUTH] JWT decoded successfully:', decoded);
     
     try {
-      const database = await getDb();
       console.log('[USER AUTH] Looking for user with ID:', decoded.userId);
-      console.log('[USER AUTH] User ID type:', typeof decoded.userId);
       
-      const user = await database.collection('users').findOne(
-        { _id: new ObjectId(decoded.userId.toString()) },
-        { projection: { passwordHash: 0, password: 0, passwordResetToken: 0 } }
-      );
+      const user = await User.findById(decoded.userId).select('-passwordHash -password -passwordResetToken');
       
       console.log('[USER AUTH] Found user:', user ? 'Yes' : 'No');
       if (user) {
@@ -100,20 +83,9 @@ router.get('/', requireAdmin, async (req, res) => {
     console.log('[USERS API] Admin user requesting users list:', req.user.email);
     console.log('[USERS API] Admin user ID:', req.user._id);
     
-    const database = await getDb();
-    console.log('[USERS API] Database connected, querying users collection');
-    
-    const users = await database.collection('users')
-      .find({}, { 
-        projection: { 
-          passwordHash: 0, 
-          password: 0, 
-          passwordResetToken: 0,
-          passwordResetExpires: 0
-        } 
-      })
-      .sort({ createdAt: -1 })
-      .toArray();
+    const users = await User.find({})
+      .select('-passwordHash -password -passwordResetToken -passwordResetExpires')
+      .sort({ createdAt: -1 });
 
     console.log('[USERS API] Found users:', users.length);
     console.log('[USERS API] Users:', users.map(u => ({ id: u._id, email: u.email, role: u.role, isActive: u.isActive })));
@@ -128,19 +100,8 @@ router.get('/', requireAdmin, async (req, res) => {
 // Get single user (admin only)
 router.get('/:id', requireAdmin, async (req, res) => {
   try {
-    const database = await getDb();
-    const user = await database.collection('users')
-      .findOne(
-        { _id: new ObjectId(req.params.id) },
-        { 
-          projection: { 
-            passwordHash: 0, 
-            password: 0, 
-            passwordResetToken: 0,
-            passwordResetExpires: 0
-          } 
-        }
-      );
+    const user = await User.findById(req.params.id)
+      .select('-passwordHash -password -passwordResetToken -passwordResetExpires');
 
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
@@ -161,6 +122,7 @@ router.post('/', requireAdmin, async (req, res) => {
       lastName, 
       email, 
       username, 
+      password,
       role = 'sales', 
       phone = '', 
       isActive = true,
@@ -168,17 +130,21 @@ router.post('/', requireAdmin, async (req, res) => {
     } = req.body;
 
     // Validation
-    if (!firstName || !lastName || !email) {
-      return res.status(400).json({ error: 'First name, last name, and email are required' });
+    if (!firstName || !lastName || !email || !password) {
+      return res.status(400).json({ error: 'First name, last name, email, and password are required' });
     }
 
     if (!email.includes('@')) {
       return res.status(400).json({ error: 'Valid email is required' });
     }
 
+    // Password validation
+    if (password && password.length < 6) {
+      return res.status(400).json({ error: 'Password must be at least 6 characters long' });
+    }
+
     // Check if user already exists
-    const database = await getDb();
-    const existingUser = await database.collection('users').findOne({
+    const existingUser = await User.findOne({
       $or: [
         { email: email.toLowerCase() },
         { username: username?.toLowerCase() }
@@ -189,10 +155,10 @@ router.post('/', requireAdmin, async (req, res) => {
       return res.status(400).json({ error: 'User with this email or username already exists' });
     }
 
-    // Generate default password (first name + last 4 digits of phone or '1234')
-    const defaultPassword = phone ? `${firstName.toLowerCase()}${phone.slice(-4)}` : `${firstName.toLowerCase()}1234`;
+    // Use provided password or generate default password
+    const userPassword = password || (phone ? `${firstName.toLowerCase()}${phone.slice(-4)}` : `${firstName.toLowerCase()}1234`);
     const saltRounds = parseInt(process.env.BCRYPT_ROUNDS) || 12;
-    const passwordHash = await bcrypt.hash(defaultPassword, saltRounds);
+    const passwordHash = await bcrypt.hash(userPassword, saltRounds);
 
     // Set default permissions based on role
     const defaultPermissions = {
@@ -222,7 +188,7 @@ router.post('/', requireAdmin, async (req, res) => {
       }
     };
 
-    const user = {
+    const user = new User({
       firstName,
       lastName,
       email: email.toLowerCase(),
@@ -240,28 +206,26 @@ router.post('/', requireAdmin, async (req, res) => {
       },
       isActive,
       emailVerified: false,
-      mustChangePassword: true,
+      mustChangePassword: !password, // Only require password change if no custom password was provided
       lastLogin: null,
       failedLoginAttempts: 0,
       lockoutUntil: null,
-      createdAt: new Date(),
-      updatedAt: new Date(),
       createdBy: req.user._id,
       passwordResetToken: null,
       passwordResetExpires: null
-    };
+    });
 
-    const result = await database.collection('users').insertOne(user);
+    const savedUser = await user.save();
     
     // Remove password hash from response
-    const { passwordHash: _, ...userWithoutPassword } = user;
+    const userResponse = savedUser.toObject();
+    delete userResponse.passwordHash;
     
     console.log(`[USER MANAGEMENT] Admin ${req.user.email} created user: ${email}`);
     
     res.status(201).json({
       message: 'User created successfully',
-      user: { ...userWithoutPassword, _id: result.insertedId },
-      defaultPassword: defaultPassword // Only return this for admin reference
+      user: userResponse
     });
   } catch (error) {
     console.error('Error creating user:', error);
@@ -296,10 +260,9 @@ router.put('/:id', requireAdmin, async (req, res) => {
     }
     if (email !== undefined) {
       // Check if email is already taken by another user
-      const database = await getDb();
-      const existingUser = await database.collection('users').findOne({
+      const existingUser = await User.findOne({
         email: email.toLowerCase(),
-        _id: { $ne: new ObjectId(req.params.id) }
+        _id: { $ne: req.params.id }
       });
       
       if (existingUser) {
@@ -356,12 +319,13 @@ router.put('/:id', requireAdmin, async (req, res) => {
       updateData.profile = profile;
     }
 
-    const result = await database.collection('users').updateOne(
-      { _id: new ObjectId(req.params.id) },
-      { $set: updateData }
+    const result = await User.findByIdAndUpdate(
+      req.params.id,
+      { $set: updateData },
+      { new: true }
     );
 
-    if (result.matchedCount === 0) {
+    if (!result) {
       return res.status(404).json({ error: 'User not found' });
     }
 
@@ -385,12 +349,9 @@ router.delete('/:id', requireAdmin, async (req, res) => {
       return res.status(400).json({ error: 'Cannot delete your own account' });
     }
 
-    const database = await getDb();
-    const result = await database.collection('users').deleteOne({
-      _id: new ObjectId(req.params.id)
-    });
+    const result = await User.findByIdAndDelete(req.params.id);
 
-    if (result.deletedCount === 0) {
+    if (!result) {
       return res.status(404).json({ error: 'User not found' });
     }
 
@@ -415,20 +376,19 @@ router.post('/:id/reset-password', requireAdmin, async (req, res) => {
     const saltRounds = parseInt(process.env.BCRYPT_ROUNDS) || 12;
     const passwordHash = await bcrypt.hash(newPassword, saltRounds);
 
-    const database = await getDb();
-    const result = await database.collection('users').updateOne(
-      { _id: new ObjectId(req.params.id) },
+    const result = await User.findByIdAndUpdate(
+      req.params.id,
       { 
         $set: { 
           passwordHash,
-          mustChangePassword: false,
-          updatedAt: new Date()
+          mustChangePassword: false
         },
         $unset: { password: 1 } // Remove old password field if it exists
-      }
+      },
+      { new: true }
     );
 
-    if (result.matchedCount === 0) {
+    if (!result) {
       return res.status(404).json({ error: 'User not found' });
     }
 
@@ -444,8 +404,7 @@ router.post('/:id/reset-password', requireAdmin, async (req, res) => {
 // Get user statistics (admin only)
 router.get('/stats/overview', requireAdmin, async (req, res) => {
   try {
-    const database = await getDb();
-    const stats = await database.collection('users').aggregate([
+    const stats = await User.aggregate([
       {
         $group: {
           _id: null,
@@ -457,36 +416,17 @@ router.get('/stats/overview', requireAdmin, async (req, res) => {
           financeUsers: { $sum: { $cond: [{ $eq: ['$role', 'finance'] }, 1, 0] } }
         }
       }
-    ]).toArray();
+    ]);
 
-    const recentUsers = await database.collection('users')
-      .find({}, { 
-        projection: { 
-          firstName: 1, 
-          lastName: 1, 
-          email: 1, 
-          role: 1, 
-          createdAt: 1,
-          passwordHash: 0 
-        } 
-      })
+    const recentUsers = await User.find({})
+      .select('firstName lastName email role createdAt')
       .sort({ createdAt: -1 })
-      .limit(5)
-      .toArray();
+      .limit(5);
 
-    const lastLoginStats = await database.collection('users')
-      .find({ lastLogin: { $exists: true } }, { 
-        projection: { 
-          firstName: 1, 
-          lastName: 1, 
-          email: 1, 
-          lastLogin: 1,
-          passwordHash: 0 
-        } 
-      })
+    const lastLoginStats = await User.find({ lastLogin: { $exists: true } })
+      .select('firstName lastName email lastLogin')
       .sort({ lastLogin: -1 })
-      .limit(5)
-      .toArray();
+      .limit(5);
 
     res.json({
       overview: stats[0] || {

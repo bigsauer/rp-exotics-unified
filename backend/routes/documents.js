@@ -10,6 +10,7 @@ const path = require('path');
 const Dealer = require('../models/Dealer');
 
 // Generate document and create vehicle record for a deal
+// 🚀 Performance optimized with browser pooling, template caching, and parallel generation
 router.post('/generate/:dealId', auth, async (req, res) => {
   try {
     const { dealId } = req.params;
@@ -19,6 +20,12 @@ router.post('/generate/:dealId', auth, async (req, res) => {
 
     // Find the deal and populate seller.dealerId
     const deal = await Deal.findById(dealId).populate('seller.dealerId');
+    
+    // Update document generation status
+    deal.documentGenerationStatus = 'in_progress';
+    deal.lastDocumentGenerationAttempt = new Date();
+    deal.documentGenerationError = null;
+    await deal.save();
     if (!deal) {
       console.error(`[DOC GEN] Deal not found for dealId: ${dealId}`);
       return res.status(404).json({ error: 'Deal not found' });
@@ -52,9 +59,17 @@ router.post('/generate/:dealId', auth, async (req, res) => {
       purchasePrice: deal.purchasePrice,
       listPrice: deal.listPrice,
       dealType: deal.dealType,
-      dealType2: req.body.dealType2,
+      dealType2: deal.dealType2,
+      dealType2SubType: deal.dealType2SubType,
       seller: deal.seller
     });
+    
+    console.log('[DOC GEN] 🔍 DEAL TYPE DEBUGGING:');
+    console.log('[DOC GEN] 🔍 - dealType:', deal.dealType);
+    console.log('[DOC GEN] 🔍 - dealType2SubType:', deal.dealType2SubType);
+    console.log('[DOC GEN] 🔍 - dealType2:', deal.dealType2);
+    console.log('[DOC GEN] 🔍 - Request body dealType2:', req.body.dealType2);
+    console.log('[DOC GEN] 🔍 - Full deal object:', JSON.stringify(deal, null, 2));
     // --- Robust sellerInfo extraction ---
     let seller = deal.seller || {};
     // Always attempt dealer DB lookup if seller.name exists and any key field is missing
@@ -155,7 +170,7 @@ router.post('/generate/:dealId', auth, async (req, res) => {
       killPrice: deal.killPrice,
       dealType: deal.dealType,
       dealType2: req.body.dealType2 || deal.dealType2 || 'Buy',
-      dealType2SubType: req.body.dealType2SubType || deal.dealType2SubType || req.body.dealType2 || deal.dealType2 || 'Buy',
+      dealType2SubType: req.body.dealType2SubType || deal.dealType2SubType || 'Buy',
       sellerInfo,
       seller: deal.seller,
       buyer: deal.buyer,
@@ -176,6 +191,16 @@ router.post('/generate/:dealId', auth, async (req, res) => {
       notes: deal.notes || deal.generalNotes || '',
       vehicleRecordId: deal.vehicleRecordId || undefined
     };
+    
+    // 🔧 ENSURE CORRECT DEAL TYPE 2 FOR WHOLESALE D2D SALE DEALS
+    if (dealData.dealType === 'wholesale-d2d' && dealData.dealType2SubType === 'sale') {
+      dealData.dealType2 = 'Sale';
+      console.log('[DOC GEN][DEAL_TYPE_FIX] Forced dealType2 to "Sale" for wholesale d2d sale deal');
+      console.log('[DOC GEN][DEBUG] 🔍 dealType2 after setting:', dealData.dealType2);
+      console.log('[DOC GEN][DEBUG] 🔍 dealType2SubType:', dealData.dealType2SubType);
+      console.log('[DOC GEN][DEBUG] 🔍 dealType:', dealData.dealType);
+    }
+    
     console.log('[DOC GEN] dealData for PDF:', JSON.stringify(dealData, null, 2));
 
     // Ensure sellerFromDB and buyerFromDB are populated for license number extraction
@@ -248,8 +273,8 @@ router.post('/generate/:dealId', auth, async (req, res) => {
     console.log(`[DOC GEN] 🎯 Deal subtype: ${dealData.dealType2SubType}`);
     console.log(`[DOC GEN] 🎯 Full deal data for document generation:`, {
       dealType: dealData.dealType,
-      dealType2SubType: dealData.dealType2SubType,
-      dealType2: dealData.dealType2,
+      dealType2SubType: req.body.dealType2SubType || dealData.dealType2SubType || deal.dealType2SubType || 'buy',
+      dealType2: req.body.dealType2 || dealData.dealType2,
       seller: dealData.seller,
       buyer: dealData.buyer,
       sellerInfo: dealData.sellerInfo,
@@ -257,14 +282,43 @@ router.post('/generate/:dealId', auth, async (req, res) => {
     });
     console.log(`[DOC GEN] 🎯 Condition checks:`);
     console.log(`[DOC GEN] 🎯 - dealData.dealType === 'wholesale-flip': ${dealData.dealType === 'wholesale-flip'}`);
-    console.log(`[DOC GEN] 🎯 - dealData.dealType === 'wholesale-d2d' && dealData.dealType2SubType === 'buy': ${dealData.dealType === 'wholesale-d2d' && dealData.dealType2SubType === 'buy'}`);
-    console.log(`[DOC GEN] 🎯 - dealData.dealType === 'wholesale-d2d' && dealData.dealType2SubType === 'sale': ${dealData.dealType === 'wholesale-d2d' && dealData.dealType2SubType === 'sale'}`);
+    console.log(`[DOC GEN] 🎯 - req.body.dealType2: ${req.body.dealType2}`);
+    console.log(`[DOC GEN] 🎯 - dealData.dealType2: ${dealData.dealType2}`);
+    console.log(`[DOC GEN] 🎯 - Final dealType2: ${req.body.dealType2 || dealData.dealType2}`);
+    console.log(`[DOC GEN] 🎯 - dealData.dealType === 'wholesale-d2d' && ((req.body.dealType2 || dealData.dealType2) === 'Buy'): ${dealData.dealType === 'wholesale-d2d' && ((req.body.dealType2 || dealData.dealType2) === 'Buy')}`);
+    console.log(`[DOC GEN] 🎯 - dealData.dealType === 'wholesale-d2d' && ((req.body.dealType2 || dealData.dealType2) === 'Sale'): ${dealData.dealType === 'wholesale-d2d' && ((req.body.dealType2 || dealData.dealType2) === 'Sale')}`);
+    
+    // ENHANCED DEBUGGING FOR WHOLESALE D2D SALE
+    console.log(`[DOC GEN] 🔍 ENHANCED WHOLESALE D2D SALE DEBUGGING:`);
+    console.log(`[DOC GEN] 🔍 - dealData.dealType: "${dealData.dealType}"`);
+    console.log(`[DOC GEN] 🔍 - dealData.dealType2: "${dealData.dealType2}"`);
+    console.log(`[DOC GEN] 🔍 - dealData.dealType2SubType: "${dealData.dealType2SubType}"`);
+    console.log(`[DOC GEN] 🔍 - req.body.dealType2: "${req.body.dealType2}"`);
+    console.log(`[DOC GEN] 🔍 - req.body.dealType2SubType: "${req.body.dealType2SubType}"`);
+    console.log(`[DOC GEN] 🔍 - deal.dealType2: "${deal.dealType2}"`);
+    console.log(`[DOC GEN] 🔍 - deal.dealType2SubType: "${deal.dealType2SubType}"`);
+    
+    // Check all possible sale conditions
+    const condition1 = dealData.dealType === 'wholesale-d2d' && ((req.body.dealType2 || dealData.dealType2) === 'Sale');
+    const condition2 = dealData.dealType === 'wholesale-d2d' && ((req.body.dealType2SubType || dealData.dealType2SubType || deal.dealType2SubType) === 'sale');
+    const condition3 = dealData.dealType === 'wholesale-d2d' && dealData.dealType2SubType === 'sale';
+    const condition4 = dealData.dealType === 'wholesale-d2d' && req.body.dealType2SubType === 'sale';
+    
+    console.log(`[DOC GEN] 🔍 SALE CONDITION CHECKS:`);
+    console.log(`[DOC GEN] 🔍 - Condition 1 (dealType2 === 'Sale'): ${condition1}`);
+    console.log(`[DOC GEN] 🔍 - Condition 2 (dealType2SubType === 'sale' with fallbacks): ${condition2}`);
+    console.log(`[DOC GEN] 🔍 - Condition 3 (dealData.dealType2SubType === 'sale'): ${condition3}`);
+    console.log(`[DOC GEN] 🔍 - Condition 4 (req.body.dealType2SubType === 'sale'): ${condition4}`);
+    console.log(`[DOC GEN] 🔍 - ANY SALE CONDITION: ${condition1 || condition2 || condition3 || condition4}`);
+    
+    console.log(`[DOC GEN] 🎯 - Full req.body for debugging:`, JSON.stringify(req.body, null, 2));
     
     // Initialize document results array
     let documentResults = [];
     let vehicleRecordResult;
     
     if (dealData.dealType === 'wholesale-flip') {
+      console.log(`[DOC GEN] 🎯 BRANCH TAKEN: wholesale-flip`);
       console.log(`[DOC GEN] 🎯 Generating documents for wholesale flip buy/sell deal based on seller type`);
       
       try {
@@ -439,40 +493,64 @@ router.post('/generate/:dealId', auth, async (req, res) => {
             console.log('[DOC GEN] 🎯 Using actual buyer data:', correctedBuyerData.name);
           }
           
-          console.log('[DOC GEN] 🚀 About to call generateDocument for buyer document with finalBuyerData:', JSON.stringify(finalBuyerData, null, 2));
+          console.log('[DOC GEN] 🚀 About to call generateDocument for dealer-to-dealer wholesale flip documents');
           
-          const [sellerResult, buyerResult] = await Promise.all([
-            documentGenerator.generateDocument({
+          // For dealer-to-dealer wholesale flip: generate both seller and buyer documents
+          // Check if buyer is also a dealer
+          if (correctedBuyerData.type === 'dealer') {
+            console.log('[DOC GEN] 🎯 DEALER-TO-DEALER WHOLESALE FLIP DETECTED - generating both documents');
+            
+            const [sellerResult, buyerResult] = await Promise.all([
+              // Seller document: wholesale purchase agreement (for the selling dealer)
+              documentGenerator.generateWholesaleFlipBuySellDocuments({
+                ...sellerDocumentData,
+                sellerType: 'dealer',
+                buyerType: 'dealer',
+                isSellerDocument: true,
+                isBuyerDocument: false
+              }, user),
+              // Buyer document: wholesale BOS (for the buying dealer)
+              documentGenerator.generateWholesaleFlipBuySellDocuments({
+                ...buyerDocumentData,
+                sellerType: 'dealer',
+                buyerType: 'dealer',
+                isSellerDocument: false,
+                isBuyerDocument: true
+              }, user)
+            ]);
+            
+            console.log(`[DOC GEN] Dealer seller document (wholesale purchase agreement):`, sellerResult);
+            console.log(`[DOC GEN] Dealer buyer document (wholesale BOS):`, buyerResult);
+            
+            documentResults.push({
+              ...sellerResult,
+              documentType: 'wholesale_purchase_agreement',
+              party: 'seller'
+            });
+            
+            documentResults.push({
+              ...buyerResult,
+              documentType: 'wholesale_bos',
+              party: 'buyer'
+            });
+          } else {
+            // For dealer seller with private buyer: only generate seller document (wholesale purchase order)
+            console.log('[DOC GEN] 🎯 Dealer seller with private buyer - generating seller document only');
+            
+            const sellerResult = await documentGenerator.generateWholesaleFlipBuySellDocuments({
               ...sellerDocumentData,
               sellerType: 'dealer',
               buyerType: 'private'
-            }, user),
-            documentGenerator.generateDocument({
-              ...buyerDocumentData,
-              sellerType: 'private',
-              buyerType: 'dealer',
-              // Ensure the purchasing dealer (buyer) info is properly set for wholesale BOS
-              buyer: finalBuyerData,
-              seller: correctedSellerData,
-              // Also ensure buyerInfo is set correctly
-              buyerInfo: finalBuyerData
-            }, user)
-          ]);
-          
-          console.log(`[DOC GEN] Dealer seller document (wholesale purchase agreement):`, sellerResult);
-          console.log(`[DOC GEN] Private buyer document (wholesale BOS):`, buyerResult);
-          
-          documentResults.push({
-            ...sellerResult,
-            documentType: 'wholesale_purchase_agreement',
-            party: 'seller'
-          });
-          
-          documentResults.push({
-            ...buyerResult,
-            documentType: 'wholesale_bos',
-            party: 'buyer'
-          });
+            }, user);
+            
+            console.log(`[DOC GEN] Dealer seller document (wholesale purchase order):`, sellerResult);
+            
+            documentResults.push({
+              ...sellerResult,
+              documentType: 'wholesale_purchase_order',
+              party: 'seller'
+            });
+          }
           
         } else {
           console.log(`[DOC GEN] 🎯 Seller is PRIVATE PARTY - generating retail documents and wholesale BOS`);
@@ -482,7 +560,7 @@ router.post('/generate/:dealId', auth, async (req, res) => {
           
           const [sellerResult, buyerResult] = await Promise.all([
             // Seller document: retail PP purchase agreement (seller is private party)
-            documentGenerator.generateDocument({
+            documentGenerator.generateWholesaleFlipBuySellDocuments({
               ...sellerDocumentData,
               sellerType: 'private',
               buyerType: 'dealer',
@@ -491,7 +569,7 @@ router.post('/generate/:dealId', auth, async (req, res) => {
               buyerInfo: correctedBuyerData
             }, user),
             // Buyer document: wholesale BOS (buyer is purchasing dealer)
-            documentGenerator.generateDocument({
+            documentGenerator.generateWholesaleFlipBuySellDocuments({
               ...buyerDocumentData,
               sellerType: 'private',
               buyerType: 'dealer',
@@ -525,8 +603,9 @@ router.post('/generate/:dealId', auth, async (req, res) => {
         console.error(`[DOC GEN] Error generating wholesale flip documents:`, err);
         throw err;
       }
-    } else if (dealData.dealType === 'wholesale-d2d' && dealData.dealType2SubType === 'buy') {
+    } else if (dealData.dealType === 'wholesale-d2d' && ((req.body.dealType2 || dealData.dealType2) === 'Buy')) {
       // Handle wholesale D2D buy deals - generate only seller document (no BOS needed)
+      console.log(`[DOC GEN] 🎯 BRANCH TAKEN: wholesale-d2d BUY`);
       console.log(`[DOC GEN] 🎯 Generating 1 document for wholesale D2D buy deal (seller only)`);
       
       try {
@@ -620,10 +699,21 @@ router.post('/generate/:dealId', auth, async (req, res) => {
         console.error(`[DOC GEN] Error generating wholesale D2D buy seller document:`, err);
         throw err;
       }
-    } else if (dealData.dealType === 'wholesale-d2d' && dealData.dealType2SubType === 'sale') {
+    } else if (dealData.dealType === 'wholesale-d2d' && ((req.body.dealType2 || dealData.dealType2) === 'Sale' || (req.body.dealType2SubType || dealData.dealType2SubType || deal.dealType2SubType) === 'sale')) {
       // Handle wholesale D2D sale deals - generate wholesale BOS
+      console.log(`[DOC GEN] 🎯 BRANCH TAKEN: wholesale-d2d SALE`);
       console.log(`[DOC GEN] 🎯 WHOLESALE D2D SALE DEAL DETECTED - Generating wholesale BOS`);
       console.log(`[DOC GEN] 🎯 Generating 1 document for wholesale D2D sale deal (wholesale BOS)`);
+      console.log(`[DOC GEN][DEBUG] 🔍 ENHANCED DEBUGGING FOR WHOLESALE D2D SALE`);
+      console.log(`[DOC GEN][DEBUG] 🔍 req.body.dealType2:`, req.body.dealType2);
+      console.log(`[DOC GEN][DEBUG] 🔍 dealData.dealType2:`, dealData.dealType2);
+      console.log(`[DOC GEN][DEBUG] 🔍 Final dealType2:`, req.body.dealType2 || dealData.dealType2);
+      console.log(`[DOC GEN][DEBUG] 🔍 Condition check: dealData.dealType === 'wholesale-d2d' && ((req.body.dealType2 || dealData.dealType2) === 'Sale')`);
+      console.log(`[DOC GEN][DEBUG] 🔍 Condition result:`, dealData.dealType === 'wholesale-d2d' && ((req.body.dealType2 || dealData.dealType2) === 'Sale'));
+      console.log(`[DOC GEN][DEBUG] 🔍 Full req.body for wholesale d2d sale debugging:`, JSON.stringify(req.body, null, 2));
+      console.log(`[DOC GEN][DEBUG] 🔍 Original dealData:`, JSON.stringify(dealData, null, 2));
+      console.log(`[DOC GEN][DEBUG] 🔍 Request body:`, JSON.stringify(req.body, null, 2));
+      console.log(`[DOC GEN][DEBUG] 🔍 User info:`, JSON.stringify(user, null, 2));
       
       try {
         // Helper function for parsing addresses
@@ -658,8 +748,7 @@ router.post('/generate/:dealId', auth, async (req, res) => {
         };
         
         const purchasingDealer = {
-          ...dealData.buyer,
-          name: dealData.buyer?.name || 'N/A',
+          name: req.body.buyerName || dealData.buyer?.name || 'N/A',
           type: req.body.buyerType || dealData.buyer?.type || 'dealer',
           licenseNumber: req.body.buyerLicenseNumber || dealData.buyer?.licenseNumber || '',
           tier: req.body.buyerTier || dealData.buyer?.tier || 'Tier 1',
@@ -672,11 +761,23 @@ router.post('/generate/:dealId', auth, async (req, res) => {
         
         console.log(`[DOC GEN] 🔧 RP Exotics seller data:`, rpExoticsSeller);
         console.log(`[DOC GEN] 🔧 Purchasing dealer data:`, purchasingDealer);
+        console.log(`[DOC GEN][DEBUG] 🔍 Original buyer data from dealData:`, JSON.stringify(dealData.buyer, null, 2));
+        console.log(`[DOC GEN][DEBUG] 🔍 Original seller data from dealData:`, JSON.stringify(dealData.seller, null, 2));
+        console.log(`[DOC GEN][DEBUG] 🔍 Request body buyer info:`, {
+          buyerType: req.body.buyerType,
+          buyerName: req.body.buyerName,
+          buyerLicenseNumber: req.body.buyerLicenseNumber,
+          buyerTier: req.body.buyerTier,
+          buyerAddress: req.body.buyerAddress,
+          buyerPhone: req.body.buyerPhone,
+          buyerEmail: req.body.buyerEmail
+        });
         
         // Prepare document generation data
         const saleDocumentData = {
           ...dealData,
-          dealType2SubType: 'sale', // Ensure correct subtype
+          dealType2SubType: req.body.dealType2SubType || dealData.dealType2SubType || deal.dealType2SubType || 'sale',
+          dealType2: req.body.dealType2 || dealData.dealType2, // Dynamic based on input
           seller: rpExoticsSeller, // RP Exotics is the seller
           sellerInfo: rpExoticsSeller,
           buyer: purchasingDealer, // Purchasing dealer is the buyer
@@ -686,8 +787,20 @@ router.post('/generate/:dealId', auth, async (req, res) => {
           purchasingDealer: purchasingDealer
         };
         
+        console.log('[DOC GEN][SALE_DATA] 🔧 saleDocumentData dealType2:', saleDocumentData.dealType2);
+        console.log('[DOC GEN][SALE_DATA] 🔧 saleDocumentData dealType2SubType:', saleDocumentData.dealType2SubType);
+        
         console.log('[DOC GEN] 🚩 saleDocumentData:', JSON.stringify(saleDocumentData, null, 2));
         console.log('[DOC GEN] 🚩 dealType2SubType for saleDocumentData:', saleDocumentData.dealType2SubType);
+        console.log('[DOC GEN][DEBUG] 🔍 saleDocumentData key fields:');
+        console.log('[DOC GEN][DEBUG] 🔍 - dealType:', saleDocumentData.dealType);
+        console.log('[DOC GEN][DEBUG] 🔍 - dealType2SubType:', saleDocumentData.dealType2SubType);
+        console.log('[DOC GEN][DEBUG] 🔍 - dealType2:', saleDocumentData.dealType2);
+        console.log('[DOC GEN][DEBUG] 🔍 - seller.name:', saleDocumentData.seller?.name);
+        console.log('[DOC GEN][DEBUG] 🔍 - seller.type:', saleDocumentData.seller?.type);
+        console.log('[DOC GEN][DEBUG] 🔍 - buyer.name:', saleDocumentData.buyer?.name);
+        console.log('[DOC GEN][DEBUG] 🔍 - buyer.type:', saleDocumentData.buyer?.type);
+        console.log('[DOC GEN][DEBUG] 🔍 - purchasingDealer.name:', saleDocumentData.purchasingDealer?.name);
 
         // PATCH: Always trust req.body.sellerType and req.body.buyerType for document generation
         if (req.body.sellerType) {
@@ -711,13 +824,37 @@ router.post('/generate/:dealId', auth, async (req, res) => {
           seller: saleDocumentData.seller?.name,
           buyer: saleDocumentData.buyer?.name
         });
-        const saleResult = await documentGenerator.generateDocument(saleDocumentData, user);
+        
+        let saleResult;
+        try {
+          saleResult = await documentGenerator.generateDocument(saleDocumentData, user);
+          console.log(`[DOC GEN] ✅ documentGenerator.generateDocument completed successfully`);
+        } catch (docError) {
+          console.error(`[DOC GEN] ❌ Error in documentGenerator.generateDocument:`, docError);
+          console.error(`[DOC GEN] ❌ Error stack:`, docError.stack);
+          console.error(`[DOC GEN] ❌ Sale document data that caused error:`, JSON.stringify(saleDocumentData, null, 2));
+          throw docError;
+        }
+        
         console.timeEnd('[PERF] generateWholesaleD2DSaleDocuments');
         console.log(`[DOC GEN] ✅ documentGenerator.generateDocument completed for wholesale D2D sale`);
         
         console.log(`[DOC GEN] Sale document generated (wholesale BOS):`, saleResult);
-        console.log(`[DOC GEN] 🔍 Sale document type: ${saleResult.documentType}`);
-        console.log(`[DOC GEN] 🔍 Sale document fileName: ${saleResult.fileName}`);
+        console.log(`[DOC GEN] 🔍 Sale document type: ${saleResult?.documentType}`);
+        console.log(`[DOC GEN] 🔍 Sale document fileName: ${saleResult?.fileName}`);
+        
+        // Validate the result
+        if (!saleResult) {
+          console.error(`[DOC GEN] ❌ Sale result is null or undefined!`);
+          throw new Error('Document generation failed - no result returned');
+        }
+        
+        if (!saleResult.documentType) {
+          console.error(`[DOC GEN] ❌ Sale result missing documentType!`);
+          console.error(`[DOC GEN] ❌ Full sale result:`, JSON.stringify(saleResult, null, 2));
+          // Set a default document type for wholesale d2d sale
+          saleResult.documentType = 'wholesale_bos';
+        }
         
         // Add sale document to results
         documentResults.push({
@@ -726,12 +863,74 @@ router.post('/generate/:dealId', auth, async (req, res) => {
           party: 'seller'
         });
         
+        // Generate Vehicle Record PDF for wholesale d2d sale deals
+        if (typeof documentGenerator.generateVehicleRecordPDF === 'function') {
+          try {
+            console.log(`[DOC GEN] 🚗 Starting vehicle record generation for wholesale D2D sale deal: ${deal._id}`);
+            console.log(`[DOC GEN] 📊 Using saleDocumentData for vehicle record:`, {
+              dealType: saleDocumentData.dealType,
+              dealType2SubType: saleDocumentData.dealType2SubType,
+              stockNumber: saleDocumentData.stockNumber,
+              vin: saleDocumentData.vin,
+              year: saleDocumentData.year,
+              make: saleDocumentData.make,
+              model: saleDocumentData.model
+            });
+            
+            console.log('[DOC GEN][VEHICLE_RECORD_DEBUG] 🔍 Vehicle Record Data Source (Wholesale D2D Sale):');
+            console.log('[DOC GEN][VEHICLE_RECORD_DEBUG] - Using saleDocumentData: true');
+            console.log('[DOC GEN][VEHICLE_RECORD_DEBUG] - vehicleRecordData.dealType:', saleDocumentData.dealType);
+            console.log('[DOC GEN][VEHICLE_RECORD_DEBUG] - vehicleRecordData.dealType2SubType:', saleDocumentData.dealType2SubType);
+            console.log('[DOC GEN][VEHICLE_RECORD_DEBUG] - vehicleRecordData.dealType2:', saleDocumentData.dealType2);
+            
+            console.time('[PERF] generateVehicleRecordPDF (wholesale d2d sale)');
+            vehicleRecordResult = await documentGenerator.generateVehicleRecordPDF(saleDocumentData, user);
+            console.timeEnd('[PERF] generateVehicleRecordPDF (wholesale d2d sale)');
+            
+            console.log(`[DOC GEN] ✅ Vehicle Record PDF generated successfully for wholesale D2D sale:`, {
+              fileName: vehicleRecordResult?.fileName,
+              filePath: vehicleRecordResult?.filePath,
+              fileSize: vehicleRecordResult?.fileSize,
+              documentType: vehicleRecordResult?.documentType
+            });
+            
+            // Verify the file was actually created
+            if (vehicleRecordResult?.filePath) {
+              const fileExists = await fs.pathExists(vehicleRecordResult.filePath);
+              console.log(`[DOC GEN] 📁 Vehicle record file exists: ${fileExists}`);
+              if (fileExists) {
+                const stats = await fs.stat(vehicleRecordResult.filePath);
+                console.log(`[DOC GEN] 📊 Vehicle record file size: ${stats.size} bytes`);
+              } else {
+                console.error(`[DOC GEN] ❌ Vehicle record file was not created at: ${vehicleRecordResult.filePath}`);
+              }
+            }
+            
+          } catch (err) {
+            console.error(`[DOC GEN] ❌ Error generating Vehicle Record PDF for wholesale D2D sale:`, err);
+            console.error(`[DOC GEN] ❌ Error stack:`, err.stack);
+            console.error(`[DOC GEN] ❌ Sale document data that caused error:`, JSON.stringify(saleDocumentData, null, 2));
+            console.error(`[DOC GEN] ❌ User data that caused error:`, JSON.stringify(user, null, 2));
+            // Don't throw the error, but log it thoroughly for debugging
+            vehicleRecordResult = null;
+          }
+        } else {
+          console.warn(`[DOC GEN] ⚠️ generateVehicleRecordPDF function not available for wholesale D2D sale`);
+        }
+        
       } catch (err) {
         console.error(`[DOC GEN] Error generating wholesale D2D sale document:`, err);
+        console.error(`[DOC GEN] Error stack:`, err.stack);
+        console.error(`[DOC GEN] Sale document data that caused error:`, JSON.stringify(saleDocumentData, null, 2));
         throw err;
       }
     } else {
       // Use the original generateDocument function for other deal types
+      console.log(`[DOC GEN] 🎯 BRANCH TAKEN: DEFAULT (other deal types)`);
+      console.log(`[DOC GEN] 🎯 This means none of the specific conditions matched!`);
+      console.log(`[DOC GEN] 🎯 dealData.dealType: "${dealData.dealType}"`);
+      console.log(`[DOC GEN] 🎯 dealData.dealType2: "${dealData.dealType2}"`);
+      console.log(`[DOC GEN] 🎯 dealData.dealType2SubType: "${dealData.dealType2SubType}"`);
       try {
         console.time('[PERF] generateDocument');
         const documentResult = await documentGenerator.generateDocument(dealData, user);
@@ -744,8 +943,8 @@ router.post('/generate/:dealId', auth, async (req, res) => {
       }
     }
 
-    // Generate the Vehicle Record PDF for ALL deals (if function exists)
-    if (typeof documentGenerator.generateVehicleRecordPDF === 'function') {
+    // Generate the Vehicle Record PDF for ALL deals EXCEPT wholesale d2d sale (handled separately)
+    if (typeof documentGenerator.generateVehicleRecordPDF === 'function' && !(dealData.dealType === 'wholesale-d2d' && dealData.dealType2SubType === 'sale')) {
       try {
         console.log(`[DOC GEN] 🚗 Starting vehicle record generation for deal: ${deal._id}`);
         console.log(`[DOC GEN] 📊 Deal data for vehicle record:`, {
@@ -765,8 +964,20 @@ router.post('/generate/:dealId', auth, async (req, res) => {
           role: user.role
         });
         
+        // For wholesale d2d sale deals, use the corrected saleDocumentData
+        // Check if saleDocumentData exists (which means this is a wholesale d2d sale deal)
+        const vehicleRecordData = (typeof saleDocumentData !== 'undefined' && saleDocumentData && dealData.dealType === 'wholesale-d2d') 
+          ? saleDocumentData 
+          : dealData;
+        
+        console.log('[DOC GEN][VEHICLE_RECORD_DEBUG] 🔍 Vehicle Record Data Source (Non-Wholesale D2D Sale):');
+        console.log('[DOC GEN][VEHICLE_RECORD_DEBUG] - Using regular dealData (not wholesale d2d sale)');
+        console.log('[DOC GEN][VEHICLE_RECORD_DEBUG] - vehicleRecordData.dealType:', vehicleRecordData.dealType);
+        console.log('[DOC GEN][VEHICLE_RECORD_DEBUG] - vehicleRecordData.dealType2SubType:', vehicleRecordData.dealType2SubType);
+        console.log('[DOC GEN][VEHICLE_RECORD_DEBUG] - vehicleRecordData.dealType2:', vehicleRecordData.dealType2);
+        
         console.time('[PERF] generateVehicleRecordPDF');
-        vehicleRecordResult = await documentGenerator.generateVehicleRecordPDF(dealData, user);
+        vehicleRecordResult = await documentGenerator.generateVehicleRecordPDF(vehicleRecordData, user);
         console.timeEnd('[PERF] generateVehicleRecordPDF');
         
         console.log(`[DOC GEN] ✅ Vehicle Record PDF generated successfully:`, {
@@ -827,8 +1038,8 @@ router.post('/generate/:dealId', auth, async (req, res) => {
         model: deal.model,
         stockNumber: deal.stockNumber,
         dealType: deal.dealType,
-        dealType2: dealData.dealType2,
-        dealType2SubType: deal.dealType2SubType,
+        dealType2: req.body.dealType2 || dealData.dealType2,
+        dealType2SubType: req.body.dealType2SubType || dealData.dealType2SubType || deal.dealType2SubType || 'buy',
         purchasePrice: deal.purchasePrice,
         listPrice: deal.listPrice,
         wholesalePrice: deal.wholesalePrice,
@@ -866,8 +1077,8 @@ router.post('/generate/:dealId', auth, async (req, res) => {
         mileage: deal.mileage,
         dealId: deal._id,
         dealType: deal.dealType,
-        dealType2: dealData.dealType2,
-        dealType2SubType: dealData.dealType2SubType,
+        dealType2: req.body.dealType2 || dealData.dealType2,
+        dealType2SubType: req.body.dealType2SubType || dealData.dealType2SubType || deal.dealType2SubType || 'buy',
         purchasePrice: deal.purchasePrice,
         listPrice: deal.listPrice,
         wholesalePrice: req.body.wholesalePrice || deal.wholesalePrice || 0,
@@ -907,7 +1118,7 @@ router.post('/generate/:dealId', auth, async (req, res) => {
       };
       
       // For wholesale D2D buy: RP Exotics is the buyer, selling dealer is the seller
-      if (dealData.dealType === 'wholesale-d2d' && dealData.dealType2SubType === 'buy') {
+      if (dealData.dealType === 'wholesale-d2d' && ((req.body.dealType2 || dealData.dealType2) === 'Buy' || (req.body.dealType2SubType || dealData.dealType2SubType || deal.dealType2SubType) === 'buy')) {
         const parseAddress = (addr) => {
           if (!addr) return {};
           if (typeof addr === 'object') return addr;
@@ -953,6 +1164,76 @@ router.post('/generate/:dealId', auth, async (req, res) => {
         console.log(`[DOC GEN] 🔧 Vehicle Record Creation - Selling dealer (seller):`, vehicleRecordSeller);
         console.log(`[DOC GEN] 🔧 Vehicle Record Creation - RP Exotics (buyer):`, vehicleRecordBuyer);
       }
+      // For wholesale D2D sale: RP Exotics is the seller, purchasing dealer is the buyer
+      else if (dealData.dealType === 'wholesale-d2d' && ((req.body.dealType2 || dealData.dealType2) === 'Sale' || (req.body.dealType2SubType || dealData.dealType2SubType || deal.dealType2SubType) === 'sale')) {
+        console.log(`[DOC GEN][VEHICLE_RECORD][DEBUG] 🔍 ENHANCED DEBUGGING FOR WHOLESALE D2D SALE VEHICLE RECORD`);
+        console.log(`[DOC GEN][VEHICLE_RECORD][DEBUG] 🔍 Original deal.buyer:`, JSON.stringify(deal.buyer, null, 2));
+        console.log(`[DOC GEN][VEHICLE_RECORD][DEBUG] 🔍 Request body buyer info:`, {
+          buyerName: req.body.buyerName,
+          buyerType: req.body.buyerType,
+          buyerLicenseNumber: req.body.buyerLicenseNumber,
+          buyerTier: req.body.buyerTier,
+          buyerAddress: req.body.buyerAddress,
+          buyerPhone: req.body.buyerPhone,
+          buyerEmail: req.body.buyerEmail
+        });
+        
+        const parseAddress = (addr) => {
+          if (!addr) return {};
+          if (typeof addr === 'object') return addr;
+          const parts = addr.split(',').map(s => s.trim());
+          return {
+            street: parts[0] || '',
+            city: parts[1] || '',
+            state: parts[2] || '',
+            zip: parts[3] || ''
+          };
+        };
+        
+        vehicleRecordSeller = {
+          name: 'RP Exotics',
+          type: 'dealer',
+          licenseNumber: 'D4865',
+          tier: 'Tier 1',
+          contact: {
+            address: {
+              street: '1155 N Warson Rd',
+              city: 'Saint Louis',
+              state: 'MO',
+              zip: '63132'
+            },
+            phone: '(314) 970-2427',
+            email: 'titling@rpexotics.com'
+          }
+        };
+        
+        vehicleRecordBuyer = {
+          ...deal.buyer,
+          name: req.body.buyerName || deal.buyer?.name || 'N/A',
+          type: req.body.buyerType || deal.buyer?.type || 'dealer',
+          licenseNumber: req.body.buyerLicenseNumber || deal.buyer?.licenseNumber || '',
+          tier: req.body.buyerTier || deal.buyer?.tier || 'Tier 1',
+          contact: {
+            address: req.body.buyerAddress ? parseAddress(req.body.buyerAddress) : (deal.buyer?.contact?.address || {}),
+            phone: req.body.buyerPhone || deal.buyer?.contact?.phone || 'N/A',
+            email: req.body.buyerEmail || deal.buyer?.contact?.email || 'N/A'
+          }
+        };
+        
+        console.log(`[DOC GEN] 🔧 Vehicle Record Creation - RP Exotics (seller):`, vehicleRecordSeller);
+        console.log(`[DOC GEN] 🔧 Vehicle Record Creation - Purchasing dealer (buyer):`, vehicleRecordBuyer);
+        console.log(`[DOC GEN][VEHICLE_RECORD][DEBUG] 🔍 Final vehicleRecordSeller:`, JSON.stringify(vehicleRecordSeller, null, 2));
+        console.log(`[DOC GEN][VEHICLE_RECORD][DEBUG] 🔍 Final vehicleRecordBuyer:`, JSON.stringify(vehicleRecordBuyer, null, 2));
+      }
+      
+      console.log(`[DOC GEN][VEHICLE_RECORD] 🔧 Creating vehicle record with dealType2:`, dealData.dealType2);
+      console.log(`[DOC GEN][VEHICLE_RECORD] 🔧 dealData for vehicle record:`, {
+        dealType: dealData.dealType,
+        dealType2SubType: dealData.dealType2SubType,
+        dealType2: dealData.dealType2
+      });
+      console.log(`[DOC GEN][VEHICLE_RECORD] 🔧 dealData object keys:`, Object.keys(dealData));
+      console.log(`[DOC GEN][VEHICLE_RECORD] 🔧 dealData.dealType2 type:`, typeof dealData.dealType2);
       
       vehicleRecord = new VehicleRecord({
         vin: deal.vin,
@@ -966,7 +1247,17 @@ router.post('/generate/:dealId', auth, async (req, res) => {
         mileage: deal.mileage,
         dealId: deal._id,
         dealType: deal.dealType,
-        dealType2: dealData.dealType2,
+        dealType2: req.body.dealType2 || dealData.dealType2,
+        // 🔧 DEBUG VEHICLE RECORD DEAL TYPE 2
+                 dealType2SubType: (() => {
+           // Use dynamic values from request body or dealData
+           const dynamicSubType = (req.body.dealType2 || dealData.dealType2)?.toLowerCase() || 'buy';
+           console.log('[DOC GEN][VEHICLE_RECORD_DEBUG] 🔍 Vehicle Record dealType2SubType calculation:');
+           console.log('[DOC GEN][VEHICLE_RECORD_DEBUG] - req.body.dealType2:', req.body.dealType2);
+           console.log('[DOC GEN][VEHICLE_RECORD_DEBUG] - dealData.dealType2:', dealData.dealType2);
+           console.log('[DOC GEN][VEHICLE_RECORD_DEBUG] - Final dynamic result (lowercase):', dynamicSubType);
+           return dynamicSubType;
+         })(),
         purchasePrice: deal.purchasePrice,
         listPrice: deal.listPrice,
         wholesalePrice: req.body.wholesalePrice || deal.wholesalePrice || 0,
@@ -1265,6 +1556,10 @@ router.post('/generate/:dealId', auth, async (req, res) => {
     // Before sending response, log the final documentResults array
     console.log('[DOC GEN][DEBUG] Final documentResults for API/UI:', JSON.stringify(documentResults.map(d => ({type: d.documentType, fileName: d.fileName})), null, 2));
 
+    // Update document generation status to completed
+    deal.documentGenerationStatus = 'completed';
+    await deal.save();
+    
     res.json({
       success: true,
       message: 'Document(s) generated and vehicle record created successfully',
@@ -1288,7 +1583,25 @@ router.post('/generate/:dealId', auth, async (req, res) => {
 
   } catch (error) {
     console.error('[DOC GEN] Error generating document:', error, error?.stack);
-    res.status(500).json({ error: 'Failed to generate document', details: error?.message || error });
+    console.error('[DOC GEN] Error details:', {
+      message: error.message,
+      name: error.name,
+      code: error.code,
+      stack: error.stack
+    });
+    
+    // Update document generation status to failed
+    if (deal) {
+      deal.documentGenerationStatus = 'failed';
+      deal.documentGenerationError = error.message;
+      await deal.save();
+    }
+    
+    res.status(500).json({ 
+      error: 'Failed to generate document', 
+      details: error?.message || error,
+      timestamp: new Date().toISOString()
+    });
   }
 });
 
@@ -1556,33 +1869,26 @@ router.post('/generate-wholesale/:dealId', auth, async (req, res) => {
 router.get('/download/:fileName', auth, async (req, res) => {
   try {
     const { fileName } = req.params;
-    const filePath = path.join(__dirname, '../uploads/documents', fileName);
 
     console.log(`[DOCUMENTS DOWNLOAD] Request received - File: ${fileName}`);
     console.log(`[DOCUMENTS DOWNLOAD] User:`, req.user && { id: req.user._id, email: req.user.email, role: req.user.role });
-    console.log(`[DOCUMENTS DOWNLOAD] Full path: ${filePath}`);
 
-    // Check if file exists
-    if (!await fs.pathExists(filePath)) {
-      console.warn(`[DOCUMENTS DOWNLOAD] File not found: ${filePath}`);
+    // Download from cloud storage
+    const cloudStorage = require('../services/cloudStorage');
+    const downloadResult = await cloudStorage.downloadFile(fileName);
+
+    if (!downloadResult.success) {
+      console.warn(`[DOCUMENTS DOWNLOAD] File not found in cloud storage: ${fileName}`);
       return res.status(404).json({ error: 'Document not found' });
     }
 
     // Set headers for file viewing
-    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Type', downloadResult.contentType || 'application/pdf');
     res.setHeader('Content-Disposition', `inline; filename="${fileName}"`);
-    console.log(`[DOCUMENTS DOWNLOAD] Headers set: Content-Type=application/pdf, Content-Disposition=inline; filename=${fileName}`);
+    console.log(`[DOCUMENTS DOWNLOAD] Headers set: Content-Type=${downloadResult.contentType || 'application/pdf'}, Content-Disposition=inline; filename=${fileName}`);
 
-    // Stream the file
-    const fileStream = fs.createReadStream(filePath);
-    fileStream.on('open', () => {
-      console.log(`[DOCUMENTS DOWNLOAD] Streaming file: ${fileName}`);
-    });
-    fileStream.on('error', (err) => {
-      console.error(`[DOCUMENTS DOWNLOAD] Stream error:`, err);
-      res.status(500).json({ error: 'Failed to stream document', details: err.message });
-    });
-    fileStream.pipe(res);
+    // Send the file buffer
+    res.send(downloadResult.data);
 
   } catch (error) {
     console.error('[DOCUMENTS DOWNLOAD] Error downloading document:', error);

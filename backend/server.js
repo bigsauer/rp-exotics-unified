@@ -113,18 +113,49 @@ app.use('/api', (req, res, next) => {
 });
 
 // Health check endpoint
-app.get('/api/health', (req, res) => {
+app.get('/api/health', async (req, res) => {
   console.log('[HEALTHCHECK] /api/health hit', {
     ip: req.ip,
     headers: req.headers
   });
+  
   const dbStatus = mongoose.connection.readyState === 1 ? 'connected' : 'disconnected';
-  res.json({
+  
+  // Test S3 connection if cloud storage is configured
+  let s3Status = 'not_configured';
+  let s3Error = null;
+  
+  if (process.env.AWS_ACCESS_KEY_ID && process.env.AWS_S3_BUCKET_NAME) {
+    try {
+      const cloudStorage = require('./services/cloudStorage');
+      const bucketInfo = await cloudStorage.getBucketInfo();
+      s3Status = bucketInfo.success ? 'connected' : 'error';
+      s3Error = bucketInfo.error;
+    } catch (error) {
+      s3Status = 'error';
+      s3Error = error.message;
+    }
+  }
+  
+  const healthStatus = {
     status: 'OK',
     message: 'RP Exotics Backend is running',
     database: dbStatus,
-    timestamp: new Date().toISOString()
-  });
+    s3_storage: s3Status,
+    environment: process.env.NODE_ENV || 'development',
+    timestamp: new Date().toISOString(),
+    version: '1.0.0'
+  };
+  
+  if (s3Error) {
+    healthStatus.s3_error = s3Error;
+  }
+  
+  // Return 503 if critical services are down
+  const criticalServicesDown = dbStatus === 'disconnected' || (s3Status === 'error' && process.env.NODE_ENV === 'production');
+  const statusCode = criticalServicesDown ? 503 : 200;
+  
+  res.status(statusCode).json(healthStatus);
 });
 
 // Serve uploaded files

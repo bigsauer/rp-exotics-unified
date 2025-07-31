@@ -7,6 +7,7 @@ const Deal = require('../models/Deal');
 const DocumentType = require('../models/DocumentType');
 const { authenticateToken, requireBackOfficeAccess } = require('../middleware/auth');
 const StatusSyncService = require('../services/statusSyncService');
+const cloudStorage = require('../services/cloudStorage');
 
 // Apply authentication and back office access middleware to all routes
 router.use(authenticateToken);
@@ -30,27 +31,16 @@ if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
 }
 
-// File upload configuration
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, uploadsDir);
-  },
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    const ext = path.extname(file.originalname);
-    cb(null, file.fieldname + '-' + uniqueSuffix + ext);
-  }
-});
-
+// File upload configuration - Using memory storage for S3 upload
 const upload = multer({ 
-  storage: storage,
+  storage: multer.memoryStorage(),
   limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
   fileFilter: (req, file, cb) => {
-    const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png', 'image/jpg'];
+    const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png', 'image/jpg', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
     if (allowedTypes.includes(file.mimetype)) {
       cb(null, true);
     } else {
-      cb(new Error('Invalid file type. Only PDF and images are allowed.'), false);
+      cb(new Error('Invalid file type. Only PDF, images, and Word documents are allowed.'), false);
     }
   }
 });
@@ -268,73 +258,111 @@ router.get('/dashboard/stats', async (req, res) => {
 
 // Upload document for a deal
 router.post('/deals/:id/documents/:documentType/upload',
-  upload.single('document'),
+  upload.array('documents', 10), // Allow up to 10 files
   async (req, res) => {
     try {
       const { id, documentType } = req.params;
       const notes = req.body?.notes || '';
 
-      if (!req.file) {
-        return res.status(400).json({ error: 'No file uploaded' });
+      console.log('[BACKOFFICE UPLOAD] Starting document upload');
+      console.log('[BACKOFFICE UPLOAD] Deal ID:', id);
+      console.log('[BACKOFFICE UPLOAD] Document type:', documentType);
+      console.log('[BACKOFFICE UPLOAD] Files received:', req.files ? req.files.length : 0);
+
+      if (!req.files || req.files.length === 0) {
+        console.error('[BACKOFFICE UPLOAD] No files uploaded');
+        return res.status(400).json({ error: 'No files uploaded' });
       }
+
+      console.log('[BACKOFFICE UPLOAD] Files details:', req.files.map(file => ({
+        originalname: file.originalname,
+        mimetype: file.mimetype,
+        size: file.size,
+        buffer: file.buffer ? 'Present' : 'Missing'
+      })));
 
       const deal = await Deal.findById(id);
       if (!deal) {
+        console.error('[BACKOFFICE UPLOAD] Deal not found:', id);
         return res.status(404).json({ error: 'Deal not found' });
       }
+
+      console.log('[BACKOFFICE UPLOAD] Deal found:', deal._id);
 
       // Get document type configuration
       const docTypeConfig = await DocumentType.findOne({ type: documentType });
       if (!docTypeConfig) {
-        return res.status(400).json({ error: 'Invalid document type' });
+        console.warn('[BACKOFFICE UPLOAD] Document type not found, using default config');
       }
 
-      // Check if document already exists and update or create new
-      const existingDocIndex = deal.documents.findIndex(doc => doc.type === documentType);
-      
-      const newDocument = {
-        type: documentType,
-        documentId: documentType === 'extra_doc' ? `extra_doc_${Date.now()}_${Math.random().toString(36).substr(2, 9)}` : documentType,
-        fileName: req.file.originalname,
-        filePath: req.file.path,
-        fileSize: req.file.size,
-        mimeType: req.file.mimetype,
-        uploaded: true,
-        uploadedAt: new Date(),
-        uploadedBy: req.user?.id || null,
-        approved: false,
-        required: docTypeConfig.required,
-        notes: notes || '',
-        version: existingDocIndex >= 0 ? deal.documents[existingDocIndex].version + 1 : 1
-      };
+      const uploadedDocuments = [];
 
-      if (existingDocIndex >= 0) {
-        deal.documents[existingDocIndex] = newDocument;
-      } else {
+      // Process each uploaded file
+      for (const file of req.files) {
+        // Generate unique filename for S3
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+        const ext = path.extname(file.originalname);
+        const s3FileName = `extra_doc_${uniqueSuffix}${ext}`;
+
+        console.log('[BACKOFFICE UPLOAD] Uploading to S3:', s3FileName);
+
+        // Upload to S3
+        let s3Url;
+        try {
+          const uploadResult = await cloudStorage.uploadBuffer(file.buffer, s3FileName, file.mimetype);
+          s3Url = uploadResult.url;
+          console.log('[BACKOFFICE UPLOAD] S3 upload successful:', s3Url);
+        } catch (s3Error) {
+          console.error('[BACKOFFICE UPLOAD] S3 upload failed:', s3Error);
+          return res.status(500).json({ error: 'Failed to upload file to cloud storage' });
+        }
+
+        // Create new document object
+        const newDocument = {
+          type: documentType,
+          documentId: documentType === 'extra_doc' ? `extra_doc_${Date.now()}_${Math.random().toString(36).substr(2, 9)}` : documentType,
+          fileName: file.originalname,
+          filePath: s3Url, // Use S3 URL instead of local path
+          fileSize: file.size,
+          mimeType: file.mimetype,
+          uploaded: true,
+          uploadedAt: new Date(),
+          uploadedBy: req.user?.id || null,
+          approved: false,
+          required: docTypeConfig?.required || false,
+          notes: notes || '',
+          version: 1
+        };
+
+        console.log('[BACKOFFICE UPLOAD] New document object:', newDocument);
+
+        // Add to deal documents array
         deal.documents.push(newDocument);
-      }
+        uploadedDocuments.push(newDocument);
 
-      // Add activity log entry
-      deal.activityLog.push({
-        action: 'document_uploaded',
-        timestamp: new Date(),
-        userId: req.user?.id || null,
-        description: `Uploaded ${docTypeConfig.name}`,
-        metadata: { documentType, fileName: req.file.originalname }
-      });
+        // Add activity log entry for each file
+        deal.activityLog.push({
+          action: 'document_uploaded',
+          timestamp: new Date(),
+          userId: req.user?.id || null,
+          description: `Uploaded ${docTypeConfig?.name || documentType}: ${file.originalname}`,
+          metadata: { documentType, fileName: file.originalname, s3Url }
+        });
+      }
 
       deal.updatedAt = new Date();
       deal.updatedBy = req.user?.id || null;
 
       await deal.save();
+      console.log('[BACKOFFICE UPLOAD] Deal saved successfully with', uploadedDocuments.length, 'new documents');
 
       res.json({ 
         success: true,
-        message: 'Document uploaded successfully', 
-        data: newDocument 
+        message: `${uploadedDocuments.length} document(s) uploaded successfully`, 
+        data: uploadedDocuments 
       });
     } catch (error) {
-      console.error('Error uploading document:', error);
+      console.error('[BACKOFFICE UPLOAD] Error uploading document:', error);
       res.status(500).json({ error: 'Internal server error' });
     }
   }
