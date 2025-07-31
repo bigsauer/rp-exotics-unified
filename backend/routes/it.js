@@ -2,149 +2,104 @@ const express = require('express');
 const router = express.Router();
 const auth = require('../middleware/auth');
 const { exec } = require('child_process');
-const fs = require('fs-extra');
 const path = require('path');
+const fs = require('fs').promises;
 
-// IT Management Routes - Only accessible by Clayton
-const requireClaytonAccess = (req, res, next) => {
-  if (!req.user || req.user.email !== 'clayton@rpexotics.com') {
-    return res.status(403).json({ error: 'Access denied. IT management requires Clayton access.' });
+// Ensure only IT/admin users can access these routes
+const requireITAccess = (req, res, next) => {
+  if (req.user && (req.user.role === 'it' || req.user.role === 'admin')) {
+    next();
+  } else {
+    res.status(403).json({ error: 'Access denied. IT privileges required.' });
   }
-  next();
 };
 
-// Apply Clayton access requirement to all IT routes
-router.use(auth, requireClaytonAccess);
+// Apply IT access middleware to all routes
+router.use(auth, requireITAccess);
 
-// Get deployment status
+// Get deployment status for all environments
 router.get('/deployment/status', async (req, res) => {
   try {
-    console.log('[IT API] Getting deployment status');
-    
-    // Read version from package.json
-    const packageJson = await fs.readJson(path.join(__dirname, '../package.json'));
-    const currentVersion = packageJson.version;
-    
-    // Get environment info
-    const environment = process.env.NODE_ENV || 'development';
-    const isProduction = environment === 'production';
-    
     const deploymentStatus = {
       development: {
         status: 'online',
-        lastDeploy: new Date().toISOString(),
-        version: `${currentVersion}-dev`,
-        environment: 'development'
+        lastDeploy: process.env.DEV_LAST_DEPLOY || new Date().toISOString(),
+        version: process.env.DEV_VERSION || 'v1.2.3-dev',
+        environment: 'development',
+        url: process.env.DEV_URL || 'https://dev-opis-frontend.vercel.app'
+      },
+      staging: {
+        status: 'online',
+        lastDeploy: process.env.STAGING_LAST_DEPLOY || new Date().toISOString(),
+        version: process.env.STAGING_VERSION || 'v1.2.3-staging',
+        environment: 'staging',
+        url: process.env.STAGING_URL || 'https://staging-opis-frontend.vercel.app'
       },
       production: {
-        status: isProduction ? 'online' : 'offline',
-        lastDeploy: new Date().toISOString(),
-        version: currentVersion,
-        environment: 'production'
+        status: 'online',
+        lastDeploy: process.env.PROD_LAST_DEPLOY || new Date().toISOString(),
+        version: process.env.PROD_VERSION || 'v1.2.2',
+        environment: 'production',
+        url: process.env.PROD_URL || 'https://opis-frontend-dw442ltxo-bigsauers-projects.vercel.app'
       }
     };
-    
-    res.json({ success: true, data: deploymentStatus });
+
+    res.json({
+      success: true,
+      data: deploymentStatus
+    });
   } catch (error) {
-    console.error('[IT API] Error getting deployment status:', error);
+    console.error('[IT ROUTES] Error getting deployment status:', error);
     res.status(500).json({ error: 'Failed to get deployment status' });
   }
 });
 
-// Trigger deployment
+// Get deployment history
+router.get('/deployment/history', async (req, res) => {
+  try {
+    // In a real implementation, this would come from a database
+    const deploymentHistory = [
+      {
+        id: 1,
+        environment: 'production',
+        action: 'promote',
+        status: 'completed',
+        timestamp: new Date(Date.now() - 86400000).toISOString(), // 1 day ago
+        user: 'clayton@rp-exotics.com',
+        fromVersion: 'v1.2.1',
+        toVersion: 'v1.2.2'
+      },
+      {
+        id: 2,
+        environment: 'staging',
+        action: 'promote',
+        status: 'completed',
+        timestamp: new Date(Date.now() - 172800000).toISOString(), // 2 days ago
+        user: 'clayton@rp-exotics.com',
+        fromVersion: 'v1.2.1-dev',
+        toVersion: 'v1.2.1-staging'
+      }
+    ];
+
+    res.json({
+      success: true,
+      data: deploymentHistory
+    });
+  } catch (error) {
+    console.error('[IT ROUTES] Error getting deployment history:', error);
+    res.status(500).json({ error: 'Failed to get deployment history' });
+  }
+});
+
+// Trigger deployment to specific environment
 router.post('/deploy', async (req, res) => {
   try {
     const { environment, action, timestamp } = req.body;
-    console.log(`[IT API] Deployment triggered for ${environment} by ${req.user.email}`);
     
-    // Log the deployment request
+    console.log(`[IT ROUTES] Deployment triggered: ${action} to ${environment} at ${timestamp}`);
+    
+    // Log the deployment action
     const deploymentLog = {
-      id: Date.now(),
-      environment,
-      action,
-      status: 'in_progress',
-      timestamp,
-      user: req.user.email,
-      triggeredBy: req.user.email
-    };
-    
-    // In a real implementation, this would trigger actual deployment
-    // For now, we'll simulate the deployment process
-    console.log(`[IT API] Simulating deployment to ${environment}...`);
-    
-    // Simulate deployment delay
-    setTimeout(() => {
-      console.log(`[IT API] Deployment to ${environment} completed`);
-    }, 2000);
-    
-    res.json({ 
-      success: true, 
-      message: `Deployment to ${environment} initiated`,
-      deploymentId: deploymentLog.id,
-      estimatedTime: '2-5 minutes'
-    });
-  } catch (error) {
-    console.error('[IT API] Deployment error:', error);
-    res.status(500).json({ error: 'Failed to trigger deployment' });
-  }
-});
-
-// Promote development to production
-router.post('/promote', async (req, res) => {
-  try {
-    const { action, fromEnvironment, toEnvironment, timestamp } = req.body;
-    console.log(`[IT API] Promotion from ${fromEnvironment} to ${toEnvironment} by ${req.user.email}`);
-    
-    // Log the promotion request
-    const promotionLog = {
-      id: Date.now(),
-      environment: toEnvironment,
-      action,
-      status: 'in_progress',
-      timestamp,
-      user: req.user.email,
-      fromEnvironment,
-      toEnvironment
-    };
-    
-    // In a real implementation, this would:
-    // 1. Run tests on development
-    // 2. Create a production build
-    // 3. Deploy to production
-    // 4. Run health checks
-    console.log(`[IT API] Simulating promotion from ${fromEnvironment} to ${toEnvironment}...`);
-    
-    // Simulate promotion process
-    setTimeout(() => {
-      console.log(`[IT API] Promotion to ${toEnvironment} completed`);
-    }, 3000);
-    
-    res.json({ 
-      success: true, 
-      message: `Promotion to ${toEnvironment} initiated`,
-      promotionId: promotionLog.id,
-      estimatedTime: '3-7 minutes',
-      steps: [
-        'Running tests on development',
-        'Creating production build',
-        'Deploying to production',
-        'Running health checks'
-      ]
-    });
-  } catch (error) {
-    console.error('[IT API] Promotion error:', error);
-    res.status(500).json({ error: 'Failed to promote to production' });
-  }
-});
-
-// Rollback deployment
-router.post('/rollback', async (req, res) => {
-  try {
-    const { environment, action, timestamp } = req.body;
-    console.log(`[IT API] Rollback requested for ${environment} by ${req.user.email}`);
-    
-    // Log the rollback request
-    const rollbackLog = {
       id: Date.now(),
       environment,
       action,
@@ -152,129 +107,276 @@ router.post('/rollback', async (req, res) => {
       timestamp,
       user: req.user.email
     };
+
+    // In a real implementation, you would:
+    // 1. Trigger the actual deployment (Vercel/Railway webhook)
+    // 2. Store the deployment log in database
+    // 3. Update environment variables
     
-    // In a real implementation, this would:
-    // 1. Identify the previous version
-    // 2. Deploy the previous version
-    // 3. Run health checks
-    console.log(`[IT API] Simulating rollback for ${environment}...`);
+    // Simulate deployment process
+    setTimeout(() => {
+      console.log(`[IT ROUTES] Deployment completed for ${environment}`);
+    }, 5000);
+
+    res.json({
+      success: true,
+      message: `Deployment to ${environment} initiated`,
+      deploymentId: deploymentLog.id
+    });
+  } catch (error) {
+    console.error('[IT ROUTES] Deployment error:', error);
+    res.status(500).json({ error: 'Deployment failed' });
+  }
+});
+
+// Promote from one environment to another
+router.post('/promote', async (req, res) => {
+  try {
+    const { fromEnvironment, toEnvironment, action, timestamp } = req.body;
+    
+    console.log(`[IT ROUTES] Promotion triggered: ${fromEnvironment} → ${toEnvironment} at ${timestamp}`);
+    
+    // Validate promotion path
+    const validPromotions = [
+      ['development', 'staging'],
+      ['staging', 'production']
+    ];
+    
+    const isValidPromotion = validPromotions.some(([from, to]) => 
+      from === fromEnvironment && to === toEnvironment
+    );
+    
+    if (!isValidPromotion) {
+      return res.status(400).json({ 
+        error: `Invalid promotion path: ${fromEnvironment} → ${toEnvironment}` 
+      });
+    }
+
+    // Log the promotion action
+    const promotionLog = {
+      id: Date.now(),
+      environment: toEnvironment,
+      action: 'promote',
+      status: 'in_progress',
+      timestamp,
+      user: req.user.email,
+      fromEnvironment,
+      toEnvironment
+    };
+
+    // In a real implementation, you would:
+    // 1. Trigger the promotion (copy from one environment to another)
+    // 2. Update environment variables
+    // 3. Store the promotion log in database
+    
+    // Simulate promotion process
+    setTimeout(() => {
+      console.log(`[IT ROUTES] Promotion completed: ${fromEnvironment} → ${toEnvironment}`);
+    }, 3000);
+
+    res.json({
+      success: true,
+      message: `Promotion from ${fromEnvironment} to ${toEnvironment} initiated`,
+      promotionId: promotionLog.id
+    });
+  } catch (error) {
+    console.error('[IT ROUTES] Promotion error:', error);
+    res.status(500).json({ error: 'Promotion failed' });
+  }
+});
+
+// Rollback deployment
+router.post('/rollback', async (req, res) => {
+  try {
+    const { environment, action, timestamp } = req.body;
+    
+    console.log(`[IT ROUTES] Rollback triggered for ${environment} at ${timestamp}`);
+    
+    // Log the rollback action
+    const rollbackLog = {
+      id: Date.now(),
+      environment,
+      action: 'rollback',
+      status: 'in_progress',
+      timestamp,
+      user: req.user.email
+    };
+
+    // In a real implementation, you would:
+    // 1. Trigger the rollback (deploy previous version)
+    // 2. Update environment variables
+    // 3. Store the rollback log in database
     
     // Simulate rollback process
     setTimeout(() => {
-      console.log(`[IT API] Rollback for ${environment} completed`);
+      console.log(`[IT ROUTES] Rollback completed for ${environment}`);
     }, 2000);
-    
-    res.json({ 
-      success: true, 
+
+    res.json({
+      success: true,
       message: `Rollback for ${environment} initiated`,
-      rollbackId: rollbackLog.id,
-      estimatedTime: '2-4 minutes'
+      rollbackId: rollbackLog.id
     });
   } catch (error) {
-    console.error('[IT API] Rollback error:', error);
-    res.status(500).json({ error: 'Failed to rollback deployment' });
+    console.error('[IT ROUTES] Rollback error:', error);
+    res.status(500).json({ error: 'Rollback failed' });
   }
 });
 
-// Get system metrics
-router.get('/metrics', async (req, res) => {
+// Feature flags management
+router.get('/feature-flags', async (req, res) => {
   try {
-    console.log('[IT API] Getting system metrics');
-    
-    // Get system information
-    const os = require('os');
-    const totalMemory = os.totalmem();
-    const freeMemory = os.freemem();
-    const memoryUsage = ((totalMemory - freeMemory) / totalMemory) * 100;
-    
-    // Get CPU usage (simplified)
-    const cpuUsage = Math.random() * 30 + 20; // Simulate 20-50% CPU usage
-    
-    // Get disk usage
-    const diskUsage = Math.random() * 20 + 10; // Simulate 10-30% disk usage
-    
-    const metrics = {
-      system: {
-        memoryUsage: Math.round(memoryUsage),
-        cpuUsage: Math.round(cpuUsage),
-        diskUsage: Math.round(diskUsage),
-        uptime: Math.floor(os.uptime() / 3600), // Hours
-        platform: os.platform(),
-        arch: os.arch()
+    const featureFlags = {
+      enhancedSignatures: { 
+        enabled: true, 
+        environments: ['development', 'staging'],
+        description: 'Enhanced PDF signature system with cursive fonts'
       },
-      application: {
-        nodeVersion: process.version,
-        environment: process.env.NODE_ENV || 'development',
-        pid: process.pid,
-        memoryUsage: process.memoryUsage()
+      newDashboard: { 
+        enabled: false, 
+        environments: ['development'],
+        description: 'New dashboard layout and features'
+      },
+      advancedReporting: { 
+        enabled: false, 
+        environments: [],
+        description: 'Advanced reporting and analytics'
+      },
+      betaFeatures: { 
+        enabled: true, 
+        environments: ['development', 'staging'],
+        description: 'Beta features for testing'
       }
     };
-    
-    res.json({ success: true, data: metrics });
+
+    res.json({
+      success: true,
+      data: featureFlags
+    });
   } catch (error) {
-    console.error('[IT API] Error getting metrics:', error);
-    res.status(500).json({ error: 'Failed to get system metrics' });
+    console.error('[IT ROUTES] Error getting feature flags:', error);
+    res.status(500).json({ error: 'Failed to get feature flags' });
   }
 });
 
-// Get deployment history
-router.get('/deployment/history', async (req, res) => {
+// Toggle feature flag
+router.post('/feature-flags', async (req, res) => {
   try {
-    console.log('[IT API] Getting deployment history');
+    const { feature, environment, action, timestamp } = req.body;
     
-    // In a real implementation, this would read from a database
-    // For now, return mock data
-    const history = [
-      {
-        id: Date.now() - 1000,
-        environment: 'development',
-        action: 'deploy',
-        status: 'completed',
-        timestamp: new Date(Date.now() - 3600000).toISOString(), // 1 hour ago
-        user: 'clayton@rpexotics.com',
-        details: 'v1.2.3-dev deployed successfully'
-      },
-      {
-        id: Date.now() - 2000,
-        environment: 'production',
-        action: 'promote',
-        status: 'completed',
-        timestamp: new Date(Date.now() - 7200000).toISOString(), // 2 hours ago
-        user: 'clayton@rpexotics.com',
-        fromVersion: 'v1.2.2-dev',
-        toVersion: 'v1.2.2',
-        details: 'Promoted from development to production'
-      }
-    ];
+    console.log(`[IT ROUTES] Feature flag toggle: ${feature} for ${environment} at ${timestamp}`);
     
-    res.json({ success: true, data: history });
+    // In a real implementation, you would:
+    // 1. Update the feature flag in database/config
+    // 2. Trigger environment-specific deployment if needed
+    // 3. Log the change
+    
+    res.json({
+      success: true,
+      message: `Feature flag ${feature} toggled for ${environment}`,
+      feature,
+      environment,
+      action
+    });
   } catch (error) {
-    console.error('[IT API] Error getting deployment history:', error);
-    res.status(500).json({ error: 'Failed to get deployment history' });
+    console.error('[IT ROUTES] Feature flag toggle error:', error);
+    res.status(500).json({ error: 'Feature flag toggle failed' });
   }
 });
 
-// Health check endpoint
+// Get testing environment status
+router.get('/testing-environments', async (req, res) => {
+  try {
+    const testingEnvironments = {
+      development: {
+        status: 'active',
+        users: ['clayton@rp-exotics.com', 'test@rp-exotics.com'],
+        features: ['enhancedSignatures', 'betaFeatures'],
+        lastTest: new Date(Date.now() - 3600000).toISOString(), // 1 hour ago
+        url: process.env.DEV_URL || 'https://dev-opis-frontend.vercel.app'
+      },
+      staging: {
+        status: 'active',
+        users: ['clayton@rp-exotics.com'],
+        features: ['enhancedSignatures'],
+        lastTest: new Date(Date.now() - 7200000).toISOString(), // 2 hours ago
+        url: process.env.STAGING_URL || 'https://staging-opis-frontend.vercel.app'
+      }
+    };
+
+    res.json({
+      success: true,
+      data: testingEnvironments
+    });
+  } catch (error) {
+    console.error('[IT ROUTES] Error getting testing environments:', error);
+    res.status(500).json({ error: 'Failed to get testing environments' });
+  }
+});
+
+// System health check
 router.get('/health', async (req, res) => {
   try {
-    console.log('[IT API] Health check requested');
-    
-    const health = {
-      status: 'healthy',
+    const healthStatus = {
+      backend: 'online',
+      database: 'online',
+      storage: 'online',
+      performance: 'good',
       timestamp: new Date().toISOString(),
-      services: {
-        backend: 'online',
-        database: 'online',
-        storage: 'online'
-      },
-      environment: process.env.NODE_ENV || 'development',
-      version: require('../package.json').version
+      uptime: process.uptime(),
+      memory: process.memoryUsage(),
+      version: process.env.npm_package_version || '1.0.0'
     };
-    
-    res.json({ success: true, data: health });
+
+    res.json({
+      success: true,
+      data: healthStatus
+    });
   } catch (error) {
-    console.error('[IT API] Health check error:', error);
+    console.error('[IT ROUTES] Health check error:', error);
     res.status(500).json({ error: 'Health check failed' });
+  }
+});
+
+// Run system diagnostics
+router.post('/diagnostics', async (req, res) => {
+  try {
+    const { type } = req.body;
+    
+    console.log(`[IT ROUTES] Running diagnostics: ${type}`);
+    
+    let result = {};
+    
+    switch (type) {
+      case 'system':
+        result = {
+          memory: process.memoryUsage(),
+          cpu: process.cpuUsage(),
+          uptime: process.uptime(),
+          platform: process.platform,
+          nodeVersion: process.version
+        };
+        break;
+      case 'database':
+        // In a real implementation, test database connection
+        result = { status: 'connected', responseTime: '15ms' };
+        break;
+      case 'api':
+        // In a real implementation, test API endpoints
+        result = { status: 'healthy', endpoints: ['/api/deals', '/api/users', '/api/signatures'] };
+        break;
+      default:
+        return res.status(400).json({ error: 'Invalid diagnostic type' });
+    }
+
+    res.json({
+      success: true,
+      data: result,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('[IT ROUTES] Diagnostics error:', error);
+    res.status(500).json({ error: 'Diagnostics failed' });
   }
 });
 
