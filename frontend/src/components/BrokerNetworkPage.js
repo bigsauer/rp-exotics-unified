@@ -1,31 +1,28 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { 
   Users, 
   Plus, 
   Search, 
-  Filter, 
   Edit, 
   Trash2, 
   Mail, 
   Phone, 
-  MapPin, 
-  Building,
   TrendingUp,
   Calendar,
   Star,
-  MoreVertical,
-  ChevronDown,
-  ChevronUp
+  ArrowLeft
 } from 'lucide-react';
 import { useAuth } from './AuthContext';
 
 const BrokerNetworkPage = () => {
+  const navigate = useNavigate();
   const { getAuthHeaders } = useAuth();
   const [brokers, setBrokers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
+
   const [specialtyFilter, setSpecialtyFilter] = useState('all');
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingBroker, setEditingBroker] = useState(null);
@@ -36,19 +33,9 @@ const BrokerNetworkPage = () => {
   // Form state for adding/editing brokers
   const [formData, setFormData] = useState({
     name: '',
-    company: '',
     email: '',
     phone: '',
-    address: {
-      street: '',
-      city: '',
-      state: '',
-      zipCode: '',
-      country: 'USA'
-    },
     specialties: [],
-    commissionRate: 0,
-    status: 'Active',
     notes: ''
   });
 
@@ -57,19 +44,20 @@ const BrokerNetworkPage = () => {
     'Domestic', 'SUV', 'Sports Car', 'Sedan', 'Other'
   ];
 
-  const statusOptions = ['Active', 'Inactive', 'Pending'];
+
+
+
 
   useEffect(() => {
     fetchBrokers();
     fetchStats();
-  }, [searchTerm, statusFilter, specialtyFilter]);
+  }, [searchTerm, specialtyFilter]);
 
   const fetchBrokers = async () => {
     try {
       setLoading(true);
       const params = new URLSearchParams();
       if (searchTerm) params.append('search', searchTerm);
-      if (statusFilter !== 'all') params.append('status', statusFilter);
       if (specialtyFilter !== 'all') params.append('specialty', specialtyFilter);
 
       const response = await fetch(`${API_BASE}/api/brokers?${params}`, {
@@ -169,19 +157,9 @@ const BrokerNetworkPage = () => {
     setEditingBroker(broker);
     setFormData({
       name: broker.name || '',
-      company: broker.company || '',
       email: broker.email || '',
       phone: broker.phone || '',
-      address: {
-        street: broker.address?.street || '',
-        city: broker.address?.city || '',
-        state: broker.address?.state || '',
-        zipCode: broker.address?.zipCode || '',
-        country: broker.address?.country || 'USA'
-      },
       specialties: broker.specialties || [],
-      commissionRate: broker.commissionRate || 0,
-      status: broker.status || 'Active',
       notes: broker.notes || ''
     });
     setShowAddModal(true);
@@ -190,19 +168,9 @@ const BrokerNetworkPage = () => {
   const resetForm = () => {
     setFormData({
       name: '',
-      company: '',
       email: '',
       phone: '',
-      address: {
-        street: '',
-        city: '',
-        state: '',
-        zipCode: '',
-        country: 'USA'
-      },
       specialties: [],
-      commissionRate: 0,
-      status: 'Active',
       notes: ''
     });
   };
@@ -245,6 +213,15 @@ const BrokerNetworkPage = () => {
   return (
     <div className="min-h-screen bg-gray-900 text-white p-6">
       <div className="max-w-7xl mx-auto">
+        {/* Back Button */}
+        <button 
+          onClick={() => navigate(-1)}
+          className="mb-6 flex items-center text-blue-400 hover:text-blue-300 font-medium transition-colors"
+        >
+          <ArrowLeft className="h-5 w-5 mr-2" />
+          Back
+        </button>
+
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-8">
           <div>
@@ -321,16 +298,7 @@ const BrokerNetworkPage = () => {
                 className="w-full pl-10 pr-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="all">All Status</option>
-              {statusOptions.map(status => (
-                <option key={status} value={status}>{status}</option>
-              ))}
-            </select>
+
             <select
               value={specialtyFilter}
               onChange={(e) => setSpecialtyFilter(e.target.value)}
@@ -351,21 +319,9 @@ const BrokerNetworkPage = () => {
               <div className="flex items-start justify-between mb-4">
                 <div className="flex-1">
                   <h3 className="text-xl font-semibold text-white mb-1">{broker.name}</h3>
-                  {broker.company && (
-                    <p className="text-gray-400 text-sm flex items-center">
-                      <Building className="h-4 w-4 mr-1" />
-                      {broker.company}
-                    </p>
-                  )}
+
                 </div>
                 <div className="flex items-center space-x-2">
-                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                    broker.status === 'Active' ? 'bg-green-500/20 text-green-400' :
-                    broker.status === 'Pending' ? 'bg-yellow-500/20 text-yellow-400' :
-                    'bg-red-500/20 text-red-400'
-                  }`}>
-                    {broker.status}
-                  </span>
                   <button
                     onClick={() => handleEdit(broker)}
                     className="text-gray-400 hover:text-white transition-colors"
@@ -392,12 +348,7 @@ const BrokerNetworkPage = () => {
                     <span>{broker.phone}</span>
                   </div>
                 )}
-                {broker.address?.city && broker.address?.state && (
-                  <div className="flex items-center text-gray-300 text-sm">
-                    <MapPin className="h-4 w-4 mr-2 text-gray-400" />
-                    <span>{broker.address.city}, {broker.address.state}</span>
-                  </div>
-                )}
+
               </div>
 
               {broker.specialties?.length > 0 && (
@@ -464,15 +415,6 @@ const BrokerNetworkPage = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">Company</label>
-                  <input
-                    type="text"
-                    value={formData.company}
-                    onChange={(e) => setFormData({...formData, company: e.target.value})}
-                    className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-                <div>
                   <label className="block text-sm font-medium text-gray-300 mb-2">Email *</label>
                   <input
                     type="email"
@@ -493,51 +435,7 @@ const BrokerNetworkPage = () => {
                 </div>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">Address</label>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <input
-                    type="text"
-                    placeholder="Street"
-                    value={formData.address.street}
-                    onChange={(e) => setFormData({
-                      ...formData, 
-                      address: {...formData.address, street: e.target.value}
-                    })}
-                    className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                  <input
-                    type="text"
-                    placeholder="City"
-                    value={formData.address.city}
-                    onChange={(e) => setFormData({
-                      ...formData, 
-                      address: {...formData.address, city: e.target.value}
-                    })}
-                    className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                  <input
-                    type="text"
-                    placeholder="State"
-                    value={formData.address.state}
-                    onChange={(e) => setFormData({
-                      ...formData, 
-                      address: {...formData.address, state: e.target.value}
-                    })}
-                    className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                  <input
-                    type="text"
-                    placeholder="ZIP Code"
-                    value={formData.address.zipCode}
-                    onChange={(e) => setFormData({
-                      ...formData, 
-                      address: {...formData.address, zipCode: e.target.value}
-                    })}
-                    className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-              </div>
+
 
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-2">Specialties</label>
@@ -556,31 +454,7 @@ const BrokerNetworkPage = () => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">Commission Rate (%)</label>
-                  <input
-                    type="number"
-                    min="0"
-                    max="100"
-                    value={formData.commissionRate}
-                    onChange={(e) => setFormData({...formData, commissionRate: Number(e.target.value)})}
-                    className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">Status</label>
-                  <select
-                    value={formData.status}
-                    onChange={(e) => setFormData({...formData, status: e.target.value})}
-                    className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    {statusOptions.map(status => (
-                      <option key={status} value={status}>{status}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
+
 
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-2">Notes</label>
