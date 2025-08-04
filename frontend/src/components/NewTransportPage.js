@@ -26,6 +26,7 @@ const NewTransportPage = () => {
     vehicleVin: '',
     vehicleType: '',
     transportType: 'Delivery to RP',
+    shippingMethod: '',
     status: 'Provide Quote',
     originCity: '',
     originAddress: '',
@@ -42,22 +43,27 @@ const NewTransportPage = () => {
 
   const vehicleTypes = [
     'Sedan',
+    'Coupe',
     'SUV',
     'Truck',
     'Sports Car',
     'Luxury Vehicle',
-    'Big SUV',
-    'Open Transport',
-    'Enclosed Transport',
-    'Best Value'
+    'Wagon',
+    'Hatchback',
+    'Convertible',
+    'Van',
+    'Motorcycle',
+    'Other'
   ];
 
   const transportTypes = [
     'Delivery to RP',
-    'Pickup from RP',
-    'Dealer to Dealer',
-    'Customer Delivery',
-    'Auction Transport'
+    'Delivery from RP'
+  ];
+
+  const shippingMethods = [
+    'Open',
+    'Enclosed'
   ];
 
   const priorities = [
@@ -251,9 +257,10 @@ const NewTransportPage = () => {
               {renderField('VIN', 'vehicleVin', 'text', null, true, 'WBS83FK06SCT42170')}
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
               {renderField('Vehicle Type', 'vehicleType', 'select', vehicleTypes, false)}
               {renderField('Transport Type', 'transportType', 'select', transportTypes, false)}
+              {renderField('Shipping Method', 'shippingMethod', 'select', shippingMethods, false)}
             </div>
           </div>
 
