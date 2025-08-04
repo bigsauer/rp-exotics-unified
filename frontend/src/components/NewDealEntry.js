@@ -751,6 +751,8 @@ const NewDealEntry = ({ setDeals }) => {
         seller: {
           name: dataToUse.sellerName,
           type: dataToUse.sellerType || (dataToUse.dealType === 'wholesale-flip' ? 'private' : dataToUse.dealType.includes('private') ? 'private' : 'dealer'),
+          email: dataToUse.sellerEmail, // Add at top level for backend validation
+          phone: dataToUse.sellerPhone, // Add at top level for backend validation
           contact: {
             address: parseAddress(dataToUse.sellerAddress), // Use parsed address
             phone: dataToUse.sellerPhone,
@@ -826,6 +828,46 @@ const NewDealEntry = ({ setDeals }) => {
       console.log('[HANDLE SAVE] Headers:', buildHeaders());
       console.log('[HANDLE SAVE] Deal data:', dealData);
       
+      // Add detailed validation logging before sending
+      console.log('[DEAL SUBMIT] 🔍 VALIDATION CHECK - Required fields being sent:');
+      console.log('[DEAL SUBMIT] 🔍 - vin:', dealData.vin);
+      console.log('[DEAL SUBMIT] 🔍 - year:', dealData.year);
+      console.log('[DEAL SUBMIT] 🔍 - make:', dealData.make);
+      console.log('[DEAL SUBMIT] 🔍 - model:', dealData.model);
+      console.log('[DEAL SUBMIT] 🔍 - mileage:', dealData.mileage);
+      console.log('[DEAL SUBMIT] 🔍 - exteriorColor:', dealData.exteriorColor);
+      console.log('[DEAL SUBMIT] 🔍 - interiorColor:', dealData.interiorColor);
+      console.log('[DEAL SUBMIT] 🔍 - seller.name:', dealData.seller?.name);
+      console.log('[DEAL SUBMIT] 🔍 - seller.email:', dealData.seller?.email);
+      console.log('[DEAL SUBMIT] 🔍 - seller.phone:', dealData.seller?.phone);
+      console.log('[DEAL SUBMIT] 🔍 - seller.contact.email:', dealData.seller?.contact?.email);
+      console.log('[DEAL SUBMIT] 🔍 - seller.contact.phone:', dealData.seller?.contact?.phone);
+      console.log('[DEAL SUBMIT] 🔍 - salesperson:', dealData.salesperson);
+      console.log('[DEAL SUBMIT] 🔍 - dealType:', dealData.dealType);
+      console.log('[DEAL SUBMIT] 🔍 - dealType2SubType:', dealData.dealType2SubType);
+      
+      // Check for missing required fields
+      const missingFields = [];
+      if (!dealData.vin) missingFields.push('vin');
+      if (!dealData.year) missingFields.push('year');
+      if (!dealData.make) missingFields.push('make');
+      if (!dealData.model) missingFields.push('model');
+      if (!dealData.mileage) missingFields.push('mileage');
+      if (!dealData.exteriorColor && !dealData.color) missingFields.push('exteriorColor/color');
+      if (!dealData.interiorColor) missingFields.push('interiorColor');
+      if (!dealData.seller?.name) missingFields.push('seller.name');
+      if (!dealData.seller?.email && !(dealData.seller?.contact?.email)) missingFields.push('seller.email');
+      if (!dealData.seller?.phone && !(dealData.seller?.contact?.phone)) missingFields.push('seller.phone');
+      if (!dealData.salesperson) missingFields.push('salesperson');
+      if (!dealData.dealType) missingFields.push('dealType');
+      if (!dealData.dealType2SubType) missingFields.push('dealType2SubType');
+      
+      if (missingFields.length > 0) {
+        console.error('[DEAL SUBMIT] ❌ MISSING REQUIRED FIELDS:', missingFields);
+      } else {
+        console.log('[DEAL SUBMIT] ✅ All required fields present');
+      }
+      
       // Create deal (this would be your existing deal creation endpoint)
       const dealResponse = await fetch(`${API_BASE}/api/deals`, {
         method: 'POST',
@@ -838,17 +880,43 @@ const NewDealEntry = ({ setDeals }) => {
       console.log('[DEAL SUBMIT] Backend response status:', dealResponse.status);
       console.log('[DEAL SUBMIT] Backend response headers:', dealResponse.headers);
       
-      const dealResult = await dealResponse.json().catch((error) => {
-        console.error('[DEAL SUBMIT] Error parsing JSON response:', error);
-        return {};
-      });
+      let dealResult = {};
+      let errorText = '';
       
-      console.log('[DEAL SUBMIT] Backend response JSON:', dealResult);
+      // Try to parse JSON response, but also capture raw text for debugging
+      try {
+        dealResult = await dealResponse.json();
+        console.log('[DEAL SUBMIT] Backend response JSON:', dealResult);
+      } catch (jsonError) {
+        console.error('[DEAL SUBMIT] Error parsing JSON response:', jsonError);
+        // If JSON parsing fails, try to get the raw text
+        try {
+          errorText = await dealResponse.text();
+          console.error('[DEAL SUBMIT] Raw error response:', errorText);
+        } catch (textError) {
+          console.error('[DEAL SUBMIT] Could not read response as text either:', textError);
+        }
+        dealResult = {};
+      }
       
       if (!dealResponse.ok) {
         console.error('[DEAL SUBMIT] API call failed with status:', dealResponse.status);
         console.error('[DEAL SUBMIT] Error response:', dealResult);
-        throw new Error(dealResult.error || `Failed to create deal (Status: ${dealResponse.status})`);
+        console.error('[DEAL SUBMIT] Raw error text:', errorText);
+        
+        // Create a more detailed error message
+        let errorMessage = 'Validation failed';
+        if (dealResult.error) {
+          errorMessage = dealResult.error;
+        } else if (dealResult.details && Array.isArray(dealResult.details)) {
+          errorMessage = `Validation failed: ${dealResult.details.join(', ')}`;
+        } else if (errorText) {
+          errorMessage = `Server error: ${errorText}`;
+        } else {
+          errorMessage = `Failed to create deal (Status: ${dealResponse.status})`;
+        }
+        
+        throw new Error(errorMessage);
       }
       
       if (!dealResult.success || !dealResult.deal) {
@@ -1615,22 +1683,38 @@ ${currentUser.name}`;
                   {renderFormField('Email', 'sellerEmail', 'email', null, false, Mail)}
                   {renderFormField(dynamicLabels.addressLabel, 'sellerAddress', 'text', null, false, MapPin)}
                   
-                  {/* Show license number and tier for wholesale d2d deals (but not for buy deals) */}
-                  {formData.dealType === 'wholesale-d2d' && (
+                  {/* Show license number for retail-d2d and wholesale d2d deals */}
+                  {(formData.dealType === 'retail-d2d' || formData.dealType === 'wholesale-d2d') && (
                     <>
-                      <div>
-                        <label htmlFor="seller-license-number" className="block text-sm font-medium text-gray-300 mb-1">Dealer License Number</label>
-                        <input
-                          type="text"
-                          id="seller-license-number"
-                          value={formData.sellerLicenseNumber || ''}
-                          onChange={e => handleInputChange('sellerLicenseNumber', e.target.value)}
-                          className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        />
-                      </div>
+                                              <div>
+                          <label htmlFor="seller-license-number" className="block text-sm font-medium text-gray-300 mb-1">Dealer License Number</label>
+                          <input
+                            type="text"
+                            id="seller-license-number"
+                            value={formData.sellerLicenseNumber || ''}
+                            onChange={e => handleInputChange('sellerLicenseNumber', e.target.value)}
+                            className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          />
+                        </div>
+                        
+                        {/* Dealer Tier for retail-d2d deals */}
+                        {formData.dealType === 'retail-d2d' && (
+                          <div>
+                            <label htmlFor="seller-tier" className="block text-sm font-medium text-gray-300 mb-1">Dealer Tier</label>
+                            <select
+                              id="seller-tier"
+                              value={formData.sellerTier || 'Tier 1'}
+                              onChange={e => handleInputChange('sellerTier', e.target.value)}
+                              className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            >
+                              <option value="Tier 1">Tier 1: Pay Upon Title</option>
+                              <option value="Tier 2">Tier 2: Pay Prior to Release</option>
+                            </select>
+                          </div>
+                        )}
                       
                       {/* Tier Selection - only for sale deals, not buy deals */}
-                      {formData.dealType2SubType === 'sale' && (
+                      {formData.dealType2SubType === 'sale' && formData.dealType === 'wholesale-d2d' && (
                         <div className="md:col-span-2">
                           <label className="block text-sm font-medium text-white mb-2">
                             Dealer Tier
