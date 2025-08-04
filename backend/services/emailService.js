@@ -27,7 +27,7 @@ const emailService = {
     
     try {
       const { data, error } = await resend.emails.send({
-        from: 'RP Exotics <onboarding@resend.dev>',
+        from: 'RP Exotics <noreply@slipstreamdocs.com>',
         to: [to],
         subject: `Deal Status Update - ${dealData.vin}`,
         html: `
@@ -90,7 +90,7 @@ const emailService = {
     
     try {
       const { data, error } = await resend.emails.send({
-        from: 'RP Exotics <onboarding@resend.dev>',
+        from: 'RP Exotics <noreply@slipstreamdocs.com>',
         to: [to],
         subject: `Document Uploaded - ${documentType} for ${dealData.vin}`,
         html: `
@@ -145,7 +145,7 @@ const emailService = {
     }
     try {
       const { data, error } = await resend.emails.send({
-        from: 'RP Exotics <onboarding@resend.dev>',
+        from: 'RP Exotics <noreply@slipstreamdocs.com>',
         to: [to],
         subject: `New Deal Created - ${dealData.vin}`,
         html: `
@@ -204,7 +204,7 @@ const emailService = {
     
     try {
       const { data, error } = await resend.emails.send({
-        from: 'RP Exotics <onboarding@resend.dev>',
+        from: 'RP Exotics <noreply@slipstreamdocs.com>',
         to: [to],
         subject: `System Alert - ${alertData.title}`,
         html: `
@@ -284,7 +284,7 @@ const emailService = {
       }
 
       const { data, error } = await resend.emails.send({
-        from: 'RP Exotics <onboarding@resend.dev>',
+        from: 'RP Exotics <noreply@slipstreamdocs.com>',
         to: [to],
         subject: `Deal Receipt - ${dealData.vin} (${dealData.rpStockNumber || 'N/A'})`,
         html: `
@@ -356,7 +356,7 @@ const emailService = {
     
     try {
       const { data, error } = await resend.emails.send({
-        from: 'RP Exotics <onboarding@resend.dev>',
+        from: 'RP Exotics <noreply@slipstreamdocs.com>',
         to: [adminEmail],
         subject: `Password Reset Request - ${userName}`,
         html: `
@@ -416,7 +416,7 @@ const emailService = {
     
     try {
       const { data, error } = await resend.emails.send({
-        from: 'RP Exotics <onboarding@resend.dev>',
+        from: 'RP Exotics <noreply@slipstreamdocs.com>',
         to: [userEmail],
         subject: 'Password Reset Approved - RP Exotics',
         html: `
@@ -472,7 +472,7 @@ const emailService = {
     
     try {
       const { data, error } = await resend.emails.send({
-        from: 'RP Exotics <onboarding@resend.dev>',
+        from: 'RP Exotics <noreply@slipstreamdocs.com>',
         to: [userEmail],
         subject: 'Password Reset Request Rejected - RP Exotics',
         html: `
