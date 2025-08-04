@@ -16,10 +16,9 @@ const allowedOrigins = [
   'http://localhost:8080',
   'http://127.0.0.1:3000',
   'https://rp-exotics-frontend.vercel.app',
+  'https://slipstreamdocs.com',
   'https://astonishing-chicken-production.up.railway.app',
   'https://astonishing-chicken-production.up.railway.app', // Add your actual Railway backend URL if different
-  'https://slipstreamdocs.com',
-  'https://www.slipstreamdocs.com',
   process.env.FRONTEND_URL
 ].filter(Boolean);
 
