@@ -117,6 +117,8 @@ const NewDealEntry = ({ setDeals }) => {
   const [dealerSuggestions, setDealerSuggestions] = useState([]);
   const [dealerBuyerSuggestions, setDealerBuyerSuggestions] = useState([]); // For Dealer Info (Buyer)
   const [dealerSearch, setDealerSearch] = useState('');
+  const [brokerSuggestions, setBrokerSuggestions] = useState([]);
+  const [brokerSearch, setBrokerSearch] = useState('');
   const [formErrors, setFormErrors] = useState({});
   const [saving, setSaving] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
@@ -347,6 +349,26 @@ const NewDealEntry = ({ setDeals }) => {
     }
   };
 
+  // Broker search for brokerage fee paid to
+  const searchBrokers = async (query) => {
+    if (query.length < 2) {
+      setBrokerSuggestions([]);
+      return;
+    }
+    try {
+      const url = `${API_BASE}/api/brokers?search=${encodeURIComponent(query)}`;
+      console.log('[DEBUG][NewDealEntry] Broker search fetch from:', url);
+      const response = await fetch(url, { credentials: 'include' });
+      const data = await response.json();
+      if (data.success) {
+        setBrokerSuggestions(data.data || []);
+      }
+    } catch (error) {
+      console.error('Broker search error:', error);
+      setBrokerSuggestions([]);
+    }
+  };
+
   // Autofill dealer info when a suggestion is selected
   const handleDealerSuggestionClick = (dealer) => {
     setFormData(prev => {
@@ -368,6 +390,48 @@ const NewDealEntry = ({ setDeals }) => {
     console.log('[DEALER AUTOFILL] Selected dealer:', dealer);
     console.log('[DEALER AUTOFILL] Autofilled address:', dealer.addressString);
     console.log('[DEALER AUTOFILL] Autofilled license number:', dealer.licenseNumber);
+  };
+
+  // Autofill broker info when a suggestion is selected
+  const handleBrokerSuggestionClick = (broker) => {
+    setFormData(prev => ({
+      ...prev,
+      brokerageFeePaidTo: broker.name || ''
+    }));
+    setBrokerSuggestions([]);
+    setBrokerSearch('');
+    console.log('[BROKER AUTOFILL] Selected broker:', broker);
+  };
+
+  // Create new broker if one doesn't exist
+  const createNewBroker = async (brokerName) => {
+    try {
+      const response = await fetch(`${API_BASE}/api/brokers`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: buildHeaders(),
+        body: JSON.stringify({
+          name: brokerName,
+          email: 'temp@example.com', // Placeholder email
+          phone: '', // Empty phone
+          company: '', // Empty company
+          status: 'Active'
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success) {
+          console.log('[BROKER CREATE] ✅ New broker created:', data.data);
+          toast.success(`New broker "${brokerName}" created successfully`);
+          return data.data;
+        }
+      }
+    } catch (error) {
+      console.error('[BROKER CREATE] ❌ Error creating broker:', error);
+      toast.error('Failed to create new broker');
+    }
+    return null;
   };
 
   // Auto-generate stock number
@@ -470,6 +534,11 @@ const NewDealEntry = ({ setDeals }) => {
       } else {
         setDealerBuyerSuggestions([]); // Clear suggestions for private party
       }
+    }
+
+    // Search brokers when typing in brokerage fee paid to field
+    if (field === 'brokerageFeePaidTo') {
+      searchBrokers(processedValue);
     }
 
     // Clear dealer suggestions when switching types
@@ -866,6 +935,34 @@ const NewDealEntry = ({ setDeals }) => {
         console.error('[DEAL SUBMIT] ❌ MISSING REQUIRED FIELDS:', missingFields);
       } else {
         console.log('[DEAL SUBMIT] ✅ All required fields present');
+      }
+
+      // Create broker if brokerage fee is present and broker doesn't exist
+      if (dealData.brokerFee && dealData.brokerFee > 0 && dealData.brokerFeePaidTo) {
+        console.log('[BROKER CHECK] Checking if broker exists:', dealData.brokerFeePaidTo);
+        
+        // Check if broker exists
+        const brokerCheckResponse = await fetch(`${API_BASE}/api/brokers?search=${encodeURIComponent(dealData.brokerFeePaidTo)}`, {
+          credentials: 'include',
+          headers: getAuthHeaders()
+        });
+        
+        if (brokerCheckResponse.ok) {
+          const brokerData = await brokerCheckResponse.json();
+          const existingBroker = brokerData.data?.find(broker => 
+            broker.name.toLowerCase() === dealData.brokerFeePaidTo.toLowerCase()
+          );
+          
+          if (!existingBroker) {
+            console.log('[BROKER CREATE] Creating new broker:', dealData.brokerFeePaidTo);
+            const newBroker = await createNewBroker(dealData.brokerFeePaidTo);
+            if (newBroker) {
+              console.log('[BROKER CREATE] ✅ New broker created successfully');
+            }
+          } else {
+            console.log('[BROKER CHECK] ✅ Broker already exists:', existingBroker.name);
+          }
+        }
       }
       
       // Create deal (this would be your existing deal creation endpoint)
@@ -1349,6 +1446,27 @@ ${currentUser.name}`;
                   >
                     <div className="font-medium text-white">{dealer.name}</div>
                     <div className="text-sm text-gray-400">{dealer.company} • {dealer.location}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Broker Autocomplete for brokerage fee paid to */}
+            {field === 'brokerageFeePaidTo' && brokerSuggestions.length > 0 && (
+              <div className="absolute top-full left-0 right-0 mt-1 bg-gray-800 border border-white/20 rounded-lg shadow-xl z-10 max-h-40 overflow-y-auto">
+                {brokerSuggestions.map(broker => (
+                  <div
+                    key={broker._id}
+                    className="p-3 hover:bg-white/10 cursor-pointer border-b border-white/10 last:border-b-0"
+                    onClick={() => {
+                      handleBrokerSuggestionClick(broker);
+                    }}
+                  >
+                    <div className="font-medium text-white">{broker.name}</div>
+                    <div className="text-sm text-gray-400">
+                      {broker.company && `${broker.company} • `}
+                      {broker.email} • {broker.phone}
+                    </div>
                   </div>
                 ))}
               </div>

@@ -65,7 +65,25 @@ const brokerSchema = new mongoose.Schema({
   totalVolume: {
     type: Number,
     default: 0
-  }
+  },
+  monthlyCommissions: [{
+    month: {
+      type: String, // Format: "YYYY-MM" (e.g., "2024-01")
+      required: true
+    },
+    amount: {
+      type: Number,
+      default: 0
+    },
+    dealCount: {
+      type: Number,
+      default: 0
+    },
+    lastUpdated: {
+      type: Date,
+      default: Date.now
+    }
+  }]
 }, {
   timestamps: true
 });

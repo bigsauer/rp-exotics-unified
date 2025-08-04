@@ -207,4 +207,119 @@ router.get('/stats/overview', authenticateToken, async (req, res) => {
   }
 });
 
+// Update broker commission for a deal
+router.post('/:id/update-commission', authenticateToken, async (req, res) => {
+  try {
+    const { commissionAmount, dealId } = req.body;
+    const brokerId = req.params.id;
+    
+    if (!commissionAmount || commissionAmount <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Valid commission amount required'
+      });
+    }
+
+    const broker = await Broker.findById(brokerId);
+    if (!broker) {
+      return res.status(404).json({
+        success: false,
+        message: 'Broker not found'
+      });
+    }
+
+    // Get current month in YYYY-MM format
+    const currentMonth = new Date().toISOString().slice(0, 7);
+    
+    // Find existing monthly commission record
+    let monthlyCommission = broker.monthlyCommissions.find(
+      mc => mc.month === currentMonth
+    );
+
+    if (monthlyCommission) {
+      // Update existing record
+      monthlyCommission.amount += commissionAmount;
+      monthlyCommission.dealCount += 1;
+      monthlyCommission.lastUpdated = new Date();
+    } else {
+      // Create new monthly record
+      broker.monthlyCommissions.push({
+        month: currentMonth,
+        amount: commissionAmount,
+        dealCount: 1,
+        lastUpdated: new Date()
+      });
+    }
+
+    // Update total stats
+    broker.totalDeals += 1;
+    broker.totalVolume += commissionAmount;
+    broker.lastContact = new Date();
+
+    await broker.save();
+
+    res.json({
+      success: true,
+      message: 'Broker commission updated successfully',
+      data: {
+        brokerId: broker._id,
+        brokerName: broker.name,
+        commissionAmount,
+        currentMonth,
+        totalMonthlyAmount: monthlyCommission ? monthlyCommission.amount : commissionAmount,
+        totalMonthlyDeals: monthlyCommission ? monthlyCommission.dealCount : 1
+      }
+    });
+  } catch (error) {
+    console.error('[BROKERS] Error updating broker commission:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to update broker commission',
+      error: error.message
+    });
+  }
+});
+
+// Get broker commission summary
+router.get('/:id/commission-summary', authenticateToken, async (req, res) => {
+  try {
+    const broker = await Broker.findById(req.params.id);
+    if (!broker) {
+      return res.status(404).json({
+        success: false,
+        message: 'Broker not found'
+      });
+    }
+
+    const currentMonth = new Date().toISOString().slice(0, 7);
+    const monthlyCommission = broker.monthlyCommissions.find(
+      mc => mc.month === currentMonth
+    );
+
+    res.json({
+      success: true,
+      data: {
+        brokerId: broker._id,
+        brokerName: broker.name,
+        currentMonth,
+        monthlyCommission: monthlyCommission || {
+          month: currentMonth,
+          amount: 0,
+          dealCount: 0
+        },
+        totalDeals: broker.totalDeals,
+        totalVolume: broker.totalVolume,
+        allMonthlyCommissions: broker.monthlyCommissions
+      }
+    });
+  } catch (error) {
+    console.error('[BROKERS] Error fetching broker commission summary:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch broker commission summary',
+      error: error.message
+    });
+  }
+});
+
 module.exports = router; 

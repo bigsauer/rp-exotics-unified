@@ -312,7 +312,7 @@ const EnhancedPDFViewer = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black flex flex-col items-center justify-center p-8">
-      {/* Header with navigation and signature button */}
+      {/* Header with navigation */}
       <div className="w-full max-w-5xl flex justify-between items-center mb-6">
         <button
           className="flex items-center text-blue-400 hover:text-blue-300 font-medium"
@@ -323,19 +323,6 @@ const EnhancedPDFViewer = () => {
           </svg>
           Back
         </button>
-        
-        {/* Signature button for finance personnel */}
-        {user?.role === 'finance' && (
-          <button
-            onClick={() => setShowSignatureModal(true)}
-            className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-semibold flex items-center"
-          >
-            <svg className="h-5 w-5 mr-2" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-            </svg>
-            Sign Document
-          </button>
-        )}
       </div>
 
       {/* PDF Viewer */}

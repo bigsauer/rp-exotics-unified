@@ -1052,6 +1052,60 @@ router.post('/', authenticateToken, async (req, res) => {
       // Don't fail the deal creation if document saving fails
     }
 
+    // Update broker commission if brokerage fee is present
+    try {
+      if (newDeal.brokerFee && newDeal.brokerFee > 0 && newDeal.brokerFeePaidTo) {
+        console.log('[BROKER COMMISSION] 💰 Updating broker commission for deal:', newDeal._id);
+        console.log('[BROKER COMMISSION] Broker fee:', newDeal.brokerFee, 'Paid to:', newDeal.brokerFeePaidTo);
+        
+        // Find broker by name
+        const Broker = require('../models/Broker');
+        const broker = await Broker.findOne({ 
+          name: { $regex: new RegExp(newDeal.brokerFeePaidTo, 'i') }
+        });
+        
+        if (broker) {
+          console.log('[BROKER COMMISSION] ✅ Found broker:', broker.name);
+          
+          // Get current month in YYYY-MM format
+          const currentMonth = new Date().toISOString().slice(0, 7);
+          
+          // Find existing monthly commission record
+          let monthlyCommission = broker.monthlyCommissions.find(
+            mc => mc.month === currentMonth
+          );
+
+          if (monthlyCommission) {
+            // Update existing record
+            monthlyCommission.amount += newDeal.brokerFee;
+            monthlyCommission.dealCount += 1;
+            monthlyCommission.lastUpdated = new Date();
+          } else {
+            // Create new monthly record
+            broker.monthlyCommissions.push({
+              month: currentMonth,
+              amount: newDeal.brokerFee,
+              dealCount: 1,
+              lastUpdated: new Date()
+            });
+          }
+
+          // Update total stats
+          broker.totalDeals += 1;
+          broker.totalVolume += newDeal.brokerFee;
+          broker.lastContact = new Date();
+
+          await broker.save();
+          console.log('[BROKER COMMISSION] ✅ Broker commission updated successfully');
+        } else {
+          console.log('[BROKER COMMISSION] ⚠️ Broker not found:', newDeal.brokerFeePaidTo);
+        }
+      }
+    } catch (brokerError) {
+      console.error('[BROKER COMMISSION] ❌ Error updating broker commission:', brokerError);
+      // Don't fail the deal creation if broker commission update fails
+    }
+
     // Send deal receipt email to the user who created the deal
     try {
       console.log('[EMAIL] 📧 Sending deal receipt email to:', req.user.email);

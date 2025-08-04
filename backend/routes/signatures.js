@@ -4,6 +4,7 @@ const auth = require('../middleware/auth');
 const DigitalSignature = require('../models/DigitalSignature');
 const pdfSignatureService = require('../services/pdfSignatureService');
 const cloudStorage = require('../services/cloudStorage');
+const emailService = require('../services/emailService');
 const fetch = require('node-fetch');
 
 // Debug logging utility
@@ -302,6 +303,51 @@ router.post('/', auth, async (req, res) => {
         clientSignatureId: clientSignature.signatureId,
         clientEmail
       });
+
+      // Send email to client with signature request
+      try {
+        debugLog('Sending client signature request email from initial signature', {
+          clientEmail,
+          clientSignatureId: clientSignature.signatureId,
+          documentType
+        });
+
+        // Get deal information for the email
+        const dealInfo = {
+          vehicle: documentType.includes('vehicle') ? 'Vehicle Record' : 
+                  documentType.includes('bill') ? 'Bill of Sale' : 
+                  documentType.includes('contract') ? 'Purchase Contract' : 
+                  documentType,
+          vin: 'N/A', // Could be extracted from document URL or stored in signature data
+          rpStockNumber: 'N/A', // Could be extracted from document URL or stored in signature data
+          stockNumber: 'N/A'
+        };
+
+        const emailResult = await emailService.sendClientSignatureRequest({
+          clientEmail,
+          signatureId: clientSignature.signatureId,
+          documentType,
+          dealInfo,
+          signerName: req.user.profile?.displayName || req.user.email
+        });
+
+        if (emailResult.success) {
+          debugLog('Client signature request email sent successfully from initial signature', {
+            clientEmail,
+            clientSignatureId: clientSignature.signatureId
+          });
+        } else {
+          errorLog('Failed to send client signature request email from initial signature', {
+            clientEmail,
+            clientSignatureId: clientSignature.signatureId,
+            error: emailResult.error
+          });
+          // Don't fail the request if email fails, but log it
+        }
+      } catch (emailError) {
+        errorLog('Error sending client signature request email from initial signature', emailError);
+        // Don't fail the request if email fails, but log it
+      }
     }
 
     debugLog('Signature creation process completed successfully', {
@@ -417,6 +463,51 @@ router.post('/:signatureId/send-to-client', auth, async (req, res) => {
       clientEmail,
       originalSignatureId: signatureId
     });
+
+    // Send email to client with signature request
+    try {
+      debugLog('Sending client signature request email', {
+        clientEmail,
+        clientSignatureId: clientSignature.signatureId,
+        documentType: originalSignature.documentType
+      });
+
+      // Get deal information for the email
+      const dealInfo = {
+        vehicle: originalSignature.documentType.includes('vehicle') ? 'Vehicle Record' : 
+                originalSignature.documentType.includes('bill') ? 'Bill of Sale' : 
+                originalSignature.documentType.includes('contract') ? 'Purchase Contract' : 
+                originalSignature.documentType,
+        vin: 'N/A', // Could be extracted from document URL or stored in signature data
+        rpStockNumber: 'N/A', // Could be extracted from document URL or stored in signature data
+        stockNumber: 'N/A'
+      };
+
+      const emailResult = await emailService.sendClientSignatureRequest({
+        clientEmail,
+        signatureId: clientSignature.signatureId,
+        documentType: originalSignature.documentType,
+        dealInfo,
+        signerName: req.user.profile?.displayName || req.user.email
+      });
+
+      if (emailResult.success) {
+        debugLog('Client signature request email sent successfully', {
+          clientEmail,
+          clientSignatureId: clientSignature.signatureId
+        });
+      } else {
+        errorLog('Failed to send client signature request email', {
+          clientEmail,
+          clientSignatureId: clientSignature.signatureId,
+          error: emailResult.error
+        });
+        // Don't fail the request if email fails, but log it
+      }
+    } catch (emailError) {
+      errorLog('Error sending client signature request email', emailError);
+      // Don't fail the request if email fails, but log it
+    }
 
     res.json({
       success: true,

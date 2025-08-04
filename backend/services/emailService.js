@@ -596,6 +596,91 @@ const emailService = {
       console.error('Email service error:', error);
       return { success: false, error };
     }
+  },
+
+  // Send client signature request
+  async sendClientSignatureRequest({ clientEmail, signatureId, documentType, dealInfo, signerName }) {
+    if (!checkEmailService()) {
+      return { success: false, error: 'Email service not configured' };
+    }
+    
+    try {
+      // Generate the signature URL using the production frontend URL
+      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+      const signatureUrl = `${frontendUrl}/sign/${signatureId}`;
+      
+      console.log('[EMAIL][sendClientSignatureRequest] Sending signature request', {
+        clientEmail,
+        signatureId,
+        documentType,
+        signatureUrl,
+        frontendUrl
+      });
+
+      const { data, error } = await resend.emails.send({
+        from: 'RP Exotics <noreply@slipstreamdocs.com>',
+        to: [clientEmail],
+        subject: `Document Signature Required - ${documentType} for ${dealInfo?.vehicle || 'Vehicle Deal'}`,
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <div style="background: linear-gradient(135deg, #1f2937, #111827); color: white; padding: 20px; text-align: center;">
+              <h1 style="margin: 0; color: #10b981;">RP Exotics</h1>
+              <p style="margin: 10px 0 0 0; opacity: 0.8;">Digital Document Signature</p>
+            </div>
+            
+            <div style="padding: 30px; background: white;">
+              <h2 style="color: #1f2937; margin-bottom: 20px;">Document Signature Required</h2>
+              
+              <div style="background: #dbeafe; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+                <h3 style="color: #1e40af; margin-top: 0;">Document Information</h3>
+                <p><strong>Document Type:</strong> ${documentType}</p>
+                <p><strong>Vehicle:</strong> ${dealInfo?.vehicle || 'N/A'}</p>
+                <p><strong>VIN:</strong> ${dealInfo?.vin || 'N/A'}</p>
+                <p><strong>Stock Number:</strong> ${dealInfo?.rpStockNumber || dealInfo?.stockNumber || 'N/A'}</p>
+                <p><strong>Requested By:</strong> ${signerName || 'RP Exotics Finance Team'}</p>
+                <p><strong>Request Date:</strong> ${new Date().toLocaleDateString()}</p>
+              </div>
+              
+              <div style="background: #f0fdf4; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+                <h3 style="color: #166534; margin-top: 0;">📋 Action Required</h3>
+                <p>Please click the button below to review and sign the document electronically. This process is secure and legally binding.</p>
+                <p><strong>Important:</strong> This signature link will expire in 7 days for security purposes.</p>
+              </div>
+              
+              <div style="text-align: center; margin-top: 30px;">
+                <a href="${signatureUrl}" 
+                   style="background: #10b981; color: white; padding: 16px 32px; text-decoration: none; border-radius: 8px; display: inline-block; font-weight: 600; font-size: 16px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+                  📝 Sign Document Online
+                </a>
+              </div>
+              
+              <div style="background: #fef3c7; padding: 15px; border-radius: 8px; margin-top: 20px;">
+                <h4 style="color: #92400e; margin-top: 0; font-size: 14px;">🔒 Security Notice</h4>
+                <p style="color: #92400e; font-size: 12px; margin: 0;">
+                  This is a secure, legally binding electronic signature process. Your signature will be recorded with full audit trail including IP address, timestamp, and consent verification.
+                </p>
+              </div>
+            </div>
+            
+            <div style="background: #f9fafb; padding: 20px; text-align: center; color: #6b7280;">
+              <p style="margin: 0; font-size: 12px;">This is an automated message from RP Exotics Deal Management System</p>
+              <p style="margin: 5px 0 0 0; font-size: 11px;">If you have any questions, please contact RP Exotics directly.</p>
+            </div>
+          </div>
+        `
+      });
+
+      if (error) {
+        console.error('[EMAIL][sendClientSignatureRequest] Resend error:', error);
+        return { success: false, error };
+      }
+
+      console.log('[EMAIL][sendClientSignatureRequest] Client signature request email sent successfully:', data);
+      return { success: true, data };
+    } catch (error) {
+      console.error('[EMAIL][sendClientSignatureRequest] Email service error:', error);
+      return { success: false, error };
+    }
   }
 };
 
