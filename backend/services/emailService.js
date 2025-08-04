@@ -263,17 +263,94 @@ const emailService = {
       console.log(`[EMAIL][sendDealReceipt] Attempting to send deal receipt to: ${to}`);
       console.log(`[EMAIL][sendDealReceipt] Deal Data:`, dealData);
       console.log(`[EMAIL][sendDealReceipt] Generated Documents:`, generatedDocuments);
+      
+      // Prepare attachments array
+      const attachments = [];
+      
+      // Process generated documents and add them as attachments
+      if (generatedDocuments && generatedDocuments.length > 0) {
+        for (const doc of generatedDocuments) {
+          if (doc.filePath) {
+            try {
+              // Download the file from S3 or local storage
+              const fs = require('fs-extra');
+              const path = require('path');
+              const cloudStorage = require('./cloudStorage');
+              
+              let fileBuffer;
+              let fileName;
+              
+              if (doc.filePath.startsWith('http')) {
+                // File is in S3, download it
+                console.log(`[EMAIL][sendDealReceipt] Downloading file from S3: ${doc.filePath}`);
+                
+                // Extract filename from URL
+                const urlParts = doc.filePath.split('/');
+                const fileNameFromUrl = urlParts[urlParts.length - 1];
+                
+                const downloadResult = await cloudStorage.downloadFile(fileNameFromUrl);
+                if (downloadResult.success) {
+                  fileBuffer = downloadResult.data; // Use 'data' instead of 'buffer'
+                  fileName = doc.fileName || fileNameFromUrl;
+                } else {
+                  console.warn(`[EMAIL][sendDealReceipt] Failed to download file from S3: ${doc.filePath}`);
+                  continue;
+                }
+              } else {
+                // File is local, read it
+                console.log(`[EMAIL][sendDealReceipt] Reading local file: ${doc.filePath}`);
+                const fileExists = await fs.pathExists(doc.filePath);
+                if (fileExists) {
+                  fileBuffer = await fs.readFile(doc.filePath);
+                  fileName = doc.fileName || path.basename(doc.filePath);
+                } else {
+                  console.warn(`[EMAIL][sendDealReceipt] Local file not found: ${doc.filePath}`);
+                  continue;
+                }
+              }
+              
+              // Add to attachments array
+              attachments.push({
+                filename: fileName,
+                content: fileBuffer
+              });
+              
+              console.log(`[EMAIL][sendDealReceipt] Added attachment: ${fileName}`);
+            } catch (attachmentError) {
+              console.error(`[EMAIL][sendDealReceipt] Error processing attachment ${doc.name}:`, attachmentError);
+              // Continue with other attachments even if one fails
+            }
+          }
+        }
+      }
+      
       // Build the documents list HTML
       let documentsList = '';
       if (generatedDocuments && generatedDocuments.length > 0) {
-        documentsList = `
-          <div style="background: #f0fdf4; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
-            <h3 style="color: #166534; margin-top: 0;">Generated Documents</h3>
-            <ul style="margin: 0; padding-left: 20px;">
-              ${generatedDocuments.map(doc => `<li style="margin-bottom: 8px; color: #166534;">${doc.name}</li>`).join('')}
-            </ul>
-          </div>
-        `;
+        const attachedDocs = generatedDocuments.filter(doc => doc.filePath).map(doc => doc.name);
+        const pendingDocs = generatedDocuments.filter(doc => !doc.filePath).map(doc => doc.name);
+        
+        if (attachedDocs.length > 0) {
+          documentsList = `
+            <div style="background: #f0fdf4; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+              <h3 style="color: #166534; margin-top: 0;">Generated Documents (Attached)</h3>
+              <ul style="margin: 0; padding-left: 20px;">
+                ${attachedDocs.map(doc => `<li style="margin-bottom: 8px; color: #166534;">${doc}</li>`).join('')}
+              </ul>
+            </div>
+          `;
+        }
+        
+        if (pendingDocs.length > 0) {
+          documentsList += `
+            <div style="background: #fef3c7; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+              <h3 style="color: #92400e; margin-top: 0;">Documents Being Processed</h3>
+              <ul style="margin: 0; padding-left: 20px;">
+                ${pendingDocs.map(doc => `<li style="margin-bottom: 8px; color: #92400e;">${doc}</li>`).join('')}
+              </ul>
+            </div>
+          `;
+        }
       } else {
         documentsList = `
           <div style="background: #fef3c7; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
@@ -287,6 +364,7 @@ const emailService = {
         from: 'RP Exotics <noreply@slipstreamdocs.com>',
         to: [to],
         subject: `Deal Receipt - ${dealData.vin} (${dealData.rpStockNumber || 'N/A'})`,
+        attachments: attachments.length > 0 ? attachments : undefined,
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
             <div style="background: linear-gradient(135deg, #1f2937, #111827); color: white; padding: 20px; text-align: center;">

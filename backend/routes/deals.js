@@ -1071,10 +1071,18 @@ router.post('/', authenticateToken, async (req, res) => {
       // Collect generated documents
       const generatedDocuments = [];
       if (pdfInfo) {
-        generatedDocuments.push({ name: 'Vehicle Record' });
+        generatedDocuments.push({ 
+          name: 'Vehicle Record',
+          filePath: pdfInfo.filePath,
+          fileName: pdfInfo.fileName
+        });
       }
       if (purchaseContractPdfInfo) {
-        generatedDocuments.push({ name: 'Purchase Agreement' });
+        generatedDocuments.push({ 
+          name: 'Purchase Agreement',
+          filePath: purchaseContractPdfInfo.filePath,
+          fileName: purchaseContractPdfInfo.fileName
+        });
       }
       
       // Send email receipt
