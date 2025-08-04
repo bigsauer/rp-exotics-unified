@@ -18,6 +18,8 @@ const allowedOrigins = [
   'https://rp-exotics-frontend.vercel.app',
   'https://astonishing-chicken-production.up.railway.app',
   'https://astonishing-chicken-production.up.railway.app', // Add your actual Railway backend URL if different
+  'https://slipstreamdocs.com',
+  'https://www.slipstreamdocs.com',
   process.env.FRONTEND_URL
 ].filter(Boolean);
 

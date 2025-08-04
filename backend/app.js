@@ -25,6 +25,8 @@ const allowedOrigins = [
   'http://127.0.0.1:3001',
   'https://rp-exotics-frontend.vercel.app',
   'https://rp-exotics-frontend.netlify.app',
+  'https://slipstreamdocs.com',
+  'https://www.slipstreamdocs.com',
   process.env.FRONTEND_URL
 ].filter(Boolean);
 
