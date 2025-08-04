@@ -21,6 +21,7 @@ import RequireClaytonAuth from './components/RequireClaytonAuth';
 import ApiKeyManagement from './components/ApiKeyManagement';
 import DocumentSignature from './components/DocumentSignature';
 import SignatureComplianceReport from './components/SignatureComplianceReport';
+import BrokerNetworkPage from './components/BrokerNetworkPage';
 
 function RequireAuth({ children }) {
   const { user, loading } = useAuth();
@@ -46,6 +47,7 @@ function App() {
           <Route path="/sign/:signatureId" element={<DocumentSignature />} />
           <Route path="/signatures/:signatureId/compliance" element={<RequireAuth><SignatureComplianceReport /></RequireAuth>} />
           <Route path="/dealers" element={<RequireAuth><DealerNetworkPage /></RequireAuth>} />
+          <Route path="/brokers" element={<RequireAuth><BrokerNetworkPage /></RequireAuth>} />
           <Route path="/finance/deals" element={<RequireAuth><FinanceDashboard /></RequireAuth>} />
           <Route path="/finance/deals/:dealId" element={<RequireAuth><FinanceDealDetails /></RequireAuth>} />
           <Route path="/finance/status" element={<RequireAuth><FinanceStatusDashboard /></RequireAuth>} />

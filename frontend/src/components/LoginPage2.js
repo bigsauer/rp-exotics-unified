@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Car, Eye, EyeOff, Lock, User, Shield, Zap } from 'lucide-react';
+import { Eye, EyeOff, Lock, User, Zap } from 'lucide-react';
 
 const LoginPage2 = () => {
   const [showPassword, setShowPassword] = useState(false);
@@ -89,56 +89,6 @@ const LoginPage2 = () => {
               >
                 Forgot your password?
               </button>
-            </div>
-
-            {/* Divider */}
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-white/20"></div>
-              </div>
-              <div className="relative flex justify-center text-sm">
-                <span className="px-2 bg-transparent text-gray-400">Demo Accounts</span>
-              </div>
-            </div>
-
-            {/* Demo Account Buttons */}
-            <div className="space-y-3">
-              <button
-                onClick={() => setLoginData({email: 'admin@rpexotics.com', password: 'admin123'})}
-                className="w-full flex items-center justify-between bg-blue-600/20 hover:bg-blue-600/30 text-white p-4 rounded-lg transition-colors border border-blue-500/30"
-              >
-                <div className="flex items-center">
-                  <Shield className="h-5 w-5 text-blue-400 mr-3" />
-                  <span className="font-medium">Admin Access</span>
-                </div>
-                <span className="text-blue-300 text-sm">Full Control</span>
-              </button>
-              
-              <div className="grid grid-cols-3 gap-2">
-                <button
-                  onClick={() => setLoginData({email: 'parker@rpexotics.com', password: '17Hellcat!'})}
-                  className="flex flex-col items-center bg-green-600/20 hover:bg-green-600/30 text-white p-3 rounded-lg transition-colors border border-green-500/30"
-                >
-                  <Car className="h-4 w-4 text-green-400 mb-1" />
-                  <span className="text-xs">Sales</span>
-                </button>
-                
-                <button
-                  onClick={() => setLoginData({email: 'backoffice@rpexotics.com', password: 'back123'})}
-                  className="flex flex-col items-center bg-purple-600/20 hover:bg-purple-600/30 text-white p-3 rounded-lg transition-colors border border-purple-500/30"
-                >
-                  <Lock className="h-4 w-4 text-purple-400 mb-1" />
-                  <span className="text-xs">Back Office</span>
-                </button>
-                
-                <button
-                  onClick={() => setLoginData({email: 'viewer@rpexotics.com', password: 'view123'})}
-                  className="flex flex-col items-center bg-orange-600/20 hover:bg-orange-600/30 text-white p-3 rounded-lg transition-colors border border-orange-500/30"
-                >
-                  <Eye className="h-4 w-4 text-orange-400 mb-1" />
-                  <span className="text-xs">Viewer</span>
-                </button>
-              </div>
             </div>
           </div>
         </div>

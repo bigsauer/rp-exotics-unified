@@ -992,7 +992,7 @@ router.post('/', authenticateToken, async (req, res) => {
       // Save to vehicle record
       if (pdfInfo) {
         vehicleRecord.generatedDocuments.push({
-          type: 'vehicle_record',
+          documentType: 'vehicle_record',
           fileName: pdfInfo.fileName,
           filePath: pdfInfo.filePath,
           generatedAt: new Date(),
@@ -1005,7 +1005,7 @@ router.post('/', authenticateToken, async (req, res) => {
       
       if (purchaseContractPdfInfo) {
         vehicleRecord.generatedDocuments.push({
-          type: 'purchase_agreement',
+          documentType: 'purchase_agreement',
           fileName: purchaseContractPdfInfo.fileName,
           filePath: purchaseContractPdfInfo.filePath,
           generatedAt: new Date(),

@@ -57,6 +57,7 @@ const vehicleRecordSchema = new mongoose.Schema({
       'wholesale-flip',
       'retail',
       'retail-pp',
+      'retail-d2d',
       'consignment',
       'auction'
     ],

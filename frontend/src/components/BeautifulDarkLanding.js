@@ -316,6 +316,15 @@ const BeautifulDarkLanding = () => {
     feature: dealerCount !== null ? `${dealerCount} dealers in network` : 'Loading...'
     },
     { 
+    title: 'Broker Network',
+    description: 'Manage broker relationships and track performance',
+    icon: Users,
+    gradient: 'from-purple-500 to-pink-500',
+    route: '/brokers',
+    show: isAdmin || currentUser?.role === 'sales',
+    feature: 'Broker management • Performance tracking • Commission tracking'
+    },
+    { 
       title: 'Transport Management',
       description: 'Manage vehicle transport logistics, tracking, and delivery coordination',
       icon: Truck,
@@ -512,7 +521,7 @@ const BeautifulDarkLanding = () => {
             <div className="flex items-center group">
               <div className="bg-gradient-to-r from-blue-500 to-cyan-500 rounded-xl p-3 mr-4 group-hover:scale-105 transition-transform duration-300 shadow-lg shadow-blue-500/25">
                 <img 
-                  src="https://cdn-ds.com/media/sz_27586/3693/rpexotics-favicon.png" 
+                  src="/favicon.svg?v=20240804" 
                   alt="RP Exotics Logo" 
                   className="h-6 w-6 object-contain"
                   onError={(e) => {

@@ -99,6 +99,7 @@ mongoose.connect(mongoUri, {
 // API routes (should come before the catch-all)
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/backOffice', require('./routes/backOffice'));
+app.use('/api/brokers', require('./routes/brokers'));
 app.use('/api/dealers', require('./routes/dealers'));
 console.log('[DEBUG][server.js] Registering /api/deals route...');
 app.use('/api/deals', require('./routes/deals'));
