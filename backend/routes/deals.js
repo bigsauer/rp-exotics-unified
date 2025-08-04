@@ -861,11 +861,12 @@ router.post('/', authenticateToken, async (req, res) => {
     });
     let pdfInfo = null;
     let purchaseContractPdfInfo = null;
-    // Only use flip vehicle record template and wholesale purchase agreement for flip deals where both seller and buyer are dealers
+    // For wholesale flip deals where both parties are dealers, only generate the purchase agreement
+    // (no separate vehicle record needed as it's included in the purchase agreement)
     if (dealTypeStr.includes('flip') && sellerType === 'dealer' && buyerType === 'dealer') {
       try {
         const docGen = new DocumentGenerator();
-        pdfInfo = await docGen.generateWholesaleFlipVehicleRecord({
+        purchaseContractPdfInfo = await docGen.generateWholesalePurchaseOrder({
           ...dealData,
           seller,
           buyer,
@@ -878,22 +879,9 @@ router.post('/', authenticateToken, async (req, res) => {
           notes: newDeal.notes,
           generalNotes: newDeal.generalNotes,
         }, req.user);
-        console.log('[PDF GEN] Wholesale Flip Vehicle Record PDF generated:', pdfInfo);
-        purchaseContractPdfInfo = await docGen.generateWholesalePurchaseOrder({
-          ...dealData,
-          seller,
-          buyer,
-          financial,
-          stockNumber: newDeal.rpStockNumber,
-          dealType: newDeal.dealType,
-          dealType2SubType: dealData.dealType2SubType,
-          salesperson: newDeal.salesperson,
-          notes: newDeal.notes,
-          generalNotes: newDeal.generalNotes,
-        }, req.user);
-        console.log('[PDF GEN] Wholesale Purchase Agreement PDF generated:', purchaseContractPdfInfo);
+        console.log('[PDF GEN] Wholesale Purchase Agreement PDF generated for dealer-to-dealer flip:', purchaseContractPdfInfo);
       } catch (pdfErr) {
-        console.error('[PDF GEN] Error generating Wholesale Flip PDFs:', pdfErr);
+        console.error('[PDF GEN] Error generating Wholesale Purchase Agreement PDF for dealer-to-dealer flip:', pdfErr);
       }
     } else if (sellerType === 'dealer') {
       // Generate purchase contract as wholesale purchase agreement if seller is a dealer (and not both dealer flip)
