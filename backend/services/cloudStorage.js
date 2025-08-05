@@ -18,7 +18,8 @@ class CloudStorage {
       AWS_ACCESS_KEY_ID: process.env.AWS_ACCESS_KEY_ID ? 'SET' : 'NOT SET',
       AWS_SECRET_ACCESS_KEY: process.env.AWS_SECRET_ACCESS_KEY ? 'SET' : 'NOT SET',
       AWS_S3_BUCKET_NAME: process.env.AWS_S3_BUCKET_NAME || 'DEFAULT',
-      AWS_REGION: process.env.AWS_REGION || 'DEFAULT'
+      AWS_REGION: process.env.AWS_REGION || 'DEFAULT',
+      STORAGE_MODE: 'S3'
     });
   }
 
@@ -244,6 +245,47 @@ class CloudStorage {
     }
   }
 
+  // New method to download files with full path (for seller uploads)
+  async downloadFileWithPath(filePath) {
+    try {
+      console.log(`[CLOUD STORAGE] Downloading file with path: ${filePath}`);
+      
+      // Download from S3 using the full path
+      const downloadParams = {
+        Bucket: this.bucketName,
+        Key: `documents/${filePath}`
+      };
+
+      console.log(`[CLOUD STORAGE] Downloading with S3 key: ${downloadParams.Key}`);
+
+      const result = await this.s3.getObject(downloadParams).promise();
+      
+      console.log(`[CLOUD STORAGE] ✅ File downloaded successfully: ${filePath}`);
+      console.log(`[CLOUD STORAGE] Content-Type: ${result.ContentType}`);
+      console.log(`[CLOUD STORAGE] Content-Length: ${result.ContentLength}`);
+      
+      return {
+        success: true,
+        data: result.Body,
+        contentType: result.ContentType,
+        contentLength: result.ContentLength,
+        lastModified: result.LastModified
+      };
+    } catch (error) {
+      console.error('[CLOUD STORAGE] ❌ Download with path failed:', error);
+      console.error('[CLOUD STORAGE] Error details:', {
+        code: error.code,
+        message: error.message,
+        statusCode: error.statusCode
+      });
+      return {
+        success: false,
+        error: error.message,
+        code: error.code
+      };
+    }
+  }
+
   async deleteFile(fileName) {
     try {
       console.log(`[CLOUD STORAGE] Deleting file: ${fileName}`);
@@ -306,20 +348,74 @@ class CloudStorage {
   async getBucketInfo() {
     try {
       const result = await this.s3.headBucket({ Bucket: this.bucketName }).promise();
-      console.log(`[CLOUD STORAGE] ✅ Bucket accessible: ${this.bucketName}`);
       return {
-        success: true,
-        bucketName: this.bucketName,
-        region: this.region
+        name: this.bucketName,
+        region: this.region,
+        lastModified: result.LastModified
       };
     } catch (error) {
-      console.error('[CLOUD STORAGE] ❌ Bucket check failed:', error);
+      console.error('[CLOUD STORAGE] ❌ Failed to get bucket info:', error);
+      return null;
+    }
+  }
+
+  // Configure CORS for the S3 bucket
+  async configureCORS() {
+    try {
+      console.log('[CLOUD STORAGE] Configuring CORS for S3 bucket...');
+      
+      const corsConfiguration = {
+        CORSRules: [
+          {
+            AllowedHeaders: ['*'],
+            AllowedMethods: ['GET', 'HEAD', 'PUT', 'POST', 'DELETE'],
+            AllowedOrigins: [
+              'https://slipstreamdocs.com',
+              'https://www.slipstreamdocs.com',
+              'https://rp-exotics-frontend.netlify.app',
+              'https://rp-exotics-unified.vercel.app',
+              'http://localhost:3000',
+              'http://localhost:3001',
+              'http://127.0.0.1:3000',
+              'http://127.0.0.1:3001'
+            ],
+            ExposeHeaders: ['ETag', 'Content-Length', 'Content-Type'],
+            MaxAgeSeconds: 3000
+          }
+        ]
+      };
+
+      await this.s3.putBucketCors({
+        Bucket: this.bucketName,
+        CORSConfiguration: corsConfiguration
+      }).promise();
+
+      console.log('[CLOUD STORAGE] ✅ CORS configuration updated successfully');
+      return { success: true };
+    } catch (error) {
+      console.error('[CLOUD STORAGE] ❌ Failed to configure CORS:', error);
       return {
         success: false,
-        error: error.message,
-        bucketName: this.bucketName,
-        region: this.region
+        error: error.message
       };
+    }
+  }
+
+  // Get a signed URL for secure access (alternative to direct S3 URLs)
+  async getSignedUrl(fileName, expiresIn = 3600) {
+    try {
+      const params = {
+        Bucket: this.bucketName,
+        Key: `documents/${fileName}`,
+        Expires: expiresIn
+      };
+
+      const signedUrl = await this.s3.getSignedUrlPromise('getObject', params);
+      console.log(`[CLOUD STORAGE] Generated signed URL for: ${fileName}`);
+      return signedUrl;
+    } catch (error) {
+      console.error('[CLOUD STORAGE] ❌ Failed to generate signed URL:', error);
+      return null;
     }
   }
 }

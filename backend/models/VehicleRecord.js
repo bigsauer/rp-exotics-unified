@@ -108,7 +108,7 @@ const vehicleRecordSchema = new mongoose.Schema({
   listPrice: Number,
   salePrice: Number,
   wholesalePrice: Number,
-  killPrice: Number,
+  instantOffer: Number,
   commission: {
     rate: Number,
     amount: Number

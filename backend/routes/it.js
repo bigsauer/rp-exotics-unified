@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const auth = require('../middleware/auth');
+const { authenticateToken } = require('../middleware/auth');
 const { exec } = require('child_process');
 const path = require('path');
 const fs = require('fs').promises;
@@ -15,7 +15,7 @@ const requireITAccess = (req, res, next) => {
 };
 
 // Apply IT access middleware to all routes
-router.use(auth, requireITAccess);
+router.use(authenticateToken, requireITAccess);
 
 // Get deployment status for all environments
 router.get('/deployment/status', async (req, res) => {
@@ -40,7 +40,7 @@ router.get('/deployment/status', async (req, res) => {
         lastDeploy: process.env.PROD_LAST_DEPLOY || new Date().toISOString(),
         version: process.env.PROD_VERSION || 'v1.2.2',
         environment: 'production',
-        url: process.env.PROD_URL || 'https://opis-frontend-dw442ltxo-bigsauers-projects.vercel.app'
+        url: process.env.PROD_URL || 'https://slipstreamdocs.com'
       }
     };
 

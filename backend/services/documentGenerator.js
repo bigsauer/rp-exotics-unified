@@ -7,7 +7,7 @@ const allowedOrigins = [
   'http://localhost:3000',
   'http://localhost:3001',
   'http://localhost:5000',
-  'https://rp-exotics-frontend.vercel.app',
+  'https://slipstreamdocs.com',
   'https://rp-exotics-frontend.railway.app',
   'https://my-app.up.railway.app',
   process.env.FRONTEND_URL
@@ -25,10 +25,10 @@ class DocumentGenerator {
     
     this.ensureUploadsDirectorySync();
     
-    // Performance optimizations
+    // Performance optimizations - ENHANCED
     this.browserPool = [];
-    this.maxBrowserPoolSize = 3;
-    this.browserPoolTimeout = 30000; // 30 seconds
+    this.maxBrowserPoolSize = 5; // Increased from 3
+    this.browserPoolTimeout = 60000; // 60 seconds (increased from 30)
     this.lastBrowserCleanup = Date.now();
     this.browserCleanupInterval = 60000; // 1 minute
     
@@ -322,6 +322,36 @@ class DocumentGenerator {
     const timestamp = Date.now().toString(36).toUpperCase();
     const prefix = dealType === 'retail' ? 'PA' : 'BS';
     return `${prefix}-${stockNumber}-${timestamp}`;
+  }
+
+  generateEnhancedDocumentNumber(dealType, dealType2SubType, baseType, stockNumber) {
+    const timestamp = Date.now().toString(36).toUpperCase();
+    
+    // Determine the deal type identifier
+    let dealTypeId = '';
+    if (dealType === 'wholesale-flip') {
+      dealTypeId = 'F'; // Flip
+    } else if (dealType === 'wholesale-d2d' || dealType === 'wholesale-pp') {
+      if (dealType2SubType === 'sale') {
+        dealTypeId = 'S'; // Sale
+      } else if (dealType2SubType === 'buy') {
+        dealTypeId = 'B'; // Buy
+      }
+    } else if (dealType === 'retail-pp' || dealType === 'retail-d2d') {
+      if (dealType2SubType === 'sale') {
+        dealTypeId = 'S'; // Sale
+      } else if (dealType2SubType === 'buy') {
+        dealTypeId = 'B'; // Buy
+      }
+    } else if (dealType === 'finance') {
+      dealTypeId = 'F'; // Finance
+    }
+    
+    // Create enhanced document number
+    const enhancedNumber = `${baseType}-${dealTypeId}-${stockNumber || 'N/A'}-${timestamp}`;
+    console.log(`[DOC GEN] Generated enhanced document number: ${enhancedNumber} (dealType: ${dealType}, dealType2SubType: ${dealType2SubType})`);
+    
+    return enhancedNumber;
   }
 
   async generatePurchaseAgreement(dealData, user) {
@@ -654,11 +684,215 @@ class DocumentGenerator {
     const buyerType = (dealData.buyer?.type || '').toLowerCase();
     const dealType = (dealData.dealType || '').toLowerCase();
     console.log('[PDF GEN] [VREC DEBUG] sellerType:', sellerType, 'buyerType:', buyerType, 'dealType:', dealType);
+    
     if (dealType.includes('flip') && sellerType === 'dealer' && buyerType === 'dealer') {
       console.log('[PDF GEN] [VREC] Using custom dealer-to-dealer flip vehicle record template');
-      // ... existing code for custom template ...
-      // ...
-      return await this._renderPdfFromHtml(html, 'vehicle_record', dealData, user);
+      
+      // Generate document number and file info
+      const docNumber = this.generateEnhancedDocumentNumber(
+        dealData.dealType, 
+        dealData.dealType2SubType, 
+        'VR', 
+        dealData.stockNumber || 'N/A'
+      );
+      const fileName = `vehicle_record_${dealData.stockNumber || 'N_A'}_${Date.now()}.pdf`;
+      const filePath = path.join(this.uploadsDir, fileName);
+      
+      // Prepare data
+      const seller = dealData.seller || {};
+      const buyer = dealData.buyer || {};
+      const vehicle = dealData;
+      
+      // Helper functions
+      function formatAddress(addr) {
+        if (!addr) return 'N/A';
+        if (typeof addr === 'string') return addr;
+        if (typeof addr === 'object') {
+          return [addr.street, addr.city, addr.state, addr.zip].filter(Boolean).join(', ');
+        }
+        return String(addr);
+      }
+      
+      function safeNum(val) {
+        if (!val || isNaN(val)) return 'N/A';
+        return val.toLocaleString();
+      }
+      
+      // Create HTML template for dealer-to-dealer flip
+      const html = `
+      <!DOCTYPE html>
+      <html lang="en">
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Vehicle Record - Dealer to Dealer Flip</title>
+        <style>
+          @media print {
+            body { print-color-adjust: exact; -webkit-print-color-adjust: exact; margin: 0; }
+            .no-print { display: none !important; }
+            .page-break { break-before: page; page-break-before: always; }
+          }
+          body { font-family: Arial, sans-serif; font-size: 11px; line-height: 1.4; margin: 0; padding: 0; background: white; color: black; }
+          .page { width: 8.5in; height: 11in; margin: 0 auto; padding: 0.75in; background: white; position: relative; box-sizing: border-box; }
+          .header { text-align: center; margin-bottom: 20px; border-bottom: 2px solid black; padding-bottom: 10px; }
+          .title { font-size: 18px; font-weight: bold; margin-bottom: 5px; }
+          .subtitle { font-size: 14px; color: #666; }
+          .form-section { margin: 20px 0; }
+          .field-group { margin-bottom: 15px; }
+          .field-label { font-weight: bold; display: inline-block; width: 120px; }
+          .field-value { display: inline-block; min-width: 200px; border-bottom: 1px solid #ccc; padding: 2px 5px; }
+          .wide-field { min-width: 300px; }
+          .extra-wide-field { min-width: 400px; }
+          .footer { position: absolute; bottom: 20px; left: 20px; right: 20px; text-align: center; font-size: 10px; color: #666; border-top: 1px solid #ccc; padding-top: 10px; }
+        </style>
+      </head>
+      <body>
+        <div class="page">
+          <div class="header">
+            <div class="title">VEHICLE RECORD</div>
+            <div class="subtitle">Dealer to Dealer Flip Transaction</div>
+          </div>
+          
+          <!-- Vehicle Information -->
+          <div class="form-section">
+            <div class="field-group">
+              <span class="field-label">VIN:</span>
+              <span class="field-value wide-field">${vehicle.vin || 'N/A'}</span>
+            </div>
+            <div class="field-group">
+              <span class="field-label">YEAR:</span>
+              <span class="field-value">${vehicle.year || 'N/A'}</span>
+              <span class="field-label" style="margin-left: 20px;">MAKE:</span>
+              <span class="field-value">${vehicle.make || 'N/A'}</span>
+            </div>
+            <div class="field-group">
+              <span class="field-label">MODEL:</span>
+              <span class="field-value wide-field">${vehicle.model || 'N/A'}</span>
+            </div>
+            <div class="field-group">
+              <span class="field-label">STOCK #:</span>
+              <span class="field-value">${vehicle.stockNumber || 'N/A'}</span>
+              <span class="field-label" style="margin-left: 20px;">MILEAGE:</span>
+              <span class="field-value">${safeNum(vehicle.mileage)}</span>
+            </div>
+          </div>
+          
+          <!-- Seller Information (Selling Dealer) -->
+          <div class="form-section">
+            <div class="field-group">
+              <span class="field-label">SELLER:</span>
+              <span class="field-value wide-field">${seller.name || 'N/A'}</span>
+            </div>
+            <div class="field-group">
+              <span class="field-label">SELLER ADDRESS:</span>
+              <span class="field-value extra-wide-field">${formatAddress(seller.contact?.address)}</span>
+            </div>
+            <div class="field-group">
+              <span class="field-label">SELLER PHONE:</span>
+              <span class="field-value">${seller.contact?.phone || 'N/A'}</span>
+              <span class="field-label" style="margin-left: 20px;">EMAIL:</span>
+              <span class="field-value">${seller.contact?.email || 'N/A'}</span>
+            </div>
+          </div>
+          
+          <!-- Buyer Information (RP Exotics) -->
+          <div class="form-section">
+            <div class="field-group">
+              <span class="field-label">BUYER:</span>
+              <span class="field-value wide-field">${buyer.name || 'N/A'}</span>
+            </div>
+            <div class="field-group">
+              <span class="field-label">BUYER ADDRESS:</span>
+              <span class="field-value extra-wide-field">${formatAddress(buyer.contact?.address)}</span>
+            </div>
+            <div class="field-group">
+              <span class="field-label">BUYER PHONE:</span>
+              <span class="field-value">${buyer.contact?.phone || 'N/A'}</span>
+              <span class="field-label" style="margin-left: 20px;">EMAIL:</span>
+              <span class="field-value">${buyer.contact?.email || 'N/A'}</span>
+            </div>
+          </div>
+          
+          <!-- Financial Information -->
+          <div class="form-section">
+            <div class="field-group">
+              <span class="field-label">PURCHASE PRICE:</span>
+              <span class="field-value">$${safeNum(vehicle.purchasePrice)}</span>
+            </div>
+            <div class="field-group">
+              <span class="field-label">LIST PRICE:</span>
+              <span class="field-value">$${safeNum(vehicle.listPrice)}</span>
+            </div>
+          </div>
+          
+          <!-- Deal Information -->
+          <div class="form-section">
+            <div class="field-group">
+              <span class="field-label">DEAL TYPE:</span>
+              <span class="field-value">${dealData.dealType || 'N/A'}</span>
+            </div>
+            <div class="field-group">
+              <span class="field-label">DEAL TYPE 2:</span>
+              <span class="field-value">${dealData.dealType2SubType || 'N/A'}</span>
+            </div>
+            <div class="field-group">
+              <span class="field-label">SALES PERSON:</span>
+              <span class="field-value">${vehicle.salesperson || 'N/A'}</span>
+            </div>
+          </div>
+          
+          <!-- Notes Section -->
+          <div class="form-section">
+            <div class="field-group">
+              <span class="field-label">NOTES:</span>
+              <span class="field-value extra-wide-field">${vehicle.notes || vehicle.generalNotes || 'N/A'}</span>
+            </div>
+          </div>
+          
+          <!-- Footer -->
+          <div class="footer">
+            Generated by RP Exotics Management System<br>
+            Generated by: ${user.firstName || ''} ${user.lastName || ''}<br>
+            Generated on: ${new Date().toLocaleString()}
+          </div>
+        </div>
+      </body>
+      </html>
+      `;
+      
+      // Generate PDF using Puppeteer
+      const puppeteer = require('puppeteer');
+      let browser;
+      try {
+        browser = await puppeteer.launch({ headless: 'new', args: ['--no-sandbox', '--disable-setuid-sandbox'] });
+        const page = await browser.newPage();
+        await page.setContent(html, { waitUntil: 'networkidle0' });
+        await page.pdf({ path: filePath, format: 'A4', printBackground: true });
+        await browser.close();
+        
+        // Get file size before uploading
+        const fileStats = fs.statSync(filePath);
+        const fileSize = fileStats.size;
+        
+        // Upload to cloud storage
+        const cloudResult = await this.ensureCloudStorage(filePath, fileName, 'vehicle_record', docNumber);
+        
+        return {
+          fileName,
+          filePath: cloudResult.filePath,
+          fileSize: fileSize,
+          documentNumber: docNumber,
+          documentType: 'vehicle_record',
+          generatedBy: user && user._id ? user._id : undefined,
+          generatedAt: new Date(),
+          status: 'draft',
+          cloudUrl: cloudResult.cloudUrl
+        };
+      } catch (err) {
+        if (browser) await browser.close();
+        console.error('[PDF GEN][WholesaleFlipVehicleRecord] Error generating PDF:', err);
+        throw err;
+      }
     } else {
       console.log('[PDF GEN] [VREC] Using fallback standard vehicle record template');
       return await this.generateStandardVehicleRecord(dealData, user);
@@ -736,7 +970,12 @@ class DocumentGenerator {
     console.log('[PDF GEN] [DEBUG] buyer after mapping:', JSON.stringify(buyer, null, 2));
     
     // Generate document number
-    const docNumber = `VR-${dealData.stockNumber || 'N/A'}-${Date.now().toString(36).toUpperCase()}`;
+    const docNumber = this.generateEnhancedDocumentNumber(
+      dealData.dealType, 
+      dealData.dealType2SubType, 
+      'VR', 
+      dealData.stockNumber || 'N/A'
+    );
     const fileName = `vehicle_record_${dealData.stockNumber || 'N_A'}_${Date.now()}.pdf`;
     const filePath = path.join(this.uploadsDir, fileName);
     
@@ -937,6 +1176,7 @@ class DocumentGenerator {
     const financialInfo = {
       purchasePrice: safeNum(financial.purchasePrice || dealData.purchasePrice),
       listPrice: safeNum(financial.listPrice || dealData.listPrice),
+      instantOffer: safeNum(financial.instantOffer || dealData.instantOffer),
       wholesalePrice: safeNum(financial.wholesalePrice || dealData.wholesalePrice),
       payoffBalance: safeNum(financial.payoffBalance || dealData.payoffBalance),
       amountDueToCustomer: safeNum(financial.amountDueToCustomer || dealData.amountDueToCustomer),
@@ -1246,7 +1486,7 @@ class DocumentGenerator {
                 <div class="deal-info">
                     <div class="field-group">
                         <span class="field-label">DEAL ID:</span>
-                        <span class="field-value">${dealData.stockNumber || 'N/A'}</span>
+                        <span class="field-value">${dealData.rpStockNumber || 'N/A'}</span>
                     </div>
                 </div>
                 <div class="date-info">
@@ -1398,6 +1638,10 @@ class DocumentGenerator {
                         <div class="field-group" style="margin-bottom: 15px;">
                             <span class="field-label">LIST PRICE:</span>
                             <span class="field-value">${financialInfo.listPrice}</span>
+                        </div>
+                        <div class="field-group" style="margin-bottom: 15px;">
+                            <span class="field-label">INSTANT OFFER:</span>
+                            <span class="field-value">${financialInfo.instantOffer}</span>
                         </div>
                         <div class="field-group" style="margin-bottom: 15px;">
                             <span class="field-label">WHOLESALE PRICE:</span>
@@ -1700,20 +1944,45 @@ class DocumentGenerator {
     doc.moveDown(1.5);
     doc.fontSize(7).font('Helvetica').text('RP Exotics Wholesale Division | Professional Vehicle Sales & Distribution', { align: 'center' });
     doc.fontSize(7).font('Helvetica').text('This document represents a binding wholesale sales agreement between licensed dealers.', { align: 'center' });
-    doc.fontSize(7).font('Helvetica').text(`Document Reference: WS-SO-${Date.now().toString(36).toUpperCase()}`, { align: 'center' });
+    // Generate enhanced document number
+    const enhancedDocNumber = this.generateEnhancedDocumentNumber(
+      dealData.dealType, 
+      dealData.dealType2SubType, 
+      'WS-SO', 
+      dealData.stockNumber
+    );
+    
+    doc.fontSize(7).font('Helvetica').text(`Document Reference: ${enhancedDocNumber}`, { align: 'center' });
 
     doc.end();
 
     return new Promise((resolve, reject) => {
-      writeStream.on('finish', () => {
+      writeStream.on('finish', async () => {
         const stats = fs.statSync(filePath);
         console.log(`[PDF GEN] Wholesale Purchase Order written: ${fileName}, size: ${stats.size} bytes`);
-        resolve({
-          fileName,
-          filePath,
-          fileSize: stats.size,
-          documentNumber: `WS-SO-${Date.now().toString(36).toUpperCase()}`
-        });
+        
+        // Upload to cloud storage
+        try {
+          console.log(`[PDF GEN][WholesalePurchaseOrder] 🔄 Uploading to cloud storage: ${fileName}`);
+          const cloudUrl = await this.saveDocumentToCloud(filePath, fileName);
+          console.log(`[PDF GEN][WholesalePurchaseOrder] ✅ Successfully uploaded to cloud storage: ${cloudUrl}`);
+          
+          resolve({
+            fileName,
+            filePath: cloudUrl, // Return cloud URL instead of local path
+            fileSize: stats.size,
+            documentNumber: enhancedDocNumber
+          });
+        } catch (uploadError) {
+          console.error(`[PDF GEN][WholesalePurchaseOrder] ❌ Failed to upload to cloud storage: ${uploadError.message}`);
+          // Return local file info if cloud upload fails
+          resolve({
+            fileName,
+            filePath,
+            fileSize: stats.size,
+            documentNumber: enhancedDocNumber
+          });
+        }
       });
       writeStream.on('error', (err) => {
         console.error('[PDF GEN] Error writing Wholesale Purchase Order:', err);
@@ -1723,6 +1992,14 @@ class DocumentGenerator {
   }
 
   async generateRetailPPBuy(dealData, user) {
+    // 🔍 ENHANCED DEBUGGING FOR LENGTH ERROR DETECTION
+    console.log('[PDF GEN][RetailPPBuy][DEBUG] 🔍 === RETAIL PP BUY DEBUG START ===');
+    console.log('[PDF GEN][RetailPPBuy][DEBUG] 🔍 sellerInfo:', JSON.stringify(dealData.sellerInfo, null, 2));
+    console.log('[PDF GEN][RetailPPBuy][DEBUG] 🔍 seller.address:', dealData.sellerInfo?.address);
+    console.log('[PDF GEN][RetailPPBuy][DEBUG] 🔍 seller.address type:', typeof dealData.sellerInfo?.address);
+    console.log('[PDF GEN][RetailPPBuy][DEBUG] 🔍 vehicle.make:', dealData.make);
+    console.log('[PDF GEN][RetailPPBuy][DEBUG] 🔍 vehicle.vin:', dealData.vin);
+    
     // PATCH: Always trust dealData.sellerType and dealData.buyerType if present
     if (dealData.sellerType) {
       if (dealData.seller) dealData.seller.type = dealData.sellerType;
@@ -1738,9 +2015,22 @@ class DocumentGenerator {
     const logoPath = path.resolve(__dirname, '../assets/rpexotics-logo.png');
     const fs = require('fs-extra');
     const safeStockNumber = (dealData.stockNumber && dealData.stockNumber !== 'N/A') ? dealData.stockNumber : 
-      (dealData.rpStockNumber && dealData.rpStockNumber !== 'N/A') ? dealData.rpStockNumber : 'UNKNOWN';
+      (dealData.vin && dealData.vin !== 'N/A') ? dealData.vin : 
+      (dealData.vehicleRecordId) ? dealData.vehicleRecordId : 
+      `DEAL-${Date.now().toString(36).toUpperCase()}`;
     const fileName = `retail_pp_buy_${safeStockNumber}_${Date.now()}.pdf`;
     const filePath = path.join(this.uploadsDir, fileName);
+    
+    // Debug logging for filename generation
+    console.log('[PDF GEN][RetailPPBuy] 📁 Filename generation debug:', {
+      stockNumber: dealData.stockNumber,
+      rpStockNumber: dealData.rpStockNumber,
+      vin: dealData.vin,
+      vehicleRecordId: dealData.vehicleRecordId,
+      safeStockNumber,
+      fileName,
+      filePath
+    });
     
     // Prepare dynamic fields (robust extraction)
     const seller = dealData.sellerInfo || dealData.seller || {};
@@ -1749,7 +2039,12 @@ class DocumentGenerator {
     const dateString = today.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
     const shortDate = today.toLocaleDateString('en-US');
     const yearShort = today.getFullYear().toString().slice(-2);
-    const docNumber = `PP-${safeStockNumber}-${Date.now().toString(36).toUpperCase()}`;
+    const docNumber = this.generateEnhancedDocumentNumber(
+      dealData.dealType, 
+      dealData.dealType2SubType, 
+      'PP', 
+      safeStockNumber
+    );
 
     // Robust financial field extraction
     function safeNum(val) {
@@ -1857,7 +2152,7 @@ class DocumentGenerator {
           Louis, MO and <span class="underline"><strong>${seller.name || ''}</strong></span> hereinafter referred to as "Seller(s)" and RP<br>
           Exotics, LLC hereinafter referred to as "Buyer".
         </div>
-        <div class="address-box${formatAddress(seller.address).length > 40 ? ' shrink' : ''}" style="word-break: break-all; white-space: pre-line; font-size:${formatAddress(seller.address).length > 60 ? '8px' : formatAddress(seller.address).length > 40 ? '10px' : '12px'};"><strong>${formatAddress(seller.address) || ''}</strong></div>
+        <div class="address-box${(formatAddress(seller.address) || '').length > 40 ? ' shrink' : ''}" style="word-break: break-all; white-space: pre-line; font-size:${(formatAddress(seller.address) || '').length > 60 ? '8px' : (formatAddress(seller.address) || '').length > 40 ? '10px' : '12px'};"><strong>${formatAddress(seller.address) || ''}</strong></div>
         <div style="font-size:9px; margin-bottom:8px;">Address of the Seller(s)</div>
         <table class="field-table">
           <tr>
@@ -1882,7 +2177,7 @@ class DocumentGenerator {
           <tr>
             <td class="filled-field" style="width: 20%;"><strong>Sedan</strong></td>
             <td class="filled-field" style="width: 15%;"><strong>${vehicle.year || ''}</strong></td>
-            <td class="filled-field make-box${(vehicle.make && vehicle.make.length > 12) ? ' shrink' : ''}" style="width: 20%; word-break: break-all; white-space: pre-line; font-size:${vehicle.make && vehicle.make.length > 18 ? '8px' : vehicle.make && vehicle.make.length > 12 ? '10px' : '12px'};"><strong>${vehicle.make || ''}</strong></td>
+            <td class="filled-field make-box${(vehicle.make && vehicle.make.length > 12) ? ' shrink' : ''}" style="width: 20%; word-break: break-all; white-space: pre-line; font-size:${(vehicle.make && vehicle.make.length > 18) ? '8px' : (vehicle.make && vehicle.make.length > 12) ? '10px' : '12px'};"><strong>${vehicle.make || ''}</strong></td>
             <td class="filled-field" style="width: 45%;"><strong>${vehicle.model || ''}</strong></td>
           </tr>
           <tr>
@@ -1894,7 +2189,7 @@ class DocumentGenerator {
         </table>
         <table class="field-table">
           <tr>
-            <td class="filled-field vin-box${(vehicle.vin && vehicle.vin.length > 17) ? ' shrink' : ''}" style="width: 60%; word-break: break-all; white-space: pre-line; font-size:${vehicle.vin && vehicle.vin.length > 20 ? '8px' : vehicle.vin && vehicle.vin.length > 17 ? '10px' : '12px'};"><strong>${vehicle.vin || ''}</strong></td>
+            <td class="filled-field vin-box${(vehicle.vin && vehicle.vin.length > 17) ? ' shrink' : ''}" style="width: 60%; word-break: break-all; white-space: pre-line; font-size:${(vehicle.vin && vehicle.vin.length > 20) ? '8px' : (vehicle.vin && vehicle.vin.length > 17) ? '10px' : '12px'};"><strong>${vehicle.vin || ''}</strong></td>
             <td class="filled-field" style="width: 40%;"><strong>${vehicle.mileage ? vehicle.mileage.toLocaleString() : ''}</strong></td>
           </tr>
           <tr>
@@ -1909,16 +2204,8 @@ class DocumentGenerator {
             <td class="filled-field" style="width: 50%;"><strong>Payoff Amount: $${payoff ? payoff.toLocaleString() : 'N/A'}</strong></td>
           </tr>
           <tr>
-            <td class="financial-label">Purchase Price ($)</td>
-            <td class="financial-label">Payoff Amount ($)</td>
-          </tr>
-          <tr>
             <td class="filled-field" style="width: 50%;"><strong>Amount Due to Customer: $${amountDueToCustomer ? amountDueToCustomer.toLocaleString() : 'N/A'}</strong></td>
             <td class="filled-field" style="width: 50%;"><strong>Amount Due to RP Exotics: $${amountDueToRP ? amountDueToRP.toLocaleString() : 'N/A'}</strong></td>
-          </tr>
-          <tr>
-            <td class="financial-label">Amount Due to Customer ($)</td>
-            <td class="financial-label">Amount Due to RP Exotics ($)</td>
           </tr>
         </table>
         <div class="terms-section">
@@ -2021,12 +2308,31 @@ class DocumentGenerator {
     await browser.close();
 
     const stats = fs.statSync(filePath);
-    return {
-      fileName,
-      filePath,
-      fileSize: stats.size,
-      documentNumber: docNumber
-    };
+    
+    // Upload to cloud storage
+    try {
+      console.log(`[PDF GEN][RetailPPBuy] 🔄 Uploading to cloud storage: ${fileName}`);
+      const cloudUrl = await this.saveDocumentToCloud(filePath, fileName);
+      console.log(`[PDF GEN][RetailPPBuy] ✅ Successfully uploaded to cloud storage: ${cloudUrl}`);
+      
+      return {
+        fileName,
+        filePath: cloudUrl, // Return cloud URL instead of local path
+        fileSize: stats.size,
+        documentType: 'purchase_agreement',
+        documentNumber: docNumber
+      };
+    } catch (uploadError) {
+      console.error(`[PDF GEN][RetailPPBuy] ❌ Failed to upload to cloud storage: ${uploadError.message}`);
+      // Return local file info if cloud upload fails
+      return {
+        fileName,
+        filePath,
+        fileSize: stats.size,
+        documentType: 'purchase_agreement',
+        documentNumber: docNumber
+      };
+    }
   }
 
   async generateWholesalePPBuy(dealData, user) {
@@ -2055,11 +2361,18 @@ class DocumentGenerator {
     const logoPath = path.resolve(__dirname, '../assets/rpexotics-logo.png');
     const fs = require('fs-extra');
     const safeStockNumber = (dealData.stockNumber && dealData.stockNumber !== 'N/A') ? dealData.stockNumber : 
-      (dealData.rpStockNumber && dealData.rpStockNumber !== 'N/A') ? dealData.rpStockNumber : 'UNKNOWN';
+      (dealData.rpStockNumber && dealData.rpStockNumber !== 'N/A') ? dealData.rpStockNumber : 
+      (dealData.vin && dealData.vin !== 'N/A') ? dealData.vin : 
+      (dealData.vehicleRecordId) ? dealData.vehicleRecordId : 
+      `DEAL-${Date.now().toString(36).toUpperCase()}`;
     const fileName = `wholesale_purchase_agreement_${safeStockNumber}_${Date.now()}.pdf`;
     const filePath = path.join(this.uploadsDir, fileName);
     
     console.log('[PDF GEN][WholesalePPBuy] 📁 File generation details:', {
+      stockNumber: dealData.stockNumber,
+      rpStockNumber: dealData.rpStockNumber,
+      vin: dealData.vin,
+      vehicleRecordId: dealData.vehicleRecordId,
       safeStockNumber,
       fileName,
       filePath
@@ -2083,7 +2396,12 @@ class DocumentGenerator {
     const dateString = today.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
     const shortDate = today.toLocaleDateString('en-US');
     const yearShort = today.getFullYear().toString().slice(-2);
-    const docNumber = `WPP-${safeStockNumber}-${Date.now().toString(36).toUpperCase()}`;
+    const docNumber = this.generateEnhancedDocumentNumber(
+      dealData.dealType, 
+      dealData.dealType2SubType, 
+      'WPP', 
+      safeStockNumber
+    );
 
     // Robust financial field extraction
     function safeNum(val) {
@@ -2190,7 +2508,7 @@ class DocumentGenerator {
           Louis, MO and <span class="underline"><strong>${seller.name || ''}</strong></span> hereinafter referred to as "Seller(s)" and RP<br>
           Exotics, LLC hereinafter referred to as "Buyer".
         </div>
-        <div class="address-box${formatAddress(seller.address).length > 40 ? ' shrink' : ''}" style="word-break: break-all; white-space: pre-line; font-size:${formatAddress(seller.address).length > 60 ? '8px' : formatAddress(seller.address).length > 40 ? '10px' : '12px'};"><strong>${formatAddress(seller.address) || ''}</strong></div>
+        <div class="address-box${(formatAddress(seller.address) || '').length > 40 ? ' shrink' : ''}" style="word-break: break-all; white-space: pre-line; font-size:${(formatAddress(seller.address) || '').length > 60 ? '8px' : (formatAddress(seller.address) || '').length > 40 ? '10px' : '12px'};"><strong>${formatAddress(seller.address) || ''}</strong></div>
         <div style="font-size:9px; margin-bottom:8px;">Address of the Seller(s)</div>
         <table class="field-table">
           <tr>
@@ -2215,7 +2533,7 @@ class DocumentGenerator {
           <tr>
             <td class="filled-field" style="width: 20%;"><strong>Sedan</strong></td>
             <td class="filled-field" style="width: 15%;"><strong>${vehicle.year || ''}</strong></td>
-            <td class="filled-field make-box${(vehicle.make && vehicle.make.length > 12) ? ' shrink' : ''}" style="width: 20%; word-break: break-all; white-space: pre-line; font-size:${vehicle.make && vehicle.make.length > 18 ? '8px' : vehicle.make && vehicle.make.length > 12 ? '10px' : '12px'};"><strong>${vehicle.make || ''}</strong></td>
+            <td class="filled-field make-box${(vehicle.make && vehicle.make.length > 12) ? ' shrink' : ''}" style="width: 20%; word-break: break-all; white-space: pre-line; font-size:${(vehicle.make && vehicle.make.length > 18) ? '8px' : (vehicle.make && vehicle.make.length > 12) ? '10px' : '12px'};"><strong>${vehicle.make || ''}</strong></td>
             <td class="filled-field" style="width: 45%;"><strong>${vehicle.model || ''}</strong></td>
           </tr>
           <tr>
@@ -2227,7 +2545,7 @@ class DocumentGenerator {
         </table>
         <table class="field-table">
           <tr>
-            <td class="filled-field vin-box${(vehicle.vin && vehicle.vin.length > 17) ? ' shrink' : ''}" style="width: 60%; word-break: break-all; white-space: pre-line; font-size:${vehicle.vin && vehicle.vin.length > 20 ? '8px' : vehicle.vin && vehicle.vin.length > 17 ? '10px' : '12px'};"><strong>${vehicle.vin || ''}</strong></td>
+            <td class="filled-field vin-box${(vehicle.vin && vehicle.vin.length > 17) ? ' shrink' : ''}" style="width: 60%; word-break: break-all; white-space: pre-line; font-size:${(vehicle.vin && vehicle.vin.length > 20) ? '8px' : (vehicle.vin && vehicle.vin.length > 17) ? '10px' : '12px'};"><strong>${vehicle.vin || ''}</strong></td>
             <td class="filled-field" style="width: 40%;"><strong>${vehicle.mileage ? vehicle.mileage.toLocaleString() : ''}</strong></td>
           </tr>
           <tr>
@@ -2371,7 +2689,7 @@ class DocumentGenerator {
       return parseFloat(val).toLocaleString();
     }
 
-    const stockNumber = dealData.stockNumber || dealData.rpStockNumber || 'N/A';
+    const stockNumber = dealData.stockNumber || 'N/A';
     const safeStockNumber = String(stockNumber).replace(/[^a-zA-Z0-9_-]/g, '_');
     const fileName = `wholesale_bos_${safeStockNumber}_${Date.now()}.pdf`;
     const filePath = path.join(this.uploadsDir, fileName);
@@ -2786,7 +3104,12 @@ class DocumentGenerator {
           filePath: uploadResult.url, // Use cloud URL instead of local path
           fileSize: pdfBuffer.length,
           documentType: 'wholesale_bos',
-          documentNumber: `WS-BOS-${Date.now().toString(36).toUpperCase()}`,
+          documentNumber: this.generateEnhancedDocumentNumber(
+            dealData.dealType, 
+            dealData.dealType2SubType, 
+            'WS-BOS', 
+            dealData.stockNumber
+          ),
           cloudUrl: uploadResult.url,
           cloudKey: uploadResult.key,
           generationTime
@@ -2805,7 +3128,12 @@ class DocumentGenerator {
           filePath: filePath,
           fileSize: pdfBuffer.length,
           documentType: 'wholesale_bos',
-          documentNumber: `WS-BOS-${Date.now().toString(36).toUpperCase()}`,
+          documentNumber: this.generateEnhancedDocumentNumber(
+            dealData.dealType, 
+            dealData.dealType2SubType, 
+            'WS-BOS', 
+            dealData.stockNumber
+          ),
           generationTime
         };
         
@@ -2894,7 +3222,7 @@ class DocumentGenerator {
       return Number(val).toLocaleString();
     }
 
-    const stockNumber = dealData.stockNumber || dealData.rpStockNumber || 'N/A';
+    const stockNumber = dealData.stockNumber || 'N/A';
     const safeStockNumber = String(stockNumber).replace(/[^a-zA-Z0-9_-]/g, '_');
     const fileName = `wholesale_sales_order_${safeStockNumber}_${Date.now()}.pdf`;
     const filePath = path.join(this.uploadsDir, fileName);
@@ -3145,7 +3473,7 @@ class DocumentGenerator {
             </div>
             <div class="field-row">
               <span class="field-label">Stock #:</span>
-                    <span class="field-value">${dealData.stockNumber || dealData.rpStockNumber || 'N/A'}</span>
+                    <span class="field-value">${dealData.stockNumber || 'N/A'}</span>
             </div>
             <div class="field-row">
               <span class="field-label">Make:</span>
@@ -3258,6 +3586,19 @@ class DocumentGenerator {
   }
 
   async generateDocument(dealData, user) {
+    // 🔍 ENHANCED DEBUGGING FOR LENGTH ERROR DETECTION
+    console.log('[PDF GEN][DEBUG] 🔍 === ENHANCED DEBUGGING START ===');
+    console.log('[PDF GEN][DEBUG] 🔍 Input dealData keys:', Object.keys(dealData));
+    console.log('[PDF GEN][DEBUG] 🔍 sellerInfo:', JSON.stringify(dealData.sellerInfo, null, 2));
+    console.log('[PDF GEN][DEBUG] 🔍 seller.address type:', typeof dealData.sellerInfo?.address);
+    console.log('[PDF GEN][DEBUG] 🔍 seller.address value:', dealData.sellerInfo?.address);
+    console.log('[PDF GEN][DEBUG] 🔍 vehicle fields:', {
+      make: dealData.make,
+      makeType: typeof dealData.make,
+      vin: dealData.vin,
+      vinType: typeof dealData.vin
+    });
+    
     // 🔍 DEAL TYPE 2 TRACKING IN MAIN DOCUMENT GENERATION
     console.log('[PDF GEN][DEAL_TYPE_DEBUG] 🔍 MAIN DOCUMENT GENERATION - DEAL TYPE 2 TRACKING');
     console.log('[PDF GEN][DEAL_TYPE_DEBUG] Initial dealType2SubType:', dealData.dealType2SubType);
@@ -3698,10 +4039,22 @@ class DocumentGenerator {
       generalNotes: dealData.generalNotes
     });
     // Use VIN or recordId as fallback for file name
-    const safeStockNumber = (dealData.stockNumber && dealData.stockNumber !== 'N/A') ? dealData.stockNumber : (dealData.rpStockNumber && dealData.rpStockNumber !== 'N/A') ? dealData.rpStockNumber : (dealData.vin || dealData.vehicleRecordId || 'UNKNOWN');
+    const safeStockNumber = (dealData.stockNumber && dealData.stockNumber !== 'N/A') ? dealData.stockNumber : 
+      (dealData.rpStockNumber && dealData.rpStockNumber !== 'N/A') ? dealData.rpStockNumber : 
+      (dealData.vin && dealData.vin !== 'N/A') ? dealData.vin : 
+      (dealData.vehicleRecordId) ? dealData.vehicleRecordId : 
+      `DEAL-${Date.now().toString(36).toUpperCase()}`;
     const fileName = `vehicle_record_${safeStockNumber}_${Date.now()}.pdf`;
     const filePath = path.join(this.uploadsDir, fileName);
-    console.log('[PDF GEN][RetailPPVehicleRecord] Generating file:', fileName, 'at', filePath);
+    console.log('[PDF GEN][RetailPPVehicleRecord] 📁 Filename generation debug:', {
+      stockNumber: dealData.stockNumber,
+      rpStockNumber: dealData.rpStockNumber,
+      vin: dealData.vin,
+      vehicleRecordId: dealData.vehicleRecordId,
+      safeStockNumber,
+      fileName,
+      filePath
+    });
 
     // Helper for address formatting
     function formatAddress(addr) {
@@ -3916,7 +4269,7 @@ class DocumentGenerator {
           <div class="deal-info">
             <div class="field-group">
               <span class="field-label">DEAL ID:</span>
-              <span class="field-value">${dealData.stockNumber || 'N/A'}</span>
+              <span class="field-value">${dealData.rpStockNumber || 'N/A'}</span>
             </div>
           </div>
           <div class="date-info">
@@ -4015,6 +4368,31 @@ class DocumentGenerator {
             </div>
           </div>
         </div>
+        <!-- Buyer Information Section (for retail-pp buy deals) -->
+        <div class="form-section">
+          <div class="seller-section">
+            <div>
+              <div class="field-group" style="margin-bottom: 10px;">
+                <span class="field-label">BUYER NAME:</span>
+                <span class="field-value wide-field">RP Exotics</span>
+              </div>
+              <div class="field-group" style="margin-bottom: 10px;">
+                <span class="field-label">CONTACT:</span>
+                <span class="field-value wide-field">(314) 970-2427</span>
+              </div>
+              <div class="field-group">
+                <span class="field-label">ADDRESS:</span>
+                <span class="field-value wide-field">1155 N. Warson Rd, St. Louis, MO 63132</span>
+              </div>
+            </div>
+            <div>
+              <div class="field-group">
+                <span class="field-label">EMAIL:</span>
+                <span class="field-value wide-field">info@rpexotics.com</span>
+              </div>
+            </div>
+          </div>
+        </div>
         <!-- Financial Information Section -->
         <div class="form-section">
           <div class="financial-grid">
@@ -4089,15 +4467,25 @@ class DocumentGenerator {
       await page.pdf({ path: filePath, format: 'A4', printBackground: true });
       await browser.close();
       console.log('[PDF GEN][RetailPPVehicleRecord] PDF generated successfully:', filePath);
+      
+      // Get file size before uploading to S3
+      const fileStats = fs.statSync(filePath);
+      const fileSize = fileStats.size;
+      
       // Return result object for downstream logic
       // Save document to S3 and clean up local file
-      const cloudResult = await this.ensureCloudStorage(filePath, fileName, 'vehicle_record_pdf', `VR-${dealData.stockNumber || 'N/A'}-${Date.now().toString(36).toUpperCase()}`);
+      const cloudResult = await this.ensureCloudStorage(filePath, fileName, 'vehicle_record_pdf', this.generateEnhancedDocumentNumber(
+      dealData.dealType, 
+      dealData.dealType2SubType, 
+      'VR', 
+      dealData.stockNumber || 'N/A'
+    ));
       
       return {
         fileName,
         filePath: cloudResult.filePath, // Use cloud URL instead of local path
-        fileSize: fs.statSync(filePath).size,
-        documentType: 'vehicle_record_pdf',
+        fileSize: fileSize,
+        documentType: 'vehicle_record',
         generatedBy: user && user._id ? user._id : undefined,
         generatedAt: new Date(),
         status: 'draft',

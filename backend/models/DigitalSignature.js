@@ -5,7 +5,11 @@ const digitalSignatureSchema = new mongoose.Schema({
   documentId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Deal',
-    required: true
+    required: false // Made optional to support documentUrl approach
+  },
+  documentUrl: {
+    type: String,
+    required: false // Added to support direct URL approach
   },
   documentType: {
     type: String,
@@ -53,11 +57,19 @@ const digitalSignatureSchema = new mongoose.Schema({
     required: true
   },
   
+  // Deal Information (for email templates)
+  dealInfo: {
+    vin: { type: String, default: 'N/A' },
+    stockNumber: { type: String, default: 'N/A' },
+    vehicle: { type: String, default: 'N/A' },
+    dealType: { type: String, default: 'N/A' }
+  },
+  
   // LEGAL CONSENT REQUIREMENTS
   // Intent to Sign - User must clearly agree to sign electronically
   intentToSign: {
     type: Boolean,
-    required: true,
+    required: false,
     default: false
   },
   intentToSignTimestamp: {
@@ -76,7 +88,7 @@ const digitalSignatureSchema = new mongoose.Schema({
   // Consent to Do Business Electronically - Must be recorded with timestamp
   consentToElectronicBusiness: {
     type: Boolean,
-    required: true,
+    required: false,
     default: false
   },
   consentToElectronicBusinessTimestamp: {
@@ -98,14 +110,30 @@ const digitalSignatureSchema = new mongoose.Schema({
       type: String,
       required: false
     },
-    signerIdentityVerified: {
-      type: Boolean,
-      default: false
+    documentUrl: {
+      type: String,
+      required: false
+    },
+    documentType: {
+      type: String,
+      required: false
+    },
+    signaturePosition: {
+      type: String,
+      required: false
     },
     identityVerificationMethod: {
       type: String,
       enum: ['api_key', 'email_verification', 'manual', 'ip_address', 'user_agent', 'built_in_system'],
       default: 'api_key'
+    },
+    consentGiven: {
+      type: Boolean,
+      default: false
+    },
+    signerIdentityVerified: {
+      type: Boolean,
+      default: false
     },
     identityVerificationTimestamp: {
       type: Date,
@@ -130,23 +158,111 @@ const digitalSignatureSchema = new mongoose.Schema({
     type: String
   },
   
+  // Audit Trail
+  auditTrail: {
+    signatureTimestamp: {
+      type: Date,
+      required: false
+    },
+    ipAddress: {
+      type: String,
+      required: false
+    },
+    userAgent: {
+      type: String,
+      required: false
+    },
+    screenResolution: {
+      type: String,
+      required: false
+    },
+    timezone: {
+      type: String,
+      required: false
+    },
+    language: {
+      type: String,
+      required: false
+    },
+    sessionId: {
+      type: String,
+      required: false
+    },
+    consentTimestamp: {
+      type: Date,
+      required: false
+    },
+    consentMethod: {
+      type: String,
+      required: false
+    }
+  },
+  
+  // Legal Compliance
+  legalCompliance: {
+    esignActCompliant: {
+      type: Boolean,
+      default: false
+    },
+    uetaCompliant: {
+      type: Boolean,
+      default: false
+    },
+    intentToSign: {
+      type: Boolean,
+      default: false
+    },
+    consentToElectronicBusiness: {
+      type: Boolean,
+      default: false
+    },
+    clearSignatureAssociation: {
+      type: Boolean,
+      default: false
+    },
+    auditTrailComplete: {
+      type: Boolean,
+      default: false
+    },
+    documentIntegrityMaintained: {
+      type: Boolean,
+      default: false
+    },
+    retentionPolicyCompliant: {
+      type: Boolean,
+      default: false
+    },
+    signerIdentityVerified: {
+      type: Boolean,
+      default: false
+    }
+  },
+  
   // Signature Data
   signatureData: {
     timestamp: {
       type: Date,
-      required: true
+      required: false
     },
     coordinates: {
       x: Number,
       y: Number,
       page: Number
     },
-    signatureImage: {
+    imageSignature: {
       type: String, // Base64 encoded signature image
       required: false
     },
     typedSignature: {
       type: String, // For typed signatures
+      required: false
+    },
+    signatureFont: {
+      type: String, // Font family for typed signatures
+      required: false
+    },
+    signatureMethod: {
+      type: String,
       required: false
     },
     // Document Integrity - Hash of the signed document
@@ -214,6 +330,7 @@ const digitalSignatureSchema = new mongoose.Schema({
 
 // Indexes for performance
 digitalSignatureSchema.index({ documentId: 1, documentType: 1 });
+digitalSignatureSchema.index({ documentUrl: 1, documentType: 1 });
 digitalSignatureSchema.index({ signerId: 1, signerType: 1 });
 digitalSignatureSchema.index({ signatureId: 1 });
 digitalSignatureSchema.index({ status: 1 });
@@ -230,7 +347,14 @@ digitalSignatureSchema.pre('save', function(next) {
 // Method to generate signature hash
 digitalSignatureSchema.methods.generateHash = function() {
   const crypto = require('crypto');
-  const data = `${this.documentId}-${this.signerId}-${this.signatureData.timestamp}-${this.signatureData.signatureImage || this.signatureData.typedSignature}-${this.intentToSign}-${this.consentToElectronicBusiness}`;
+  const documentId = this.documentId || this.documentUrl || 'unknown';
+  const signerId = this.signerId || this.signerEmail || 'unknown';
+  const timestamp = this.signatureData?.timestamp || this.auditTrail?.signatureTimestamp || new Date();
+  const signatureData = this.signatureData?.imageSignature || this.signatureData?.typedSignature || 'unknown';
+  const intentToSign = this.intentToSign || this.legalCompliance?.intentToSign || false;
+  const consentToElectronicBusiness = this.consentToElectronicBusiness || this.legalCompliance?.consentToElectronicBusiness || false;
+  
+  const data = `${documentId}-${signerId}-${timestamp}-${signatureData}-${intentToSign}-${consentToElectronicBusiness}`;
   return crypto.createHash('sha256').update(data).digest('hex');
 };
 
@@ -242,12 +366,33 @@ digitalSignatureSchema.methods.verifySignature = function() {
 
 // Method to verify legal compliance
 digitalSignatureSchema.methods.verifyLegalCompliance = function() {
+  const intentToSign = this.intentToSign || this.legalCompliance?.intentToSign || false;
+  const consentToElectronicBusiness = this.consentToElectronicBusiness || this.legalCompliance?.consentToElectronicBusiness || false;
+  const signatureAssociation = this.signatureAssociation?.signerIdentityVerified || this.legalCompliance?.signerIdentityVerified || false;
+  const documentIntegrity = this.verifySignature();
+  const auditTrailComplete = this.auditTrail?.signatureTimestamp && this.auditTrail?.ipAddress;
+  
+  // ESIGN Act compliance requirements
+  const esignActCompliant = intentToSign && 
+                           consentToElectronicBusiness && 
+                           auditTrailComplete && 
+                           this.auditTrail?.signatureTimestamp;
+  
+  // UETA compliance requirements (similar to ESIGN Act)
+  const uetaCompliant = intentToSign && 
+                       consentToElectronicBusiness && 
+                       auditTrailComplete;
+  
   return {
-    intentToSign: this.intentToSign,
-    consentToElectronicBusiness: this.consentToElectronicBusiness,
-    signatureAssociation: this.signatureAssociation.signerIdentityVerified,
-    documentIntegrity: this.verifySignature(),
-    isCompliant: this.intentToSign && this.consentToElectronicBusiness && this.signatureAssociation.signerIdentityVerified && this.verifySignature()
+    intentToSign,
+    consentToElectronicBusiness,
+    signatureAssociation,
+    documentIntegrity,
+    auditTrailComplete,
+    esignActCompliant,
+    uetaCompliant,
+    overallCompliance: intentToSign && consentToElectronicBusiness && signatureAssociation && documentIntegrity && auditTrailComplete,
+    complianceScore: [intentToSign, consentToElectronicBusiness, signatureAssociation, documentIntegrity, auditTrailComplete].filter(Boolean).length / 5 * 100
   };
 };
 

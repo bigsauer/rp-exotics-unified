@@ -368,8 +368,14 @@ router.delete('/:id', requireAdmin, async (req, res) => {
 router.post('/:id/reset-password', requireAdmin, async (req, res) => {
   try {
     const { newPassword } = req.body;
+    
+    console.log('[PASSWORD RESET] Received request body:', req.body);
+    console.log('[PASSWORD RESET] newPassword value:', newPassword);
+    console.log('[PASSWORD RESET] newPassword type:', typeof newPassword);
+    console.log('[PASSWORD RESET] newPassword length:', newPassword ? newPassword.length : 'undefined');
 
     if (!newPassword || newPassword.length < 6) {
+      console.log('[PASSWORD RESET] Validation failed - password too short or missing');
       return res.status(400).json({ error: 'Password must be at least 6 characters long' });
     }
 

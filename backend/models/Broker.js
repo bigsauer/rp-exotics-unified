@@ -66,6 +66,29 @@ const brokerSchema = new mongoose.Schema({
     type: Number,
     default: 0
   },
+  // Broker Fee Tracking
+  totalFeesEarned: {
+    type: Number,
+    default: 0
+  },
+  totalFeesPaid: {
+    type: Number,
+    default: 0
+  },
+  feesHistory: [{
+    dealId: { type: mongoose.Schema.Types.ObjectId, ref: 'SalesDeal' },
+    dealVin: { type: String },
+    dealVehicle: { type: String },
+    amount: { type: Number, required: true },
+    date: { type: Date, default: Date.now },
+    paid: { type: Boolean, default: false },
+    paidDate: { type: Date },
+    salesPerson: {
+      id: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+      name: { type: String }
+    },
+    notes: { type: String }
+  }],
   monthlyCommissions: [{
     month: {
       type: String, // Format: "YYYY-MM" (e.g., "2024-01")

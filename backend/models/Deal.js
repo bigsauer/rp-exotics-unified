@@ -29,6 +29,13 @@ const dealSchema = new mongoose.Schema({
   rpStockNumber: {
     type: String,
     required: false,
+    trim: true,
+    unique: true,
+    sparse: true
+  },
+  stockNumber: {
+    type: String,
+    required: false,
     trim: true
   },
   salesperson: {
@@ -46,7 +53,7 @@ const dealSchema = new mongoose.Schema({
   listPrice: {
     type: Number
   },
-  killPrice: {
+  instantOffer: {
     type: Number
   },
   wholesalePrice: {
@@ -213,6 +220,86 @@ const dealSchema = new mongoose.Schema({
     }
   }],
 
+  // Seller uploaded documents
+  sellerUploadedDocuments: [{
+    originalName: {
+      type: String,
+      required: true
+    },
+    fileName: {
+      type: String,
+      required: true
+    },
+    filePath: {
+      type: String,
+      required: true
+    },
+    fileSize: {
+      type: Number,
+      required: true
+    },
+    mimeType: {
+      type: String,
+      required: true
+    },
+    uploadedBy: {
+      type: String,
+      required: true
+    },
+    uploadedAt: {
+      type: Date,
+      default: Date.now
+    },
+    cloudUrl: {
+      type: String,
+      required: true
+    },
+    reviewed: {
+      type: Boolean,
+      default: false
+    },
+    reviewedAt: Date,
+    reviewedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User'
+    },
+    notes: String
+  }],
+
+  // Seller purchase checklist data
+  sellerPurchaseChecklist: {
+    // Document uploads
+    photoId: Object,
+    titleFront: Object,
+    titleBack: Object,
+    registration: Object,
+    odometerPhoto: Object,
+    
+    // Lien information
+    hasLien: Boolean,
+    lienholderName: String,
+    lienholderPhone: String,
+    loanAccountNumber: String,
+    lastFourSSN: String,
+    
+    // Address information
+    mailingAddress: {
+      street: String,
+      city: String,
+      state: String,
+      zip: String
+    },
+    emailAddress: String,
+    
+    // Pickup information
+    pickupAddress: String,
+    pickupHours: String,
+    
+    // Metadata
+    submittedAt: Date,
+    submittedBy: String
+  },
+
   // Document generation tracking
   documentGenerationStatus: {
     type: String,
@@ -339,7 +426,7 @@ const dealSchema = new mongoose.Schema({
     userId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
-      required: true
+      required: false // Made optional to support seller uploads
     },
     description: String,
     metadata: mongoose.Schema.Types.Mixed

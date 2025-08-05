@@ -390,6 +390,8 @@ router.post('/deals', authenticateToken, async (req, res) => {
   try {
     const dealData = req.body;
     
+    console.log('[SALES DEAL] Creating new sales deal with data:', JSON.stringify(dealData, null, 2));
+    
     // Set sales person information
     dealData.salesPerson = {
       id: req.user.id,
@@ -398,7 +400,119 @@ router.post('/deals', authenticateToken, async (req, res) => {
       phone: req.user.profile.phone || ''
     };
 
-    // Initialize stage history
+    // Handle customer information for different deal types
+    if (!dealData.customer || !dealData.customer.name) {
+      // For wholesale D2D buy deals, customer might be in seller field
+      if (dealData.seller && dealData.seller.name) {
+        dealData.customer = {
+          name: dealData.seller.name,
+          type: dealData.seller.type === 'dealer' ? 'dealer' : 'individual',
+          contact: {
+            email: dealData.seller.contact?.email || dealData.seller.email || '',
+            phone: dealData.seller.contact?.phone || dealData.seller.phone || '',
+            address: dealData.seller.contact?.address ? 
+              `${dealData.seller.contact.address.street || ''}, ${dealData.seller.contact.address.city || ''}, ${dealData.seller.contact.address.state || ''} ${dealData.seller.contact.address.zip || ''}` : '',
+            preferredContact: 'email'
+          },
+          notes: dealData.notes || dealData.generalNotes || '',
+          source: 'other'
+        };
+      } else {
+        // Set a default customer name if none provided
+        dealData.customer = {
+          name: 'Customer TBD',
+          type: 'individual',
+          contact: {
+            email: '',
+            phone: '',
+            address: '',
+            preferredContact: 'email'
+          },
+          notes: 'Customer information to be updated',
+          source: 'other'
+        };
+      }
+    }
+
+    // Handle stockNumber for different deal types
+    if (!dealData.stockNumber) {
+      // For wholesale D2D buy deals, stockNumber might be in rpStockNumber field
+      if (dealData.rpStockNumber) {
+        dealData.stockNumber = dealData.rpStockNumber;
+      } else {
+        // Generate a default stock number
+        dealData.stockNumber = `RP${Date.now()}`;
+      }
+    }
+
+    console.log('[SALES DEAL] Processed deal data:', JSON.stringify(dealData, null, 2));
+
+    // Check if a deal with this VIN already exists
+    const existingDeal = await SalesDeal.findOne({ vin: dealData.vin });
+    if (existingDeal) {
+      console.log(`[SALES DEAL] Deal with VIN ${dealData.vin} already exists. Updating existing deal.`);
+      
+      // Update the existing deal with new data
+      Object.assign(existingDeal, dealData);
+      existingDeal.updatedBy = req.user.id;
+      existingDeal.updatedAt = new Date();
+      
+      // Add to stage history if stage changed
+      if (existingDeal.currentStage !== dealData.currentStage) {
+        existingDeal.stageHistory.push({
+          stage: dealData.currentStage || 'contract-received',
+          enteredAt: new Date(),
+          notes: 'Deal updated'
+        });
+      }
+      
+      await existingDeal.save();
+      
+      // Handle broker fee tracking for existing deal
+      if (dealData.financial?.brokerFee?.amount && dealData.financial?.brokerFee?.brokerId) {
+        try {
+          const Broker = require('../models/Broker');
+          const broker = await Broker.findById(dealData.financial.brokerFee.brokerId);
+          
+          if (broker) {
+            // Update broker's fee tracking
+            broker.totalFeesEarned += dealData.financial.brokerFee.amount;
+            broker.totalDeals += 1;
+            
+            // Add to fees history
+            broker.feesHistory.push({
+              dealId: existingDeal._id,
+              dealVin: existingDeal.vin,
+              dealVehicle: existingDeal.vehicle,
+              amount: dealData.financial.brokerFee.amount,
+              date: new Date(),
+              paid: false,
+              salesPerson: {
+                id: req.user.id,
+                name: req.user.profile.displayName
+              },
+              notes: dealData.financial.brokerFee.notes || ''
+            });
+            
+            await broker.save();
+            console.log(`[BROKER FEE] Updated broker ${broker.name} with fee: $${dealData.financial.brokerFee.amount}`);
+          }
+        } catch (brokerError) {
+          console.error('[BROKER FEE] Error updating broker fee tracking:', brokerError);
+        }
+      }
+
+      // Populate sales person info
+      await existingDeal.populate('salesPerson.id', 'name email');
+
+      return res.status(200).json({
+        success: true,
+        message: 'Sales deal updated successfully',
+        deal: existingDeal
+      });
+    }
+
+    // Initialize stage history for new deal
     dealData.stageHistory = [{
       stage: dealData.currentStage || 'contract-received',
       enteredAt: new Date(),
@@ -412,10 +526,46 @@ router.post('/deals', authenticateToken, async (req, res) => {
     const deal = new SalesDeal(dealData);
     await deal.save();
 
+    // Handle broker fee tracking if broker fee is provided
+    if (dealData.financial?.brokerFee?.amount && dealData.financial?.brokerFee?.brokerId) {
+      try {
+        const Broker = require('../models/Broker');
+        const broker = await Broker.findById(dealData.financial.brokerFee.brokerId);
+        
+        if (broker) {
+          // Update broker's fee tracking
+          broker.totalFeesEarned += dealData.financial.brokerFee.amount;
+          broker.totalDeals += 1;
+          
+          // Add to fees history
+          broker.feesHistory.push({
+            dealId: deal._id,
+            dealVin: deal.vin,
+            dealVehicle: deal.vehicle,
+            amount: dealData.financial.brokerFee.amount,
+            date: new Date(),
+            paid: false,
+            salesPerson: {
+              id: req.user.id,
+              name: req.user.profile.displayName
+            },
+            notes: dealData.financial.brokerFee.notes || ''
+          });
+          
+          await broker.save();
+          console.log(`[BROKER FEE] Updated broker ${broker.name} with fee: $${dealData.financial.brokerFee.amount}`);
+        }
+      } catch (brokerError) {
+        console.error('[BROKER FEE] Error updating broker fee tracking:', brokerError);
+        // Don't fail the deal creation if broker update fails
+      }
+    }
+
     // Populate sales person info
     await deal.populate('salesPerson.id', 'name email');
 
     res.status(201).json({
+      success: true,
       message: 'Sales deal created successfully',
       deal
     });
@@ -915,6 +1065,77 @@ router.post('/sync/deal/:vin', async (req, res) => {
       error: 'Failed to sync deal',
       details: error.message
     });
+  }
+});
+
+// Update broker fee payment status
+router.put('/deals/:id/broker-fee', authenticateToken, async (req, res) => {
+  try {
+    const { paid, paidDate, notes } = req.body;
+    
+    let query = { _id: req.params.id };
+    if (req.user.role === 'sales' && !req.user.permissions?.viewAllDeals) {
+      query['salesPerson.id'] = req.user.id;
+    }
+
+    const deal = await SalesDeal.findOne(query);
+    if (!deal) {
+      return res.status(404).json({ error: 'Deal not found or access denied' });
+    }
+
+    if (!deal.financial?.brokerFee?.brokerId) {
+      return res.status(400).json({ error: 'No broker fee associated with this deal' });
+    }
+
+    // Update deal's broker fee payment status
+    deal.financial.brokerFee.paid = paid;
+    deal.financial.brokerFee.paidDate = paid ? (paidDate || new Date()) : null;
+    deal.financial.brokerFee.notes = notes || deal.financial.brokerFee.notes;
+    deal.updatedAt = new Date();
+    deal.updatedBy = req.user.id;
+
+    await deal.save();
+
+    // Update broker's fee tracking
+    try {
+      const Broker = require('../models/Broker');
+      const broker = await Broker.findById(deal.financial.brokerFee.brokerId);
+      
+      if (broker) {
+        // Find the fee in broker's history
+        const feeEntry = broker.feesHistory.find(fee => 
+          fee.dealId.toString() === deal._id.toString()
+        );
+        
+        if (feeEntry) {
+          feeEntry.paid = paid;
+          feeEntry.paidDate = paid ? (paidDate || new Date()) : null;
+          feeEntry.notes = notes || feeEntry.notes;
+        }
+
+        // Update total fees paid
+        if (paid) {
+          broker.totalFeesPaid += deal.financial.brokerFee.amount;
+        } else {
+          // If marking as unpaid, subtract from total paid
+          broker.totalFeesPaid = Math.max(0, broker.totalFeesPaid - deal.financial.brokerFee.amount);
+        }
+        
+        await broker.save();
+        console.log(`[BROKER FEE] Updated payment status for broker ${broker.name}: ${paid ? 'Paid' : 'Unpaid'}`);
+      }
+    } catch (brokerError) {
+      console.error('[BROKER FEE] Error updating broker payment status:', brokerError);
+      // Don't fail the deal update if broker update fails
+    }
+
+    res.json({ 
+      message: 'Broker fee payment status updated successfully',
+      deal: deal.financial.brokerFee
+    });
+  } catch (error) {
+    console.error('Error updating broker fee payment status:', error);
+    res.status(500).json({ error: error.message });
   }
 });
 

@@ -27,7 +27,7 @@ AWS_SECRET_ACCESS_KEY=your_aws_secret_access_key
 AWS_REGION=us-east-2
 AWS_S3_BUCKET_NAME=rp-exotics-document-storage
 
-# Email Configuration (if using email features)
+# Email Configuration (REQUIRED for signature emails)
 RESEND_API_KEY=your_resend_api_key
 FROM_EMAIL=noreply@yourdomain.com
 
@@ -268,6 +268,9 @@ If you encounter issues:
 3. Test S3 connection manually
 4. Check AWS IAM permissions
 5. Verify bucket configuration
+6. **For signature email issues**: Run `node verify-signature-email-config.js`
+7. **For signature email issues**: Check Railway logs for email errors
+8. **For signature email issues**: Verify FRONTEND_URL is set to production URL
 
 ## ✅ Success Checklist
 
@@ -284,5 +287,12 @@ If you encounter issues:
 - [ ] Document download/view works
 - [ ] Vehicle records generate correctly
 - [ ] All document types work (Bill of Sale, Vehicle Record, etc.)
+- [ ] **Signature Email System**:
+  - [ ] RESEND_API_KEY configured
+  - [ ] FRONTEND_URL set to production URL
+  - [ ] Finance users can sign documents
+  - [ ] Client signature emails are sent
+  - [ ] Client signature links work correctly
+  - [ ] Signatures are recorded with audit trail
 
 Once all items are checked, your deployment is ready for production use! 🎉 

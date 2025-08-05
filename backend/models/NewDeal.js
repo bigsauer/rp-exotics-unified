@@ -16,7 +16,7 @@ const NewDealSchema = new mongoose.Schema({
   currentStage: String,
   purchasePrice: String,
   listPrice: String,
-  killPrice: String,
+  instantOffer: String,
   wholesalePrice: String,
   commissionRate: String,
   brokerageFee: String,

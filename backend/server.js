@@ -15,7 +15,7 @@ const allowedOrigins = [
   'http://localhost:5001',
   'http://localhost:8080',
   'http://127.0.0.1:3000',
-  'https://rp-exotics-frontend.vercel.app',
+  'https://slipstreamdocs.com',
   'https://slipstreamdocs.com',
   'https://astonishing-chicken-production.up.railway.app',
   'https://astonishing-chicken-production.up.railway.app', // Add your actual Railway backend URL if different
@@ -98,15 +98,21 @@ mongoose.connect(mongoUri, {
 
 // API routes (should come before the catch-all)
 app.use('/api/auth', require('./routes/auth'));
-app.use('/api/backOffice', require('./routes/backOffice'));
+app.use('/api/admin', require('./routes/admin'));
+app.use('/api/backoffice', require('./routes/backOffice'));
 app.use('/api/brokers', require('./routes/brokers'));
 app.use('/api/dealers', require('./routes/dealers'));
 console.log('[DEBUG][server.js] Registering /api/deals route...');
 app.use('/api/deals', require('./routes/deals'));
 app.use('/api/documents', require('./routes/documents'));
 app.use('/api/email', require('./routes/email'));
+app.use('/api/it', require('./routes/it'));
 app.use('/api/sales', require('./routes/salesTracker'));
+app.use('/api/seller-upload', require('./routes/sellerUpload'));
+app.use('/api/signatures', require('./routes/signatures'));
+app.use('/api/stats', require('./routes/stats'));
 app.use('/api/users', require('./routes/users'));
+app.use('/api/apiKeys', require('./routes/apiKeys'));
 
 // Debug logging for all API requests
 app.use('/api', (req, res, next) => {

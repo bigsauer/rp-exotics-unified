@@ -1,13 +1,13 @@
 const express = require('express');
 const router = express.Router();
-const auth = require('../middleware/auth');
+const { authenticateToken } = require('../middleware/auth');
 const Deal = require('../models/Deal');
 const User = require('../models/User');
 const Dealer = require('../models/Dealer');
 const VehicleRecord = require('../models/VehicleRecord');
 
 // Get comprehensive system statistics
-router.get('/overview', auth, async (req, res) => {
+router.get('/overview', authenticateToken, async (req, res) => {
   try {
     console.log('[STATS] Fetching system overview statistics');
     
@@ -24,6 +24,16 @@ router.get('/overview', auth, async (req, res) => {
     const wholesaleDeals = await Deal.countDocuments({ dealType: { $regex: /^wholesale/ } });
     const retailDeals = await Deal.countDocuments({ dealType: { $regex: /^retail/ } });
     const auctionDeals = await Deal.countDocuments({ dealType: 'auction' });
+    
+    // Count wholesale flip buy-sell deals as both buys and sales
+    const wholesaleFlipBuySellDeals = await Deal.countDocuments({ 
+      dealType: 'wholesale-flip', 
+      dealType2SubType: 'buy-sell' 
+    });
+    
+    // Calculate total buys and sales
+    const totalBuys = totalDeals + wholesaleFlipBuySellDeals; // Wholesale flip buy-sell counts as both
+    const totalSales = wholesaleFlipBuySellDeals; // Only wholesale flip buy-sell deals count as sales
     
     // Count deals by status
     const activeDeals = await Deal.countDocuments({ currentStage: { $nin: ['deal-complete', 'funds-disbursed'] } });
@@ -78,6 +88,8 @@ router.get('/overview', auth, async (req, res) => {
     const stats = {
       overview: {
         totalDeals,
+        totalBuys,
+        totalSales,
         activeDeals,
         completedDeals,
         totalUsers,
@@ -121,7 +133,7 @@ router.get('/overview', auth, async (req, res) => {
 });
 
 // Get user-specific statistics
-router.get('/user/:userId', auth, async (req, res) => {
+router.get('/user/:userId', authenticateToken, async (req, res) => {
   try {
     const { userId } = req.params;
     
@@ -170,7 +182,7 @@ router.get('/user/:userId', auth, async (req, res) => {
 });
 
 // Get real-time system metrics
-router.get('/metrics', auth, async (req, res) => {
+router.get('/metrics', authenticateToken, async (req, res) => {
   try {
     // Only allow admin access
     if (req.user.role !== 'admin') {

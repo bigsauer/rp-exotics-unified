@@ -23,7 +23,7 @@ const allowedOrigins = [
   'http://localhost:3001',
   'http://127.0.0.1:3000',
   'http://127.0.0.1:3001',
-  'https://rp-exotics-frontend.vercel.app',
+  'https://slipstreamdocs.com',
   'https://rp-exotics-frontend.netlify.app',
   'https://slipstreamdocs.com',
   process.env.FRONTEND_URL
@@ -182,6 +182,7 @@ app.use('/api/back-office', require('./routes/backOffice'));  // Back office dea
 app.use('/api/sales', require('./routes/salesTracker'));  // Sales deal tracking
 app.use('/api/documents', require('./routes/documents'));  // Document generation and vehicle records
 app.use('/api/email', require('./routes/email'));  // Email notifications
+app.use('/api/seller-upload', require('./routes/sellerUpload'));  // Seller document upload
 app.use('/api/it', require('./routes/it'));  // IT management and deployment controls
 app.use('/api/stats', require('./routes/stats'));  // System statistics
 
@@ -1057,9 +1058,40 @@ app.post('/api/deals', async (req, res) => {
     // Generate stock number if not provided
     let stockNumber = req.body.stockNumber;
     if (!stockNumber) {
-      const year = new Date().getFullYear();
-      const count = await db.collection('deals').countDocuments() + 1;
-      stockNumber = `RP${year}${count.toString().padStart(3, '0')}`;
+      const currentDate = new Date();
+      const month = String(currentDate.getMonth() + 1).padStart(2, '0'); // 01-12
+      
+      // Determine deal type prefix (R for Retail, W for Wholesale)
+      const dealType = req.body.dealType || 'wholesale';
+      const dealType2SubType = req.body.dealType2SubType || '';
+      let typePrefix = 'R'; // Default to Retail
+      if (dealType && dealType.startsWith('wholesale')) {
+        typePrefix = 'W'; // Wholesale
+      }
+      
+      // Determine transaction type suffix (P for Purchase, S for Sale, F for Flip)
+      let transactionSuffix = 'P'; // Default to Purchase
+      
+      if (dealType === 'wholesale-flip' && dealType2SubType === 'buy-sell') {
+        transactionSuffix = 'F'; // Flip
+      } else if (dealType === 'wholesale-d2d' && dealType2SubType === 'sale') {
+        transactionSuffix = 'S'; // Sale
+      } else if (dealType === 'retail-pp' && dealType2SubType === 'sale') {
+        transactionSuffix = 'S'; // Sale
+      }
+      
+      // Get count of deals for this month
+      const startOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+      const endOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
+      
+      const count = await db.collection('deals').countDocuments({
+        createdAt: {
+          $gte: startOfMonth,
+          $lte: endOfMonth
+        }
+      }) + 1;
+      
+      stockNumber = `${month}-${count.toString().padStart(4, '0')}-${typePrefix}${transactionSuffix}`;
     }
     
     const deal = {

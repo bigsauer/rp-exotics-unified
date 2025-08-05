@@ -51,6 +51,16 @@ const salesDealSchema = new mongoose.Schema({
     commission: {
       rate: { type: Number, default: 0 },
       estimatedAmount: { type: Number, default: 0 }
+    },
+    // Broker Fee Tracking
+    brokerFee: {
+      amount: { type: Number, default: 0 },
+      brokerId: { type: mongoose.Schema.Types.ObjectId, ref: 'Broker' },
+      brokerName: { type: String },
+      brokerEmail: { type: String },
+      paid: { type: Boolean, default: false },
+      paidDate: { type: Date },
+      notes: { type: String }
     }
   },
   

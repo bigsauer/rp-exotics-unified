@@ -11,78 +11,178 @@ mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/rp_exotic
 
 async function testDocumentGeneration() {
   try {
-    console.log('🧪 Testing document generation...');
+    console.log('🧪 Testing document generation for retail-d2d buy deal...');
     
-    // Get the most recent deal
-    const latestDeal = await Deal.findOne().sort({ createdAt: -1 });
-    
-    if (!latestDeal) {
-      console.log('❌ No deals found in database');
+    // Get a test user for document generation
+    const testUser = await User.findOne();
+    if (!testUser) {
+      console.log('❌ No users found in database');
       return;
     }
+
+    console.log('👤 Using test user:', testUser.email);
     
-    console.log('📋 Testing with deal:');
-    console.log('  - ID:', latestDeal._id);
-    console.log('  - VIN:', latestDeal.vin);
-    console.log('  - Deal Type:', latestDeal.dealType);
-    console.log('  - Deal Type 2 Sub Type:', latestDeal.dealType2SubType);
+    // Create a test retail-d2d buy deal with all required fields
+    const testDeal = new Deal({
+      dealType: 'retail-d2d',
+      dealType2: 'Buy',
+      dealType2SubType: 'buy',
+      vehicle: '2021 Honda Civic', // Required field
+      vin: '1HGBH41JXMN109186',
+      year: 2021,
+      make: 'Honda',
+      model: 'Civic',
+      stockNumber: 'RETAIL-D2D-001',
+      color: 'Blue',
+      exteriorColor: 'Blue',
+      interiorColor: 'Black',
+      mileage: 25000,
+      purchasePrice: 15000,
+      listPrice: 18000,
+      instantOffer: 14000,
+      wholesalePrice: 16000,
+      salesperson: 'Test Salesperson',
+      seller: {
+        name: 'Test Private Seller',
+        type: 'private',
+        contact: {
+          phone: '555-123-4567',
+          email: 'test@private.com'
+        },
+        tier: 'Tier 1'
+      },
+      buyer: {
+        name: 'RP Exotics',
+        type: 'dealer',
+        contact: {
+          phone: '555-987-6543',
+          email: 'buyer@rpexotics.com'
+        },
+        tier: 'Tier 1'
+      },
+      paymentMethod: 'check',
+      currentStage: 'contract-received',
+      priority: 'medium',
+      createdBy: testUser._id,
+      workflowHistory: [{
+        stage: 'contract-received',
+        changedBy: testUser._id,
+        notes: 'Test retail-d2d buy deal'
+      }]
+    });
+
+    await testDeal.save();
+    console.log('📋 Created test retail-d2d buy deal:');
+    console.log('  - Deal Number:', testDeal.dealNumber);
+    console.log('  - Deal Type:', testDeal.dealType);
+    console.log('  - Deal Type2:', testDeal.dealType2);
+    console.log('  - Deal Type2SubType:', testDeal.dealType2SubType);
+    console.log('  - Vehicle:', `${testDeal.year} ${testDeal.make} ${testDeal.model}`);
+    console.log('  - VIN:', testDeal.vin);
+    console.log('  - Seller Name:', testDeal.seller.name);
+    console.log('  - Seller Type:', testDeal.seller.type);
+    console.log('  - Salesperson:', testDeal.salesperson);
+    console.log('  - Purchase Price:', testDeal.purchasePrice);
+    console.log('✅ Test deal saved with ID:', testDeal._id);
+
+    // Create vehicle record
+    console.log('📄 Creating vehicle record for retail-d2d buy deal...');
     
-    // Simulate the document generation request
-    const documentGenerationData = {
-      dealType2SubType: latestDeal.dealType2SubType,
-      dealType2: latestDeal.dealType2,
-      sellerType: latestDeal.sellerType || 'private',
-      buyerType: latestDeal.buyerType || 'dealer'
-    };
+    let vehicleRecord = new VehicleRecord({
+      vin: testDeal.vin,
+      year: testDeal.year,
+      make: testDeal.make,
+      model: testDeal.model,
+      stockNumber: testDeal.stockNumber || 'N/A',
+      color: testDeal.color,
+      exteriorColor: testDeal.exteriorColor,
+      interiorColor: testDeal.interiorColor,
+      mileage: testDeal.mileage,
+      salesperson: testDeal.salesperson, // Required field
+      dealId: testDeal._id,
+      dealType: testDeal.dealType,
+      dealType2: testDeal.dealType2 || 'Buy',
+      dealType2SubType: testDeal.dealType2SubType || 'buy',
+      purchasePrice: testDeal.purchasePrice,
+      listPrice: testDeal.listPrice,
+      wholesalePrice: testDeal.wholesalePrice || 0,
+      instantOffer: testDeal.instantOffer,
+      commission: {
+        rate: 0,
+        amount: 0
+      },
+      brokerFee: 0, // Use number instead of object
+      brokerFeePaidTo: 'N/A',
+      payoffBalance: 0,
+      amountDueToCustomer: 0,
+      amountDueToRP: 0,
+      seller: testDeal.seller,
+      buyer: testDeal.buyer,
+      paymentMethod: testDeal.paymentMethod,
+      paymentTerms: 'N/A',
+      fundingSource: 'N/A',
+      vehicleDescription: testDeal.vehicleDescription,
+      generalNotes: testDeal.generalNotes,
+      rpStockNumber: testDeal.rpStockNumber,
+      generatedDocuments: [],
+      createdBy: testUser._id
+    });
+
+    await vehicleRecord.save();
+    console.log('✅ Vehicle record created with ID:', vehicleRecord._id);
+
+    // Test document generation
+    console.log('🔧 Generating documents for retail-d2d buy deal...');
     
-    console.log('📤 Document generation data:', documentGenerationData);
-    
-    // Check if vehicle record exists before
-    const vehicleRecordBefore = await VehicleRecord.findOne({ dealId: latestDeal._id });
-    console.log('🔍 Vehicle record before generation:', vehicleRecordBefore ? vehicleRecordBefore._id : 'None');
-    
-    // Simulate the API call by directly calling the document generation logic
-    console.log('🚀 Simulating document generation...');
-    
-    // Import the document generation service
     const documentGenerator = require('./services/documentGenerator');
+
+    // Generate wholesale purchase agreement for retail-d2d buy deals
+    console.log('🔧 Generating wholesale purchase agreement for retail-d2d buy deal...');
     
-    // Call the document generation function directly
-    const result = await documentGenerator.generateDocument(
-      latestDeal,
-      { _id: 'test-user-id', firstName: 'Test', lastName: 'User' }
-    );
+    const wholesalePurchaseResult = await documentGenerator.generateWholesalePPBuy(testDeal, testUser);
     
-    console.log('📄 Document generation result:', result);
-    
-    // Check if vehicle record was created
-    const vehicleRecordAfter = await VehicleRecord.findOne({ dealId: latestDeal._id });
-    console.log('🔍 Vehicle record after generation:', vehicleRecordAfter ? vehicleRecordAfter._id : 'None');
-    
-    if (vehicleRecordAfter) {
-      console.log('✅ Vehicle record created successfully!');
-      console.log('  - Generated documents:', vehicleRecordAfter.generatedDocuments ? vehicleRecordAfter.generatedDocuments.length : 0);
-      
-      if (vehicleRecordAfter.generatedDocuments && vehicleRecordAfter.generatedDocuments.length > 0) {
-        console.log('📄 Generated documents:');
-        vehicleRecordAfter.generatedDocuments.forEach((doc, index) => {
-          console.log(`  ${index + 1}. ${doc.fileName} (${doc.documentType})`);
-        });
-      }
-    } else {
-      console.log('❌ No vehicle record created');
+    console.log('📄 Wholesale purchase agreement generation result:', {
+      success: !!wholesalePurchaseResult.fileName,
+      fileName: wholesalePurchaseResult.fileName,
+      fileSize: wholesalePurchaseResult.fileSize
+    });
+
+    if (wholesalePurchaseResult.fileName) {
+      // Add to vehicle record documents
+      vehicleRecord.generatedDocuments.push({
+        documentType: 'wholesale_purchase_agreement', // Use correct enum value
+        fileName: wholesalePurchaseResult.fileName,
+        filePath: wholesalePurchaseResult.filePath,
+        fileSize: wholesalePurchaseResult.fileSize,
+        generatedBy: testUser._id, // Use generatedBy instead of uploadedBy
+        documentNumber: wholesalePurchaseResult.documentNumber,
+        status: 'draft'
+      });
+
+      await vehicleRecord.save();
+      console.log('✅ Vehicle record updated with wholesale purchase agreement');
     }
-    
-    // Check if deal was updated
-    const updatedDeal = await Deal.findById(latestDeal._id);
-    console.log('📋 Updated deal:');
-    console.log('  - Vehicle Record ID:', updatedDeal.vehicleRecordId);
-    console.log('  - Documents count:', updatedDeal.documents ? updatedDeal.documents.length : 0);
-    
+
+    // Update deal with vehicle record ID
+    testDeal.vehicleRecordId = vehicleRecord._id;
+    await testDeal.save();
+    console.log('✅ Deal updated with vehicle record ID');
+
+    console.log('\n📋 Final Results:');
+    console.log('  - Vehicle Record ID:', vehicleRecord._id);
+    console.log('  - Generated Documents:', vehicleRecord.generatedDocuments.length);
+    for (let i = 0; i < vehicleRecord.generatedDocuments.length; i++) {
+      const doc = vehicleRecord.generatedDocuments[i];
+      console.log(`    ${i + 1}. ${doc.fileName} (${doc.documentType})`);
+    }
+
+    console.log('\n✅ Test completed successfully!');
+
   } catch (error) {
-    console.error('❌ Error testing document generation:', error);
+    console.error('❌ Test failed:', error);
+    console.error('Error stack:', error.stack);
   } finally {
-    mongoose.connection.close();
+    await mongoose.disconnect();
   }
 }
 

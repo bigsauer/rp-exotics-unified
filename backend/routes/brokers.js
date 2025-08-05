@@ -322,4 +322,253 @@ router.get('/:id/commission-summary', authenticateToken, async (req, res) => {
   }
 });
 
+// Get broker commission summary for date range
+router.get('/:id/commission-range', authenticateToken, async (req, res) => {
+  try {
+    const { startDate, endDate } = req.query;
+    
+    if (!startDate || !endDate) {
+      return res.status(400).json({
+        success: false,
+        message: 'Start date and end date are required'
+      });
+    }
+
+    const broker = await Broker.findById(req.params.id);
+    if (!broker) {
+      return res.status(404).json({
+        success: false,
+        message: 'Broker not found'
+      });
+    }
+
+    // Parse dates
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    
+    if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid date format'
+      });
+    }
+
+    if (start > end) {
+      return res.status(400).json({
+        success: false,
+        message: 'Start date must be before end date'
+      });
+    }
+
+    // Filter monthly commissions within the date range
+    const filteredCommissions = broker.monthlyCommissions.filter(commission => {
+      const commissionDate = new Date(commission.month + '-01');
+      return commissionDate >= start && commissionDate <= end;
+    });
+
+    // Calculate totals for the date range
+    const totalAmount = filteredCommissions.reduce((sum, commission) => sum + commission.amount, 0);
+    const totalDeals = filteredCommissions.reduce((sum, commission) => sum + commission.dealCount, 0);
+
+    // Also check deals table for broker fees in the date range
+    const Deal = require('../models/Deal');
+    const dealsWithBrokerFees = await Deal.find({
+      'brokerFeePaidTo': broker.name,
+      'createdAt': { $gte: start, $lte: end },
+      'brokerFee': { $gt: 0 }
+    }).select('brokerFee createdAt dealType vin make model year');
+
+    const dealsTotalAmount = dealsWithBrokerFees.reduce((sum, deal) => sum + (deal.brokerFee || 0), 0);
+    const dealsTotalCount = dealsWithBrokerFees.length;
+
+    res.json({
+      success: true,
+      data: {
+        brokerId: broker._id,
+        brokerName: broker.name,
+        dateRange: {
+          startDate,
+          endDate
+        },
+        monthlyCommissions: filteredCommissions,
+        summary: {
+          totalAmount,
+          totalDeals,
+          dealsTotalAmount,
+          dealsTotalCount,
+          combinedTotal: totalAmount + dealsTotalAmount,
+          combinedDeals: totalDeals + dealsTotalCount
+        },
+        deals: dealsWithBrokerFees
+      }
+    });
+  } catch (error) {
+    console.error('[BROKERS] Error fetching broker commission range:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch broker commission range',
+      error: error.message
+    });
+  }
+});
+
+// Get broker fee summary for date range
+router.get('/:id/fees-range', authenticateToken, async (req, res) => {
+  try {
+    const { startDate, endDate } = req.query;
+    
+    if (!startDate || !endDate) {
+      return res.status(400).json({
+        success: false,
+        message: 'Start date and end date are required'
+      });
+    }
+
+    const broker = await Broker.findById(req.params.id);
+    if (!broker) {
+      return res.status(404).json({
+        success: false,
+        message: 'Broker not found'
+      });
+    }
+
+    // Parse dates
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    
+    if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid date format'
+      });
+    }
+
+    if (start > end) {
+      return res.status(400).json({
+        success: false,
+        message: 'Start date must be before end date'
+      });
+    }
+
+    // Filter fees within the date range
+    const filteredFees = broker.feesHistory.filter(fee => {
+      const feeDate = new Date(fee.date);
+      return feeDate >= start && feeDate <= end;
+    });
+
+    // Calculate totals for the date range
+    const totalFeesEarned = filteredFees.reduce((sum, fee) => sum + fee.amount, 0);
+    const totalFeesPaid = filteredFees.filter(fee => fee.paid).reduce((sum, fee) => sum + fee.amount, 0);
+    const totalFeesUnpaid = totalFeesEarned - totalFeesPaid;
+    const totalDeals = filteredFees.length;
+
+    // Group by month for detailed breakdown
+    const monthlyBreakdown = {};
+    filteredFees.forEach(fee => {
+      const month = new Date(fee.date).toISOString().slice(0, 7); // YYYY-MM format
+      if (!monthlyBreakdown[month]) {
+        monthlyBreakdown[month] = {
+          month,
+          totalEarned: 0,
+          totalPaid: 0,
+          dealCount: 0,
+          deals: []
+        };
+      }
+      monthlyBreakdown[month].totalEarned += fee.amount;
+      monthlyBreakdown[month].totalPaid += fee.paid ? fee.amount : 0;
+      monthlyBreakdown[month].dealCount += 1;
+      monthlyBreakdown[month].deals.push({
+        dealId: fee.dealId,
+        dealVin: fee.dealVin,
+        dealVehicle: fee.dealVehicle,
+        amount: fee.amount,
+        date: fee.date,
+        paid: fee.paid,
+        paidDate: fee.paidDate,
+        salesPerson: fee.salesPerson,
+        notes: fee.notes
+      });
+    });
+
+    res.json({
+      success: true,
+      data: {
+        brokerId: broker._id,
+        brokerName: broker.name,
+        dateRange: {
+          startDate,
+          endDate
+        },
+        summary: {
+          totalFeesEarned,
+          totalFeesPaid,
+          totalFeesUnpaid,
+          totalDeals,
+          paymentRate: totalDeals > 0 ? (filteredFees.filter(fee => fee.paid).length / totalDeals * 100).toFixed(2) : 0
+        },
+        monthlyBreakdown: Object.values(monthlyBreakdown),
+        fees: filteredFees
+      }
+    });
+  } catch (error) {
+    console.error('[BROKERS] Error fetching broker fees range:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch broker fees range',
+      error: error.message
+    });
+  }
+});
+
+// Get all broker fees (for admin/management view)
+router.get('/fees/all', authenticateToken, async (req, res) => {
+  try {
+    const { startDate, endDate, status } = req.query;
+    
+    let query = {};
+    
+    // Filter by date range if provided
+    if (startDate && endDate) {
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+      query['feesHistory.date'] = { $gte: start, $lte: end };
+    }
+    
+    // Filter by payment status if provided
+    if (status === 'paid' || status === 'unpaid') {
+      query['feesHistory.paid'] = status === 'paid';
+    }
+
+    const brokers = await Broker.find(query)
+      .select('name email totalFeesEarned totalFeesPaid feesHistory')
+      .sort({ totalFeesEarned: -1 });
+
+    // Calculate overall statistics
+    const totalFeesEarned = brokers.reduce((sum, broker) => sum + broker.totalFeesEarned, 0);
+    const totalFeesPaid = brokers.reduce((sum, broker) => sum + broker.totalFeesPaid, 0);
+    const totalFeesUnpaid = totalFeesEarned - totalFeesPaid;
+
+    res.json({
+      success: true,
+      data: {
+        brokers,
+        summary: {
+          totalFeesEarned,
+          totalFeesPaid,
+          totalFeesUnpaid,
+          totalBrokers: brokers.length
+        }
+      }
+    });
+  } catch (error) {
+    console.error('[BROKERS] Error fetching all broker fees:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch broker fees',
+      error: error.message
+    });
+  }
+});
+
 module.exports = router; 

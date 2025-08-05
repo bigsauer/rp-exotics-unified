@@ -770,7 +770,7 @@ router.put('/deals/:id/update-and-regenerate', authenticateToken, requireBackOff
       'buyer.tier',
       'purchasePrice',
       'listPrice',
-      'killPrice',
+              'instantOffer',
       'mileage',
       'color',
       'exteriorColor',
@@ -822,7 +822,11 @@ router.put('/deals/:id/update-and-regenerate', authenticateToken, requireBackOff
 
     // Regenerate documents if requested
     if (updateData.regenerateDocuments) {
-      console.log('[BACKOFFICE] Regenerating documents for deal:', id);
+      console.log('[BACKOFFICE] 🔄 Regenerating documents for deal:', id);
+      console.log('[BACKOFFICE] 📋 Deal type:', updatedDeal.dealType);
+      console.log('[BACKOFFICE] 📋 Deal subtype:', updatedDeal.dealType2SubType);
+      console.log('[BACKOFFICE] 📋 Seller type:', updatedDeal.seller?.type);
+      console.log('[BACKOFFICE] 📋 Buyer type:', updatedDeal.buyer?.type);
       
       try {
         const documentGenerator = require('../services/documentGenerator');
@@ -833,6 +837,9 @@ router.put('/deals/:id/update-and-regenerate', authenticateToken, requireBackOff
         if (!vehicleRecord) {
           console.warn('[BACKOFFICE] No vehicle record found for deal:', id);
         } else {
+          // Clear existing generated documents from vehicle record
+          vehicleRecord.generatedDocuments = [];
+          
           // Prepare deal data for document generation
           const dealDataForDocs = {
             ...updatedDeal.toObject(),
@@ -854,22 +861,151 @@ router.put('/deals/:id/update-and-regenerate', authenticateToken, requireBackOff
             }
           };
 
-          // Generate vehicle record PDF
+          console.log('[BACKOFFICE] Regenerating documents for deal type:', updatedDeal.dealType);
+          console.log('[BACKOFFICE] Deal data for regeneration:', {
+            dealType: dealDataForDocs.dealType,
+            dealType2SubType: dealDataForDocs.dealType2SubType,
+            sellerType: dealDataForDocs.seller?.type,
+            buyerType: dealDataForDocs.buyer?.type
+          });
+
+          let pdfInfo = null;
+          let purchaseContractPdfInfo = null;
+
+          // Use the comprehensive document generation logic
+          console.log('[BACKOFFICE] Using comprehensive document generation for deal type:', updatedDeal.dealType);
+          
           try {
-            const vehicleRecordResult = await documentGenerator.generateVehicleRecordPDF(dealDataForDocs, req.user);
-            console.log('[BACKOFFICE] Vehicle record generated successfully:', vehicleRecordResult);
-          } catch (vehicleRecordError) {
-            console.error('[BACKOFFICE] Error generating vehicle record:', vehicleRecordError);
-            // Don't fail the entire request, just log the error
+            // Generate the appropriate document using the main document generator method
+            const generatedDocument = await documentGenerator.generateDocument({
+              ...dealDataForDocs,
+              stockNumber: updatedDeal.rpStockNumber,
+              salesperson: updatedDeal.salesperson,
+              notes: updatedDeal.notes,
+              generalNotes: updatedDeal.generalNotes,
+            }, req.user);
+            
+            console.log('[BACKOFFICE] ✅ Document generated successfully:', {
+              fileName: generatedDocument.fileName,
+              documentType: generatedDocument.documentType,
+              filePath: generatedDocument.filePath
+            });
+            
+            // Set the appropriate variable based on document type
+            if (generatedDocument.documentType.includes('vehicle_record')) {
+              pdfInfo = generatedDocument;
+            } else {
+              purchaseContractPdfInfo = generatedDocument;
+            }
+            
+          } catch (docGenError) {
+            console.error('[BACKOFFICE] Error generating document:', docGenError);
+            
+            // Fallback: Generate a basic vehicle record
+            try {
+              console.log('[BACKOFFICE] Attempting fallback document generation...');
+              pdfInfo = await documentGenerator.generateStandardVehicleRecord({
+                ...dealDataForDocs,
+                stockNumber: updatedDeal.rpStockNumber,
+                salesperson: updatedDeal.salesperson,
+                notes: updatedDeal.notes,
+                generalNotes: updatedDeal.generalNotes,
+              }, req.user);
+              console.log('[BACKOFFICE] ✅ Fallback vehicle record generated:', pdfInfo);
+            } catch (fallbackError) {
+              console.error('[BACKOFFICE] Fallback document generation also failed:', fallbackError);
+            }
           }
 
-          // Generate other documents based on deal type
-          try {
-            const documentResult = await documentGenerator.generateDocument(dealDataForDocs, req.user);
-            console.log('[BACKOFFICE] Documents generated successfully:', documentResult);
-          } catch (documentError) {
-            console.error('[BACKOFFICE] Error generating documents:', documentError);
-            // Don't fail the entire request, just log the error
+          // Save regenerated documents to vehicle record
+          if (pdfInfo) {
+            vehicleRecord.generatedDocuments.push({
+              documentType: pdfInfo.documentType || 'vehicle_record',
+              fileName: pdfInfo.fileName,
+              filePath: pdfInfo.filePath,
+              generatedAt: new Date(),
+              generatedBy: req.user.id
+            });
+            console.log(`[BACKOFFICE] ✅ ${pdfInfo.documentType || 'vehicle_record'} PDF saved to vehicle record`);
+          }
+          
+          if (purchaseContractPdfInfo) {
+            vehicleRecord.generatedDocuments.push({
+              documentType: purchaseContractPdfInfo.documentType || 'purchase_agreement',
+              fileName: purchaseContractPdfInfo.fileName,
+              filePath: purchaseContractPdfInfo.filePath,
+              generatedAt: new Date(),
+              generatedBy: req.user.id
+            });
+            console.log(`[BACKOFFICE] ✅ ${purchaseContractPdfInfo.documentType || 'purchase_agreement'} PDF saved to vehicle record`);
+          }
+
+          // Save vehicle record with regenerated documents
+          if (vehicleRecord.generatedDocuments.length > 0) {
+            await vehicleRecord.save();
+            console.log('[BACKOFFICE] ✅ Vehicle record updated with regenerated documents');
+          }
+
+          // Update deal documents array with regenerated documents
+          // Remove all generated document types that should be regenerated
+          const generatedDocumentTypes = [
+            'vehicle_record',
+            'purchase_agreement',
+            'wholesale_purchase_agreement',
+            'wholesale_purchase_order',
+            'wholesale_bos',
+            'retail_pp_buy',
+            'bill_of_sale',
+            'vehicle_record_pdf'
+          ];
+          
+          console.log('[BACKOFFICE] Filtering out existing generated documents before regeneration');
+          const originalDocCount = updatedDeal.documents.length;
+          updatedDeal.documents = updatedDeal.documents.filter(doc => {
+            const shouldKeep = !generatedDocumentTypes.includes(doc.type);
+            if (!shouldKeep) {
+              console.log(`[BACKOFFICE] Removing existing document: ${doc.type} - ${doc.fileName}`);
+            }
+            return shouldKeep;
+          });
+          console.log(`[BACKOFFICE] Removed ${originalDocCount - updatedDeal.documents.length} existing generated documents`);
+
+          if (pdfInfo) {
+            updatedDeal.documents.push({
+              type: pdfInfo.documentType || 'vehicle_record',
+              documentId: `${pdfInfo.documentType || 'vehicle_record'}_${Date.now()}`,
+              fileName: pdfInfo.fileName,
+              filePath: pdfInfo.filePath,
+              uploaded: true,
+              uploadedAt: new Date(),
+              uploadedBy: req.user.id,
+              approved: false,
+              required: false,
+              version: 1
+            });
+            console.log(`[BACKOFFICE] ✅ Added ${pdfInfo.documentType || 'vehicle_record'} to deal documents`);
+          }
+          
+          if (purchaseContractPdfInfo) {
+            updatedDeal.documents.push({
+              type: purchaseContractPdfInfo.documentType || 'purchase_agreement',
+              documentId: `${purchaseContractPdfInfo.documentType || 'purchase_agreement'}_${Date.now()}`,
+              fileName: purchaseContractPdfInfo.fileName,
+              filePath: purchaseContractPdfInfo.filePath,
+              uploaded: true,
+              uploadedAt: new Date(),
+              uploadedBy: req.user.id,
+              approved: false,
+              required: true,
+              version: 1
+            });
+            console.log(`[BACKOFFICE] ✅ Added ${purchaseContractPdfInfo.documentType || 'purchase_agreement'} to deal documents`);
+          }
+
+          // Save deal with regenerated documents
+          if (updatedDeal.documents.length > 0) {
+            await updatedDeal.save();
+            console.log('[BACKOFFICE] ✅ Deal updated with regenerated documents');
           }
         }
       } catch (error) {
@@ -984,13 +1120,20 @@ router.get('/deals/:id/documents/:documentType/download', async (req, res) => {
     }
     console.log(`[BACKOFFICE DOWNLOAD] Document found:`, { type: document.type, documentId: document.documentId, fileName: document.fileName, filePath: document.filePath });
 
-    if (!fs.existsSync(document.filePath)) {
-      console.log(`[BACKOFFICE DOWNLOAD] File not found at path: ${document.filePath}`);
-      return res.status(404).json({ error: 'File not found' });
+    // Check if this is an S3 URL (seller uploaded document) or local file
+    if (document.filePath && document.filePath.startsWith('http')) {
+      // This is an S3 URL, redirect to the URL
+      console.log(`[BACKOFFICE DOWNLOAD] Redirecting to S3 URL: ${document.filePath}`);
+      return res.redirect(document.filePath);
+    } else {
+      // This is a local file
+      if (!fs.existsSync(document.filePath)) {
+        console.log(`[BACKOFFICE DOWNLOAD] File not found at path: ${document.filePath}`);
+        return res.status(404).json({ error: 'File not found' });
+      }
+      console.log(`[BACKOFFICE DOWNLOAD] File exists, serving download for: ${document.fileName}`);
+      res.download(document.filePath, document.fileName);
     }
-    console.log(`[BACKOFFICE DOWNLOAD] File exists, serving download for: ${document.fileName}`);
-
-    res.download(document.filePath, document.fileName);
   } catch (error) {
     console.error('[BACKOFFICE DOWNLOAD] Error downloading document:', error);
     res.status(500).json({ error: 'Internal server error' });

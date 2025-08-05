@@ -98,6 +98,14 @@ const dealerSchema = new mongoose.Schema({
 });
 
 // Text index for search
+dealerSchema.index({ name: 'text', company: 'text' });
+
+// Performance optimization: Add indexes for faster dealer lookups
+dealerSchema.index({ name: 1 });
+dealerSchema.index({ 'contact.email': 1 });
+dealerSchema.index({ 'contact.phone': 1 });
+dealerSchema.index({ type: 1 });
+dealerSchema.index({ status: 1 });
 dealerSchema.index({ 
   name: 'text', 
   company: 'text',

@@ -19,6 +19,34 @@ const checkEmailService = () => {
 
 // Email service functions
 const emailService = {
+  // Generic email sending function
+  async sendEmail({ to, subject, text, html }) {
+    if (!checkEmailService()) {
+      return { success: false, error: 'Email service not configured' };
+    }
+    
+    try {
+      const { data, error } = await resend.emails.send({
+        from: 'RP Exotics <noreply@slipstreamdocs.com>',
+        to: [to],
+        subject: subject,
+        text: text,
+        html: html
+      });
+
+      if (error) {
+        console.error('Resend error:', error);
+        return { success: false, error };
+      }
+
+      console.log('Email sent successfully:', data);
+      return { success: true, data };
+    } catch (error) {
+      console.error('Email service error:', error);
+      return { success: false, error };
+    }
+  },
+
   // Send deal status update notification
   async sendDealStatusUpdate(to, dealData) {
     if (!checkEmailService()) {
@@ -55,7 +83,7 @@ const emailService = {
               </div>
               
               <div style="text-align: center; margin-top: 30px;">
-                <a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}/deals/status" 
+                <a href="https://slipstreamdocs.com/deals/status" 
                    style="background: #10b981; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
                   View Deal Details
                 </a>
@@ -172,7 +200,7 @@ const emailService = {
                 <p><strong>Buyer:</strong> ${dealData.buyer?.name || 'N/A'}</p>
               </div>
               <div style="text-align: center; margin-top: 30px;">
-                <a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}/deals/status" 
+                <a href="https://slipstreamdocs.com/deals/status" 
                    style="background: #10b981; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
                   View Deal Details
                 </a>
@@ -226,7 +254,7 @@ const emailService = {
               </div>
               
               <div style="text-align: center; margin-top: 30px;">
-                <a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}" 
+                <a href="https://slipstreamdocs.com" 
                    style="background: #dc2626; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
                   Access System
                 </a>
@@ -394,11 +422,11 @@ const emailService = {
               ${documentsList}
               
               <div style="text-align: center; margin-top: 30px;">
-                <a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}/deals/status" 
+                <a href="https://slipstreamdocs.com/deals/status" 
                    style="background: #10b981; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; margin-right: 10px;">
                   View Deal Status
                 </a>
-                <a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}/deals/new" 
+                <a href="https://slipstreamdocs.com/deals/new" 
                    style="background: #3b82f6; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
                   Create New Deal
                 </a>
@@ -515,7 +543,7 @@ const emailService = {
               </div>
               
               <div style="text-align: center; margin-top: 30px;">
-                <a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}" 
+                <a href="https://slipstreamdocs.com" 
                    style="background: #10b981; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
                   Login to Your Account
                 </a>
@@ -571,7 +599,7 @@ const emailService = {
               </div>
               
               <div style="text-align: center; margin-top: 30px;">
-                <a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}" 
+                <a href="https://slipstreamdocs.com" 
                    style="background: #6b7280; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
                   Return to Login
                 </a>
@@ -606,7 +634,7 @@ const emailService = {
     
     try {
       // Generate the signature URL using the production frontend URL
-      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+      const frontendUrl = 'https://slipstreamdocs.com';
       const signatureUrl = `${frontendUrl}/sign/${signatureId}`;
       
       console.log('[EMAIL][sendClientSignatureRequest] Sending signature request', {
@@ -679,6 +707,85 @@ const emailService = {
       return { success: true, data };
     } catch (error) {
       console.error('[EMAIL][sendClientSignatureRequest] Email service error:', error);
+      return { success: false, error };
+    }
+  },
+
+  // Send signature completion notification
+  async sendSignatureCompletionNotification({ clientEmail, signatureId, documentType, dealInfo, signerName }) {
+    if (!checkEmailService()) {
+      return { success: false, error: 'Email service not configured' };
+    }
+    
+    try {
+      console.log('[EMAIL][sendSignatureCompletionNotification] Sending signature completion notification', {
+        clientEmail,
+        signatureId,
+        documentType
+      });
+
+      const { data, error } = await resend.emails.send({
+        from: 'RP Exotics <noreply@slipstreamdocs.com>',
+        to: [clientEmail],
+        subject: `Document Signed Successfully - ${documentType} for ${dealInfo?.vehicle || 'Vehicle Deal'}`,
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <div style="background: linear-gradient(135deg, #1f2937, #111827); color: white; padding: 20px; text-align: center;">
+              <h1 style="margin: 0; color: #10b981;">RP Exotics</h1>
+              <p style="margin: 10px 0 0 0; opacity: 0.8;">Digital Document Signature</p>
+            </div>
+            
+            <div style="padding: 30px; background: white;">
+              <h2 style="color: #1f2937; margin-bottom: 20px;">✅ Document Signed Successfully</h2>
+              
+              <div style="background: #dbeafe; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+                <h3 style="color: #1e40af; margin-top: 0;">Document Information</h3>
+                <p><strong>Document Type:</strong> ${documentType}</p>
+                <p><strong>Vehicle:</strong> ${dealInfo?.vehicle || 'N/A'}</p>
+                <p><strong>VIN:</strong> ${dealInfo?.vin || 'N/A'}</p>
+                <p><strong>Stock Number:</strong> ${dealInfo?.rpStockNumber || dealInfo?.stockNumber || 'N/A'}</p>
+                <p><strong>Signed By:</strong> ${signerName || 'Client'}</p>
+                <p><strong>Signature Date:</strong> ${new Date().toLocaleDateString()}</p>
+                <p><strong>Signature Time:</strong> ${new Date().toLocaleTimeString()}</p>
+              </div>
+              
+              <div style="background: #f0fdf4; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+                <h3 style="color: #166534; margin-top: 0;">🎉 Signature Complete</h3>
+                <p>Your document has been successfully signed and is now legally binding. The signature includes:</p>
+                <ul style="color: #166534; margin: 10px 0;">
+                  <li>✅ Intent to sign verification</li>
+                  <li>✅ Consent to electronic business</li>
+                  <li>✅ Complete audit trail with timestamp</li>
+                  <li>✅ IP address and device information</li>
+                  <li>✅ ESIGN Act and UETA compliance</li>
+                </ul>
+              </div>
+              
+              <div style="background: #fef3c7; padding: 15px; border-radius: 8px; margin-top: 20px;">
+                <h4 style="color: #92400e; margin-top: 0; font-size: 14px;">📋 Next Steps</h4>
+                <p style="color: #92400e; font-size: 12px; margin: 0;">
+                  RP Exotics will process your signed document and contact you with next steps. Please keep this email for your records.
+                </p>
+              </div>
+            </div>
+            
+            <div style="background: #f9fafb; padding: 20px; text-align: center; color: #6b7280;">
+              <p style="margin: 0; font-size: 12px;">This is an automated message from RP Exotics Deal Management System</p>
+              <p style="margin: 5px 0 0 0; font-size: 11px;">If you have any questions, please contact RP Exotics directly.</p>
+            </div>
+          </div>
+        `
+      });
+
+      if (error) {
+        console.error('[EMAIL][sendSignatureCompletionNotification] Resend error:', error);
+        return { success: false, error };
+      }
+
+      console.log('[EMAIL][sendSignatureCompletionNotification] Signature completion notification sent successfully:', data);
+      return { success: true, data };
+    } catch (error) {
+      console.error('[EMAIL][sendSignatureCompletionNotification] Email service error:', error);
       return { success: false, error };
     }
   }
