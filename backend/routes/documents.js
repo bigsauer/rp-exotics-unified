@@ -32,14 +32,14 @@ router.post('/generate/:dealId', auth, async (req, res) => {
     console.log('🔍 [DOC GEN DEBUG] DOCUMENT GENERATION REQUEST STARTED');
     console.log('🔍 [DOC GEN DEBUG] ===========================================');
     console.log('🔍 [DOC GEN DEBUG] Deal ID:', dealId);
-    console.log('🔍 [DOC GEN DEBUG] User ID:', userId);
+    console.log('🔍 [DOC GEN DEBUG] User ID:', req.user.id);
     console.log('🔍 [DOC GEN DEBUG] User Email:', req.user.email);
     console.log('🔍 [DOC GEN DEBUG] User Role:', req.user.role);
     console.log('🔍 [DOC GEN DEBUG] Request Body:', JSON.stringify(req.body, null, 2));
     console.log('🔍 [DOC GEN DEBUG] Request Headers:', JSON.stringify(req.headers, null, 2));
     console.log('🔍 [DOC GEN DEBUG] ===========================================');
 
-    console.log(`[DOC GEN] Received request to generate document for dealId: ${dealId} by user: ${userId}`);
+    console.log(`[DOC GEN] Received request to generate document for dealId: ${dealId} by user: ${req.user.id}`);
 
     console.log('🔍 [DOC GEN DEBUG] ===========================================');
     console.log('🔍 [DOC GEN DEBUG] STARTING DEAL LOOKUP');
@@ -90,9 +90,9 @@ router.post('/generate/:dealId', auth, async (req, res) => {
     await deal.save();
 
     // Get user info
-    let user = await User.findById(userId);
+    let user = await User.findById(req.user.id);
     if (!user) {
-      console.error(`[DOC GEN] User not found for userId: ${userId}`);
+      console.error(`[DOC GEN] User not found for userId: ${req.user.id}`);
       return res.status(404).json({ error: 'User not found' });
     }
     // Ensure firstName and lastName are present for PDF generation
@@ -1349,13 +1349,28 @@ router.post('/generate/:dealId', auth, async (req, res) => {
       // Handle SalesDeal records for vehicle record creation
       if (deal.constructor.modelName === 'SalesDeal') {
         const customer = deal.customer || {};
+        
+        // Parse address string to object format
+        const parseAddress = (addrString) => {
+          if (!addrString || typeof addrString !== 'string') {
+            return { street: '', city: '', state: '', zip: '' };
+          }
+          const parts = addrString.split(',').map(s => s.trim());
+          return {
+            street: parts[0] || '',
+            city: parts[1] || '',
+            state: parts[2] || '',
+            zip: parts[3] || ''
+          };
+        };
+        
         vehicleRecordSeller = {
           name: customer.name || 'N/A',
-          type: customer.type || 'individual',
+          type: 'private', // Use 'private' instead of 'individual' to match enum
           licenseNumber: '', // Customers don't have license numbers
           tier: 'Tier 1',
           contact: {
-            address: customer.contact?.address || '',
+            address: parseAddress(customer.contact?.address),
             phone: customer.contact?.phone || 'N/A',
             email: customer.contact?.email || 'N/A'
           }
@@ -1511,7 +1526,7 @@ router.post('/generate/:dealId', auth, async (req, res) => {
         interiorColor: deal.interiorColor,
         mileage: deal.mileage,
         dealId: deal._id,
-        dealType: deal.dealType,
+        dealType: dealData.dealType || 'retail-pp', // Use dealData.dealType instead of deal.dealType
         dealType2: req.body.dealType2 || dealData.dealType2,
         // 🔧 DEBUG VEHICLE RECORD DEAL TYPE 2
                  dealType2SubType: (() => {
@@ -1545,8 +1560,8 @@ router.post('/generate/:dealId', auth, async (req, res) => {
         generalNotes: req.body.generalNotes || deal.generalNotes || deal.notes,
         rpStockNumber: deal.rpStockNumber,
         generatedDocuments: [],
-        createdBy: userId,
-        salesperson: deal.salesperson
+        createdBy: req.user.id, // Use req.user.id instead of userId
+        salesperson: dealData.salesperson || user.displayName || 'N/A' // Use dealData.salesperson or user.displayName
       });
 
       console.log(`[DOC GEN] 📝 New vehicle record object created:`, {
@@ -1964,7 +1979,7 @@ router.post('/generate/:dealId', auth, async (req, res) => {
     
     console.log('🔍 [DOC GEN DEBUG] Error occurred at:', new Date().toISOString());
     console.log('🔍 [DOC GEN DEBUG] Deal ID:', deal?._id);
-    console.log('🔍 [DOC GEN DEBUG] User ID:', userId);
+    console.log('🔍 [DOC GEN DEBUG] User ID:', req.user.id);
     console.log('🔍 [DOC GEN DEBUG] ===========================================');
     
     // Update document generation status to failed
