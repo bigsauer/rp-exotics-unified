@@ -353,13 +353,40 @@ router.post('/deals/:id/documents/:documentType/upload',
         buffer: file.buffer ? 'Present' : 'Missing'
       })));
 
-      const deal = await Deal.findById(id);
+      // Find the deal in both Deal and SalesDeal collections
+      console.log('[BACKOFFICE UPLOAD] 🔍 DEBUG: Looking for deal ID:', id);
+      console.log('[BACKOFFICE UPLOAD] 🔍 DEBUG: Deal ID type:', typeof id);
+      console.log('[BACKOFFICE UPLOAD] 🔍 DEBUG: Deal ID length:', id.length);
+      
+      let deal = await Deal.findById(id);
+      console.log('[BACKOFFICE UPLOAD] 🔍 DEBUG: Deal collection search result:', deal ? 'Found' : 'Not found');
+      
       if (!deal) {
-        console.error('[BACKOFFICE UPLOAD] Deal not found:', id);
+        console.log('[BACKOFFICE UPLOAD] Deal not found in Deal collection, trying SalesDeal collection');
+        deal = await SalesDeal.findById(id);
+        console.log('[BACKOFFICE UPLOAD] 🔍 DEBUG: SalesDeal collection search result:', deal ? 'Found' : 'Not found');
+      }
+      
+      if (!deal) {
+        console.error('[BACKOFFICE UPLOAD] Deal not found in either collection:', id);
+        
+        // Additional debugging - check if there are any deals at all
+        const dealCount = await Deal.countDocuments();
+        const salesDealCount = await SalesDeal.countDocuments();
+        console.log('[BACKOFFICE UPLOAD] 🔍 DEBUG: Total deals in database:', { deals: dealCount, salesDeals: salesDealCount });
+        
+        // Check for similar IDs
+        const similarDeals = await Deal.find({ _id: { $regex: id.substring(0, 8) } }).limit(3);
+        const similarSalesDeals = await SalesDeal.find({ _id: { $regex: id.substring(0, 8) } }).limit(3);
+        console.log('[BACKOFFICE UPLOAD] 🔍 DEBUG: Similar deal IDs found:', {
+          deals: similarDeals.map(d => d._id.toString()),
+          salesDeals: similarSalesDeals.map(d => d._id.toString())
+        });
+        
         return res.status(404).json({ error: 'Deal not found' });
       }
 
-      console.log('[BACKOFFICE UPLOAD] Deal found:', deal._id);
+      console.log('[BACKOFFICE UPLOAD] Deal found in', deal.constructor.modelName, 'collection:', deal._id);
 
       // Get document type configuration
       const docTypeConfig = await DocumentType.findOne({ type: documentType });
@@ -493,7 +520,11 @@ router.put('/deals/:id/stage', async (req, res) => {
       return res.status(400).json({ error: 'Invalid stage' });
     }
 
-    const deal = await Deal.findById(id);
+    // Find the deal in both Deal and SalesDeal collections
+    let deal = await Deal.findById(id);
+    if (!deal) {
+      deal = await SalesDeal.findById(id);
+    }
     if (!deal) {
       return res.status(404).json({ error: 'Deal not found' });
     }
@@ -574,7 +605,11 @@ router.put('/deals/:id/documents/:documentType/approval', async (req, res) => {
     const { id, documentType } = req.params;
     const { approved, notes } = req.body;
 
-    const deal = await Deal.findById(id);
+    // Find the deal in both Deal and SalesDeal collections
+    let deal = await Deal.findById(id);
+    if (!deal) {
+      deal = await SalesDeal.findById(id);
+    }
     if (!deal) {
       return res.status(404).json({ error: 'Deal not found' });
     }
@@ -1110,7 +1145,11 @@ router.delete('/deals/:id/documents/:documentType', async (req, res) => {
   try {
     const { id, documentType } = req.params;
 
-    const deal = await Deal.findById(id);
+    // Find the deal in both Deal and SalesDeal collections
+    let deal = await Deal.findById(id);
+    if (!deal) {
+      deal = await SalesDeal.findById(id);
+    }
     if (!deal) {
       return res.status(404).json({ error: 'Deal not found' });
     }
@@ -1164,12 +1203,16 @@ router.get('/deals/:id/documents/:documentType/download', async (req, res) => {
     console.log(`[BACKOFFICE DOWNLOAD] Request received - Deal ID: ${id}, Document Type: ${documentType}`);
     console.log(`[BACKOFFICE DOWNLOAD] User:`, req.user && { id: req.user._id, email: req.user.email, role: req.user.role });
 
-    const deal = await Deal.findById(id);
+    // Find the deal in both Deal and SalesDeal collections
+    let deal = await Deal.findById(id);
+    if (!deal) {
+      deal = await SalesDeal.findById(id);
+    }
     if (!deal) {
       console.log(`[BACKOFFICE DOWNLOAD] Deal not found for ID: ${id}`);
       return res.status(404).json({ error: 'Deal not found' });
     }
-    console.log(`[BACKOFFICE DOWNLOAD] Deal found: ${deal._id}, has ${deal.documents?.length || 0} documents`);
+    console.log(`[BACKOFFICE DOWNLOAD] Deal found in ${deal.constructor.modelName} collection: ${deal._id}, has ${deal.documents?.length || 0} documents`);
 
     let document;
     if (documentType.startsWith('extra_doc_')) {
