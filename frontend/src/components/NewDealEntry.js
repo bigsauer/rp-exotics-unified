@@ -1186,54 +1186,9 @@ const NewDealEntry = ({ setDeals }) => {
         setDeals(deals => [dealResult.deal, ...deals]);
       }
       
-      // Upload any documents that were added during deal creation
-      if (dataToUse.documents && dataToUse.documents.length > 0) {
-        console.log('[DEAL SUBMIT] Uploading', dataToUse.documents.length, 'documents');
-        console.log('[DEAL SUBMIT] Documents to upload:', dataToUse.documents.map(d => ({ name: d.name, size: d.size, type: d.type })));
-        
-        try {
-          // Create a single FormData with all files for batch upload
-          const formDataUpload = new FormData();
-          
-          // Add all files to the FormData
-          dataToUse.documents.forEach((file, index) => {
-            formDataUpload.append('documents', file);
-            const note = documentNotes.find(n => n.fileIndex === index)?.note || '';
-            if (note) {
-              formDataUpload.append('notes', note);
-            }
-          });
-          
-          console.log('[DEAL SUBMIT] Batch uploading all documents to:', `${API_BASE}/api/backoffice/deals/${dealResult.deal._id}/documents/extra_doc/upload`);
-          
-          const uploadResponse = await fetch(`${API_BASE}/api/backoffice/deals/${dealResult.deal._id}/documents/extra_doc/upload`, {
-            method: 'POST',
-            headers: {
-              ...getAuthHeaders(),
-              // Don't set Content-Type for FormData, let browser set it
-            },
-            body: formDataUpload,
-            credentials: 'include'
-          });
-          
-          console.log('[DEAL SUBMIT] Upload response status:', uploadResponse.status);
-          
-          if (uploadResponse.ok) {
-            const uploadResult = await uploadResponse.json();
-            console.log('[DEAL SUBMIT] All documents uploaded successfully:', uploadResult);
-            toast.success(`${uploadResult.data.length} document(s) uploaded successfully!`);
-          } else {
-            const errorText = await uploadResponse.text();
-            console.warn('[DEAL SUBMIT] Failed to upload documents:', 'Status:', uploadResponse.status, 'Error:', errorText);
-            toast.error('Failed to upload some documents. Please try again.');
-          }
-        } catch (uploadError) {
-          console.error('[DEAL SUBMIT] Error uploading documents:', uploadError);
-          toast.error('Error uploading documents. Please try again.');
-        }
-      } else {
-        console.log('[DEAL SUBMIT] No documents to upload');
-      }
+      // Store documents for upload after document generation
+      const documentsToUpload = dataToUse.documents || [];
+      console.log('[DEAL SUBMIT] Documents to upload later:', documentsToUpload.length);
 
       // Automatically generate documents after successful deal creation
       try {
@@ -1267,6 +1222,55 @@ const NewDealEntry = ({ setDeals }) => {
             const docResult = await docResponse.json();
             console.log('[DEAL SUBMIT] Documents generated successfully:', docResult);
             toast.success(`Deal submitted and ${docResult.documentCount || 0} document(s) generated successfully!`);
+            
+            // Now upload any documents that were added during deal creation (after document generation)
+            if (documentsToUpload.length > 0) {
+              console.log('[DEAL SUBMIT] Uploading', documentsToUpload.length, 'documents after document generation');
+              console.log('[DEAL SUBMIT] Documents to upload:', documentsToUpload.map(d => ({ name: d.name, size: d.size, type: d.type })));
+              
+              try {
+                // Create a single FormData with all files for batch upload
+                const formDataUpload = new FormData();
+                
+                // Add all files to the FormData
+                documentsToUpload.forEach((file, index) => {
+                  formDataUpload.append('documents', file);
+                  const note = documentNotes.find(n => n.fileIndex === index)?.note || '';
+                  if (note) {
+                    formDataUpload.append('notes', note);
+                  }
+                });
+                
+                console.log('[DEAL SUBMIT] Batch uploading all documents to:', `${API_BASE}/api/backoffice/deals/${dealResult.deal._id}/documents/extra_doc/upload`);
+                
+                const uploadResponse = await fetch(`${API_BASE}/api/backoffice/deals/${dealResult.deal._id}/documents/extra_doc/upload`, {
+                  method: 'POST',
+                  headers: {
+                    ...getAuthHeaders(),
+                    // Don't set Content-Type for FormData, let browser set it
+                  },
+                  body: formDataUpload,
+                  credentials: 'include'
+                });
+                
+                console.log('[DEAL SUBMIT] Upload response status:', uploadResponse.status);
+                
+                if (uploadResponse.ok) {
+                  const uploadResult = await uploadResponse.json();
+                  console.log('[DEAL SUBMIT] All documents uploaded successfully:', uploadResult);
+                  toast.success(`${uploadResult.data.length} document(s) uploaded successfully!`);
+                } else {
+                  const errorText = await uploadResponse.text();
+                  console.warn('[DEAL SUBMIT] Failed to upload documents:', 'Status:', uploadResponse.status, 'Error:', errorText);
+                  toast.error('Failed to upload some documents. Please try again.');
+                }
+              } catch (uploadError) {
+                console.error('[DEAL SUBMIT] Error uploading documents:', uploadError);
+                toast.error('Error uploading documents. Please try again.');
+              }
+            } else {
+              console.log('[DEAL SUBMIT] No documents to upload');
+            }
           } else {
             const errorText = await docResponse.text();
             console.error('[DEAL SUBMIT] Document generation failed:', {
