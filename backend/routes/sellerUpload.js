@@ -98,10 +98,6 @@ router.options('/generate-link', (req, res) => {
 
 // Generate seller upload link
 router.post('/generate-link', authenticateToken, async (req, res) => {
-  console.log('[SELLER UPLOAD] Generate link request received');
-  console.log('[SELLER UPLOAD] Headers:', req.headers);
-  console.log('[SELLER UPLOAD] Origin:', req.headers.origin);
-  
   try {
     const { dealId, sellerEmail, vehicleInfo, vin } = req.body;
 
