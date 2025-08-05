@@ -55,8 +55,20 @@ app.use(cors({
 
 app.options('*', cors()); // Explicitly handle all OPTIONS preflight requests
 
-// Add comprehensive CORS headers to all responses
 app.use((req, res, next) => {
+  console.log(`[DEBUG][SERVER] ${req.method} ${req.originalUrl} - Headers:`, req.headers);
+  next();
+});
+
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// Add comprehensive CORS headers to all responses - MOVED EARLIER
+app.use((req, res, next) => {
+  console.log('[CORS DEBUG] Request received:', req.method, req.originalUrl);
+  console.log('[CORS DEBUG] Origin:', req.headers.origin);
+  console.log('[CORS DEBUG] User-Agent:', req.headers['user-agent']);
+  
   // Add CORS headers to all responses
   res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
@@ -65,20 +77,14 @@ app.use((req, res, next) => {
   
   // Handle preflight requests
   if (req.method === 'OPTIONS') {
+    console.log('[CORS DEBUG] Handling OPTIONS preflight request');
     res.status(200).end();
     return;
   }
   
+  console.log('[CORS DEBUG] CORS headers added, proceeding to next middleware');
   next();
 });
-
-app.use((req, res, next) => {
-  console.log(`[DEBUG][SERVER] ${req.method} ${req.originalUrl} - Headers:`, req.headers);
-  next();
-});
-
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
 
 // Connect to MongoDB with better error handling
 const mongoUri = process.env.MONGODB_URI || process.env.MONGO_URL || 'mongodb://localhost:27017/rp-exotics';
