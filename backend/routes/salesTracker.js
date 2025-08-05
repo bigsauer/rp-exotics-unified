@@ -2,6 +2,7 @@ const express = require('express');
 const mongoose = require('mongoose');
 const { authenticateToken } = require('../middleware/auth');
 const SalesDeal = require('../models/SalesDeal');
+const VehicleRecord = require('../models/VehicleRecord');
 const User = require('../models/User');
 const StatusSyncService = require('../services/statusSyncService');
 
@@ -526,6 +527,105 @@ router.post('/deals', authenticateToken, async (req, res) => {
     const deal = new SalesDeal(dealData);
     await deal.save();
 
+    // Create VehicleRecord entry for finance page integration
+    try {
+      console.log('[SALES DEAL] Creating VehicleRecord for finance page integration...');
+      
+      // Parse address string to object format
+      const parseAddress = (addrString) => {
+        if (!addrString || typeof addrString !== 'string') {
+          return { street: '', city: '', state: '', zip: '' };
+        }
+        const parts = addrString.split(',').map(s => s.trim());
+        return {
+          street: parts[0] || '',
+          city: parts[1] || '',
+          state: parts[2] || '',
+          zip: parts[3] || ''
+        };
+      };
+
+      // Create VehicleRecord from SalesDeal
+      const vehicleRecord = new VehicleRecord({
+        vin: deal.vin,
+        year: deal.year,
+        make: deal.make,
+        model: deal.model,
+        stockNumber: deal.stockNumber,
+        color: deal.color,
+        exteriorColor: deal.exteriorColor,
+        interiorColor: deal.interiorColor,
+        mileage: deal.mileage,
+        dealId: deal._id,
+        dealType: 'retail-pp', // SalesDeal records are typically retail-pp
+        dealType2: 'Buy', // SalesDeal records are typically buy transactions
+        dealType2SubType: 'buy',
+        purchasePrice: deal.financial?.purchasePrice,
+        listPrice: deal.financial?.listPrice,
+        wholesalePrice: 0,
+        instantOffer: deal.financial?.instantOffer || 0,
+        commission: {
+          rate: deal.financial?.commission?.rate || 0,
+          amount: deal.financial?.commission?.estimatedAmount || 0
+        },
+        brokerFee: deal.financial?.brokerFee?.amount || 0,
+        brokerFeePaidTo: deal.financial?.brokerFee?.brokerName || '',
+        payoffBalance: 0,
+        amountDueToCustomer: 0,
+        amountDueToRP: 0,
+        seller: {
+          name: deal.customer?.name || 'N/A',
+          type: 'private', // Customers are private individuals
+          contact: {
+            address: parseAddress(deal.customer?.contact?.address),
+            phone: deal.customer?.contact?.phone || 'N/A',
+            email: deal.customer?.contact?.email || 'N/A'
+          },
+          licenseNumber: '', // Customers don't have license numbers
+          tier: 'Tier 1'
+        },
+        buyer: {
+          name: 'RP Exotics',
+          type: 'dealer',
+          contact: {
+            address: {
+              street: '1155 N Warson Rd',
+              city: 'Saint Louis',
+              state: 'MO',
+              zip: '63132'
+            },
+            phone: '(314) 970-2427',
+            email: 'titling@rpexotics.com'
+          },
+          licenseNumber: 'D4865',
+          tier: 'Tier 1'
+        },
+        paymentMethod: 'check',
+        paymentTerms: '',
+        fundingSource: deal.fundingSource || 'flpn-retail',
+        vehicleDescription: '',
+        generalNotes: deal.customer?.notes || '',
+        rpStockNumber: deal.rpStockNumber,
+        status: 'active',
+        createdBy: deal.createdBy,
+        salesperson: deal.salesPerson?.name || 'N/A',
+        generatedDocuments: []
+      });
+
+      // Save the VehicleRecord
+      await vehicleRecord.save();
+      console.log(`[SALES DEAL] ✅ VehicleRecord created for finance page: ${vehicleRecord.recordId}`);
+
+      // Link VehicleRecord to SalesDeal
+      deal.vehicleRecordId = vehicleRecord._id;
+      await deal.save();
+      console.log(`[SALES DEAL] ✅ SalesDeal linked to VehicleRecord: ${vehicleRecord._id}`);
+
+    } catch (vehicleRecordError) {
+      console.error('[SALES DEAL] ❌ Error creating VehicleRecord:', vehicleRecordError);
+      // Don't fail the deal creation if VehicleRecord creation fails
+    }
+
     // Handle broker fee tracking if broker fee is provided
     if (dealData.financial?.brokerFee?.amount && dealData.financial?.brokerFee?.brokerId) {
       try {
@@ -567,7 +667,8 @@ router.post('/deals', authenticateToken, async (req, res) => {
     res.status(201).json({
       success: true,
       message: 'Sales deal created successfully',
-      deal
+      deal,
+      vehicleRecordCreated: true
     });
   } catch (error) {
     console.error('Error creating deal:', error);

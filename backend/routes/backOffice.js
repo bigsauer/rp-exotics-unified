@@ -115,62 +115,35 @@ router.get('/deals', async (req, res) => {
     ]);
     const total = dealTotal + salesDealTotal;
 
-    // Transform deals for frontend - handle both Deal and SalesDeal records
+    // Transform deals for frontend - unified format for all deals
     const transformedDeals = allDeals.map(deal => {
-      // Check if this is a SalesDeal record
-      const isSalesDeal = deal.customer !== undefined;
-      
-      if (isSalesDeal) {
-        // Transform SalesDeal record
-        return {
-          id: deal._id.toString(),
-          vehicle: deal.vehicle,
-          vin: deal.vin,
-          stockNumber: deal.stockNumber,
-          purchaseDate: deal.timeline?.purchaseDate || deal.purchaseDate,
-          purchasePrice: deal.financial?.purchasePrice,
-          currentStage: deal.currentStage,
-          priority: deal.priority,
-          assignedTo: deal.salesPerson?.id, // SalesDeal uses salesPerson.id
-          seller: {
-            name: deal.customer?.name,
-            type: deal.customer?.type || 'individual',
-            contact: deal.customer?.contact
-          },
-          completionPercentage: deal.completionPercentage,
-          pendingDocumentsCount: deal.pendingDocumentsCount,
-          overdueDocuments: deal.overdueDocuments,
-          titleInfo: deal.titleInfo,
-          financial: deal.financial,
-          compliance: deal.compliance,
-          createdAt: deal.createdAt,
-          updatedAt: deal.updatedAt,
-          dealType: 'SalesDeal' // Add identifier for frontend
-        };
-      } else {
-        // Transform regular Deal record
-        return {
-          id: deal._id.toString(),
-          vehicle: deal.vehicle,
-          vin: deal.vin,
-          stockNumber: deal.stockNumber,
-          purchaseDate: deal.purchaseDate,
-          purchasePrice: deal.purchasePrice,
-          currentStage: deal.currentStage,
-          priority: deal.priority,
-          assignedTo: deal.assignedTo,
-          seller: deal.seller,
-          completionPercentage: deal.completionPercentage,
-          pendingDocumentsCount: deal.pendingDocumentsCount,
-          overdueDocuments: deal.overdueDocuments,
-          titleInfo: deal.titleInfo,
-          financial: deal.financial,
-          compliance: deal.compliance,
-          createdAt: deal.createdAt,
-          updatedAt: deal.updatedAt,
-          dealType: 'Deal' // Add identifier for frontend
-        };
-      }
+      // Unified transformation - treat all deals the same way
+      return {
+        id: deal._id.toString(),
+        vehicle: deal.vehicle,
+        vin: deal.vin,
+        stockNumber: deal.stockNumber,
+        purchaseDate: deal.timeline?.purchaseDate || deal.purchaseDate,
+        purchasePrice: deal.financial?.purchasePrice || deal.purchasePrice,
+        currentStage: deal.currentStage,
+        priority: deal.priority,
+        assignedTo: deal.salesPerson?.id || deal.assignedTo,
+        seller: deal.customer ? {
+          name: deal.customer?.name,
+          type: deal.customer?.type || 'individual',
+          contact: deal.customer?.contact
+        } : deal.seller,
+        completionPercentage: deal.completionPercentage,
+        pendingDocumentsCount: deal.pendingDocumentsCount,
+        overdueDocuments: deal.overdueDocuments,
+        titleInfo: deal.titleInfo,
+        financial: deal.financial,
+        compliance: deal.compliance,
+        createdAt: deal.createdAt,
+        updatedAt: deal.updatedAt,
+        // No distinction between deal types - all are just "deals"
+        dealType: 'Deal'
+      };
     });
 
     res.json({
@@ -213,7 +186,7 @@ router.get('/deals/:id', async (req, res) => {
       
       if (deal) {
         console.log('[BACKOFFICE] Found deal in SalesDeal collection');
-        // Transform SalesDeal to match expected format
+        // Transform SalesDeal to unified format
         deal = {
           ...deal,
           assignedTo: deal.salesPerson?.id,
@@ -222,7 +195,7 @@ router.get('/deals/:id', async (req, res) => {
             type: deal.customer?.type || 'individual',
             contact: deal.customer?.contact
           },
-          dealType: 'SalesDeal'
+          dealType: 'Deal' // Unified deal type
         };
       }
     }
