@@ -4,6 +4,7 @@ const path = require('path');
 const fs = require('fs');
 const router = express.Router();
 const Deal = require('../models/Deal');
+const SalesDeal = require('../models/SalesDeal');
 const DocumentType = require('../models/DocumentType');
 const { authenticateToken, requireBackOfficeAccess } = require('../middleware/auth');
 const StatusSyncService = require('../services/statusSyncService');
@@ -86,37 +87,91 @@ router.get('/deals', async (req, res) => {
       if (dateTo) query.purchaseDate.$lte = new Date(dateTo);
     }
 
-    const deals = await Deal.find(query)
-      .populate('assignedTo', 'profile.displayName email')
-      .populate('seller.dealerId', 'name company')
-      .sort({ updatedAt: -1 })
-      .limit(parseInt(limit))
-      .skip((parseInt(page) - 1) * parseInt(limit))
-      .lean(); // .lean() added for speed
+    // Fetch deals from both Deal and SalesDeal collections
+    const [deals, salesDeals] = await Promise.all([
+      Deal.find(query)
+        .populate('assignedTo', 'profile.displayName email')
+        .populate('seller.dealerId', 'name company')
+        .sort({ updatedAt: -1 })
+        .limit(parseInt(limit))
+        .skip((parseInt(page) - 1) * parseInt(limit))
+        .lean(),
+      
+      SalesDeal.find(query)
+        .populate('salesPerson.id', 'profile.displayName email')
+        .sort({ updatedAt: -1 })
+        .limit(parseInt(limit))
+        .skip((parseInt(page) - 1) * parseInt(limit))
+        .lean()
+    ]);
 
-    const total = await Deal.countDocuments(query);
+    // Combine and sort all deals
+    const allDeals = [...deals, ...salesDeals].sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
+    
+    // Get total count from both collections
+    const [dealTotal, salesDealTotal] = await Promise.all([
+      Deal.countDocuments(query),
+      SalesDeal.countDocuments(query)
+    ]);
+    const total = dealTotal + salesDealTotal;
 
-    // Transform deals for frontend
-    const transformedDeals = deals.map(deal => ({
-      id: deal._id.toString(),
-      vehicle: deal.vehicle,
-      vin: deal.vin,
-      stockNumber: deal.stockNumber,
-      purchaseDate: deal.purchaseDate,
-      purchasePrice: deal.purchasePrice,
-      currentStage: deal.currentStage,
-      priority: deal.priority,
-      assignedTo: deal.assignedTo,
-      seller: deal.seller,
-      completionPercentage: deal.completionPercentage,
-      pendingDocumentsCount: deal.pendingDocumentsCount,
-      overdueDocuments: deal.overdueDocuments,
-      titleInfo: deal.titleInfo,
-      financial: deal.financial,
-      compliance: deal.compliance,
-      createdAt: deal.createdAt,
-      updatedAt: deal.updatedAt
-    }));
+    // Transform deals for frontend - handle both Deal and SalesDeal records
+    const transformedDeals = allDeals.map(deal => {
+      // Check if this is a SalesDeal record
+      const isSalesDeal = deal.customer !== undefined;
+      
+      if (isSalesDeal) {
+        // Transform SalesDeal record
+        return {
+          id: deal._id.toString(),
+          vehicle: deal.vehicle,
+          vin: deal.vin,
+          stockNumber: deal.stockNumber,
+          purchaseDate: deal.timeline?.purchaseDate || deal.purchaseDate,
+          purchasePrice: deal.financial?.purchasePrice,
+          currentStage: deal.currentStage,
+          priority: deal.priority,
+          assignedTo: deal.salesPerson?.id, // SalesDeal uses salesPerson.id
+          seller: {
+            name: deal.customer?.name,
+            type: deal.customer?.type || 'individual',
+            contact: deal.customer?.contact
+          },
+          completionPercentage: deal.completionPercentage,
+          pendingDocumentsCount: deal.pendingDocumentsCount,
+          overdueDocuments: deal.overdueDocuments,
+          titleInfo: deal.titleInfo,
+          financial: deal.financial,
+          compliance: deal.compliance,
+          createdAt: deal.createdAt,
+          updatedAt: deal.updatedAt,
+          dealType: 'SalesDeal' // Add identifier for frontend
+        };
+      } else {
+        // Transform regular Deal record
+        return {
+          id: deal._id.toString(),
+          vehicle: deal.vehicle,
+          vin: deal.vin,
+          stockNumber: deal.stockNumber,
+          purchaseDate: deal.purchaseDate,
+          purchasePrice: deal.purchasePrice,
+          currentStage: deal.currentStage,
+          priority: deal.priority,
+          assignedTo: deal.assignedTo,
+          seller: deal.seller,
+          completionPercentage: deal.completionPercentage,
+          pendingDocumentsCount: deal.pendingDocumentsCount,
+          overdueDocuments: deal.overdueDocuments,
+          titleInfo: deal.titleInfo,
+          financial: deal.financial,
+          compliance: deal.compliance,
+          createdAt: deal.createdAt,
+          updatedAt: deal.updatedAt,
+          dealType: 'Deal' // Add identifier for frontend
+        };
+      }
+    });
 
     res.json({
       success: true,
@@ -138,16 +193,42 @@ router.get('/deals', async (req, res) => {
 router.get('/deals/:id', async (req, res) => {
   try {
     console.log('[BACKOFFICE] Fetching deal with id:', req.params.id);
-    const deal = await Deal.findById(req.params.id)
+    
+    // Try to find in Deal collection first
+    let deal = await Deal.findById(req.params.id)
       .populate('assignedTo', 'profile.displayName email')
       .populate('seller.dealerId', 'name company contact')
       .populate('documents.uploadedBy', 'profile.displayName')
       .populate('documents.approvedBy', 'profile.displayName')
       .populate('workflowHistory.changedBy', 'profile.displayName')
       .populate('activityLog.userId', 'profile.displayName')
-      .lean(); // .lean() added for speed
+      .lean();
+    
+    // If not found in Deal collection, try SalesDeal collection
     if (!deal) {
-      console.warn('[BACKOFFICE] Deal not found:', req.params.id);
+      console.log('[BACKOFFICE] Deal not found in Deal collection, trying SalesDeal...');
+      deal = await SalesDeal.findById(req.params.id)
+        .populate('salesPerson.id', 'profile.displayName email')
+        .lean();
+      
+      if (deal) {
+        console.log('[BACKOFFICE] Found deal in SalesDeal collection');
+        // Transform SalesDeal to match expected format
+        deal = {
+          ...deal,
+          assignedTo: deal.salesPerson?.id,
+          seller: {
+            name: deal.customer?.name,
+            type: deal.customer?.type || 'individual',
+            contact: deal.customer?.contact
+          },
+          dealType: 'SalesDeal'
+        };
+      }
+    }
+    
+    if (!deal) {
+      console.warn('[BACKOFFICE] Deal not found in either collection:', req.params.id);
       return res.status(404).json({ error: 'Deal not found' });
     }
     console.log('[BACKOFFICE] Deal found:', deal._id);
