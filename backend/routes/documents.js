@@ -11,6 +11,15 @@ const path = require('path');
 const Dealer = require('../models/Dealer');
 const cloudStorage = require('../services/cloudStorage');
 
+// Handle OPTIONS preflight requests for document generation
+router.options('*', (req, res) => {
+  res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.header('Access-Control-Allow-Credentials', 'true');
+  res.status(200).end();
+});
+
 // Generate document and create vehicle record for a deal
 // 🚀 Performance optimized with browser pooling, template caching, and parallel generation
 router.post('/generate/:dealId', auth, async (req, res) => {
@@ -1854,6 +1863,12 @@ router.post('/generate/:dealId', auth, async (req, res) => {
     });
     console.log('🔍 [DOC GEN DEBUG] ===========================================');
     
+    // Add CORS headers explicitly
+    res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    res.header('Access-Control-Allow-Credentials', 'true');
+    
     res.json({
       success: true,
       message: 'Document(s) generated and vehicle record created successfully',
@@ -1898,6 +1913,12 @@ router.post('/generate/:dealId', auth, async (req, res) => {
       deal.documentGenerationError = error.message;
       await deal.save();
     }
+    
+    // Add CORS headers explicitly
+    res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    res.header('Access-Control-Allow-Credentials', 'true');
     
     res.status(500).json({ 
       error: 'Failed to generate document', 
