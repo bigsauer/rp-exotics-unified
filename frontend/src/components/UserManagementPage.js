@@ -42,6 +42,8 @@ const UserManagementPage = () => {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showCreatePassword, setShowCreatePassword] = useState(false);
 
   // Form states
   const [newUser, setNewUser] = useState({
@@ -153,6 +155,7 @@ const UserManagementPage = () => {
       
       setSuccess('User created successfully');
       setShowCreateModal(false);
+      setShowCreatePassword(false);
       setNewUser({
         firstName: '',
         lastName: '',
@@ -187,10 +190,14 @@ const UserManagementPage = () => {
       setSaving(true);
       setError(null);
       
+      // Prepare user data without password for the main update
+      const { newPassword, ...userData } = editingUser;
+      
+      // Update user data first
       const response = await fetch(`${API_BASE}/api/users/${editingUser._id}`, {
         method: 'PUT',
         headers: getAuthHeaders(),
-        body: JSON.stringify(editingUser)
+        body: JSON.stringify(userData)
       });
       
       if (!response.ok) {
@@ -198,9 +205,51 @@ const UserManagementPage = () => {
         throw new Error(errorData.error || 'Failed to update user');
       }
       
-      setSuccess('User updated successfully');
+      // If a new password was provided, update it separately
+      if (newPassword && newPassword.trim()) {
+        const trimmedPassword = newPassword.trim();
+        if (trimmedPassword.length < 6) {
+          throw new Error('Password must be at least 6 characters long');
+        }
+        
+        console.log('[PASSWORD UPDATE] Sending password reset request:');
+        console.log('[PASSWORD UPDATE] URL:', `${API_BASE}/api/users/${editingUser._id}/reset-password`);
+        console.log('[PASSWORD UPDATE] Headers:', getAuthHeaders());
+        console.log('[PASSWORD UPDATE] Body:', { newPassword: trimmedPassword });
+        console.log('[PASSWORD UPDATE] Trimmed password length:', trimmedPassword.length);
+        
+        const requestBody = { newPassword: trimmedPassword };
+        const requestHeaders = {
+          ...getAuthHeaders(),
+          'Content-Type': 'application/json'
+        };
+        
+        console.log('[PASSWORD UPDATE] Sending password reset request:');
+        console.log('[PASSWORD UPDATE] URL:', `${API_BASE}/api/users/${editingUser._id}/reset-password`);
+        console.log('[PASSWORD UPDATE] Headers:', requestHeaders);
+        console.log('[PASSWORD UPDATE] Body:', requestBody);
+        console.log('[PASSWORD UPDATE] Trimmed password length:', trimmedPassword.length);
+        
+        const passwordResponse = await fetch(`${API_BASE}/api/users/${editingUser._id}/reset-password`, {
+          method: 'POST',
+          headers: requestHeaders,
+          body: JSON.stringify(requestBody)
+        });
+        
+        console.log('[PASSWORD UPDATE] Response status:', passwordResponse.status);
+        console.log('[PASSWORD UPDATE] Response headers:', passwordResponse.headers);
+        
+        if (!passwordResponse.ok) {
+          const passwordErrorData = await passwordResponse.json();
+          console.log('[PASSWORD UPDATE] Error response:', passwordErrorData);
+          throw new Error(passwordErrorData.error || 'Failed to update password');
+        }
+      }
+      
+      setSuccess(newPassword && newPassword.trim() ? 'User and password updated successfully' : 'User updated successfully');
       setShowEditModal(false);
       setEditingUser(null);
+      setShowPassword(false);
       fetchUsers();
     } catch (error) {
       console.error('Error updating user:', error);
@@ -600,7 +649,10 @@ const UserManagementPage = () => {
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-bold text-white">Create New User</h2>
               <button
-                onClick={() => setShowCreateModal(false)}
+                onClick={() => {
+                  setShowCreateModal(false);
+                  setShowCreatePassword(false);
+                }}
                 className="text-gray-400 hover:text-white"
               >
                 <X className="h-6 w-6" />
@@ -650,13 +702,22 @@ const UserManagementPage = () => {
 
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-1">Password</label>
-                <input
-                  type="password"
-                  placeholder="Enter password"
-                  value={newUser.password}
-                  onChange={(e) => setNewUser(prev => ({ ...prev, password: e.target.value }))}
-                  className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
+                <div className="relative">
+                  <input
+                    type={showCreatePassword ? "text" : "password"}
+                    placeholder="Enter password"
+                    value={newUser.password}
+                    onChange={(e) => setNewUser(prev => ({ ...prev, password: e.target.value }))}
+                    className="w-full px-3 py-2 pr-10 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowCreatePassword(!showCreatePassword)}
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-300"
+                  >
+                    {showCreatePassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
                 <p className="text-xs text-gray-400 mt-1">Password must be at least 6 characters long</p>
               </div>
 
@@ -700,7 +761,10 @@ const UserManagementPage = () => {
 
             <div className="flex items-center justify-end space-x-3 mt-6 pt-6 border-t border-white/10">
               <button
-                onClick={() => setShowCreateModal(false)}
+                onClick={() => {
+                  setShowCreateModal(false);
+                  setShowCreatePassword(false);
+                }}
                 className="px-4 py-2 text-gray-400 hover:text-white transition-colors"
               >
                 Cancel
@@ -728,6 +792,7 @@ const UserManagementPage = () => {
                 onClick={() => {
                   setShowEditModal(false);
                   setEditingUser(null);
+                  setShowPassword(false);
                 }}
                 className="text-gray-400 hover:text-white"
               >
@@ -765,6 +830,27 @@ const UserManagementPage = () => {
                   onChange={(e) => setEditingUser(prev => ({ ...prev, email: e.target.value }))}
                   className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-1">New Password (Optional)</label>
+                <div className="relative">
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    placeholder="Leave blank to keep current password"
+                    value={editingUser.newPassword || ''}
+                    onChange={(e) => setEditingUser(prev => ({ ...prev, newPassword: e.target.value }))}
+                    className="w-full px-3 py-2 pr-10 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-300"
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+                <p className="text-xs text-gray-400 mt-1">Password must be at least 6 characters long</p>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -810,6 +896,7 @@ const UserManagementPage = () => {
                 onClick={() => {
                   setShowEditModal(false);
                   setEditingUser(null);
+                  setShowPassword(false);
                 }}
                 className="px-4 py-2 text-gray-400 hover:text-white transition-colors"
               >

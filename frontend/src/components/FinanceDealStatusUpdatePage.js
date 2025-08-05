@@ -56,7 +56,7 @@ export default function FinanceDealStatusUpdatePage() {
       setLoading(true);
       try {
         const headers = { ...getAuthHeaders() };
-        const res = await fetch(`${API_BASE}/api/backOffice/deals/${dealId}`, {
+        const res = await fetch(`${API_BASE}/api/backoffice/deals/${dealId}`, {
           credentials: 'include',
           headers
         });
@@ -81,7 +81,7 @@ export default function FinanceDealStatusUpdatePage() {
     setSaving(true);
     try {
       const headers = { ...getAuthHeaders(), 'Content-Type': 'application/json' };
-      const res = await fetch(`${API_BASE}/api/backOffice/deals/${dealId}/stage`, {
+      const res = await fetch(`${API_BASE}/api/backoffice/deals/${dealId}/stage`, {
         method: 'PUT',
         headers,
         body: JSON.stringify({

@@ -19,7 +19,6 @@ const FinanceDashboard = () => {
     search: ''
   });
   const [submittedDeals, setSubmittedDeals] = useState([]);
-  const [recentActivity, setRecentActivity] = useState([]);
 
   useEffect(() => {
     let isMounted = true;
@@ -67,43 +66,14 @@ const FinanceDashboard = () => {
           if (isMounted) setSubmittedDeals(data.deals || data.data || []);
         })
         .catch(() => { if (isMounted) setSubmittedDeals([]); }),
-      fetch(`${API_BASE}/api/stats/overview`, {
-        credentials: 'include',
-        headers: getAuthHeaders()
-      })
-        .then(res => res.json())
-        .then(statsData => {
-          if (isMounted && statsData.success) {
-            setRecentActivity(statsData.data.recentActivity || []);
-          }
-        })
-        .catch(err => { console.error('[DEBUG][FinanceDashboard] Error fetching recent activity:', err); })
+
     ]).finally(() => {
       if (isMounted) setLoading(false);
     });
     return () => { isMounted = false; };
   }, [getAuthHeaders]);
 
-  // Auto-refresh recent activity every 30 seconds
-  useEffect(() => {
-    const interval = setInterval(async () => {
-      try {
-        const API_BASE = process.env.REACT_APP_API_URL;
-        const response = await fetch(`${API_BASE}/api/stats/overview`, {
-          credentials: 'include',
-          headers: getAuthHeaders()
-        });
-        const statsData = await response.json();
-        if (statsData.success) {
-          setRecentActivity(statsData.data.recentActivity || []);
-        }
-      } catch (error) {
-        console.error('[DEBUG][FinanceDashboard] Error refreshing recent activity:', error);
-      }
-    }, 30000); // Refresh every 30 seconds
 
-    return () => clearInterval(interval);
-  }, [getAuthHeaders]);
 
   const fetchData = async () => {
     try {
@@ -414,35 +384,7 @@ const FinanceDashboard = () => {
         </div>
       </div>
 
-      {/* Recent Activity Section */}
-      <div className="mb-8">
-        <h2 className="text-2xl font-bold text-white mb-4">Recent Activity</h2>
-        <div className="bg-white/5 backdrop-blur-lg rounded-2xl border border-white/10 overflow-hidden">
-          <div className="p-6">
-            {recentActivity.length === 0 ? (
-              <div className="text-gray-400">No recent activity found.</div>
-            ) : (
-              <div className="space-y-4">
-                {recentActivity.slice(0, 5).map((activity, index) => (
-                  <div key={index} className="flex items-center space-x-4 p-4 bg-white/5 rounded-lg">
-                    <div className="bg-blue-500/20 rounded-full p-2">
-                      <Car className="h-4 w-4 text-blue-400" />
-                    </div>
-                    <div className="flex-1">
-                      <div className="text-sm font-medium text-white">
-                        {activity.vehicle} ({activity.dealType})
-                      </div>
-                      <div className="text-xs text-gray-400">
-                        Status: {activity.status} • {new Date(activity.date).toLocaleString()}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
+
 
       {/* Submitted Deals Section */}
       <div className="mb-12">
@@ -480,10 +422,10 @@ const FinanceDashboard = () => {
                   </div>
                       </td>
                       <td className="px-6 py-6 whitespace-nowrap">
-                        <span className="text-sm font-medium text-blue-400">{deal.dealId || 'N/A'}</span>
+                        <span className="text-sm font-medium text-blue-400">{deal.rpStockNumber || 'N/A'}</span>
                       </td>
                       <td className="px-6 py-6 whitespace-nowrap">
-                        <span className="text-sm text-gray-300">{deal.rpStockNumber || deal.stockNumber || 'N/A'}</span>
+                        <span className="text-sm text-gray-300">{deal.stockNumber || 'N/A'}</span>
                       </td>
                       <td className="px-6 py-6 whitespace-nowrap">
                         <span className="text-sm text-gray-300">{deal.vin || 'N/A'}</span>

@@ -187,7 +187,7 @@ const FinanceDealDetails = () => {
         'buyer.tier': deal.buyer?.tier || '',
         purchasePrice: deal.purchasePrice || '',
         listPrice: deal.listPrice || '',
-        killPrice: deal.killPrice || '',
+        instantOffer: deal.instantOffer || '',
         mileage: deal.mileage || '',
         color: deal.color || '',
         exteriorColor: deal.exteriorColor || '',
@@ -461,6 +461,7 @@ const FinanceDealDetails = () => {
       const canvas = canvasRef.current;
       const dataURL = canvas.toDataURL();
       setSignatureImage(dataURL);
+      return dataURL; // Return the captured signature
     } else if (signatureMethod === 'type' && typedSignature.trim()) {
       // Create a canvas with typed signature using cursive font
       const canvas = document.createElement('canvas');
@@ -489,8 +490,11 @@ const FinanceDealDetails = () => {
       ctx.fillText(text, 0, 0);
       ctx.restore();
       
-      setSignatureImage(canvas.toDataURL());
+      const dataURL = canvas.toDataURL();
+      setSignatureImage(dataURL);
+      return dataURL; // Return the captured signature
     }
+    return null; // Return null if no signature captured
   };
 
   const handleFinanceSign = async () => {
@@ -502,9 +506,18 @@ const FinanceDealDetails = () => {
       return;
     }
 
-    captureSignature();
-    if (!signatureImage) {
+    // Capture signature and get the result immediately
+    const capturedSignature = captureSignature();
+    if (!capturedSignature) {
       toast.error('Please provide a signature');
+      return;
+    }
+
+    // Validate document URL
+    const documentUrl = getDocumentUrl(selectedDocument, API_BASE);
+    if (!documentUrl) {
+      toast.error('Document URL could not be generated. Please try again or contact support.');
+      console.error('[FinanceDealDetails] Document URL generation failed:', selectedDocument);
       return;
     }
 
@@ -521,6 +534,14 @@ const FinanceDealDetails = () => {
       };
 
       // Create signature record with full legal compliance
+      console.log('[FinanceDealDetails] Attempting to sign document:', {
+        documentUrl,
+        documentType: selectedDocument.type || selectedDocument.documentType,
+        signatureMethod,
+        hasSignatureImage: !!capturedSignature,
+        selectedDocument
+      });
+      
       const signatureResponse = await fetch(`${API_BASE}/api/signatures`, {
         method: 'POST',
         headers: {
@@ -528,19 +549,17 @@ const FinanceDealDetails = () => {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          dealId,
+          documentUrl: documentUrl,
           documentType: selectedDocument.type || selectedDocument.documentType,
-          fileName: selectedDocument.fileName || selectedDocument.name,
-          signerType: 'finance',
-          signerName: user?.firstName + ' ' + user?.lastName,
-          signerEmail: user?.email,
-          signatureImage,
-          consent: {
-            intentToSign: isFinanceUser ? true : consent.intentToSign,
-            electronicBusiness: isFinanceUser ? true : consent.electronicBusiness,
-            timestamp: new Date().toISOString()
+          signatureType: signatureMethod,
+          signatureImage: signatureMethod === 'draw' ? capturedSignature : null,
+          typedSignature: signatureMethod === 'type' ? typedSignature : null,
+          dealInfo: {
+            vin: deal?.vin || 'N/A',
+            stockNumber: deal?.stockNumber || deal?.rpStockNumber || 'N/A',
+            vehicle: deal?.vehicle || 'N/A',
+            dealType: deal?.dealType || 'N/A'
           },
-          // Enhanced audit trail
           auditTrail: {
             ipAddress: clientInfo.ipAddress,
             userAgent: clientInfo.userAgent,
@@ -548,8 +567,7 @@ const FinanceDealDetails = () => {
             timezone: clientInfo.timezone,
             language: clientInfo.language,
             sessionId: sessionStorage.getItem('sessionId') || 'unknown',
-            documentUrl: getDocumentUrl(selectedDocument, API_BASE),
-            signatureMethod: signatureMethod
+            consentGiven: isFinanceUser ? true : consent.intentToSign && consent.electronicBusiness
           }
         }),
         credentials: 'include'
@@ -557,11 +575,17 @@ const FinanceDealDetails = () => {
 
       if (signatureResponse.ok) {
         const result = await signatureResponse.json();
+        console.log('[FinanceDealDetails] Signature created successfully:', result);
         setSignatureData(result);
         setSignatureStep(2);
         toast.success('Document signed successfully! ✅ Legal compliance verified');
       } else {
         const errorText = await signatureResponse.text();
+        console.error('[FinanceDealDetails] Signature creation failed:', {
+          status: signatureResponse.status,
+          statusText: signatureResponse.statusText,
+          errorText
+        });
         toast.error(`Failed to sign document: ${errorText}`);
       }
     } catch (error) {
@@ -581,17 +605,14 @@ const FinanceDealDetails = () => {
     try {
       setSendingToClient(true);
       
-      const response = await fetch(`${API_BASE}/api/signatures/${signatureData._id}/send-to-client`, {
+      const response = await fetch(`${API_BASE}/api/signatures/${signatureData.signatureId}/send-to-client`, {
         method: 'POST',
         headers: {
           ...getAuthHeaders(),
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          clientEmail: clientEmail.trim(),
-          documentUrl: getDocumentUrl(selectedDocument, API_BASE),
-          dealId,
-          documentType: selectedDocument.type || selectedDocument.documentType
+          clientEmail: clientEmail.trim()
         }),
         credentials: 'include'
       });
@@ -804,11 +825,11 @@ const FinanceDealDetails = () => {
 
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-1">Kill Price</label>
-                <input
-                  type="number"
-                  value={editData.killPrice || ''}
-                  onChange={(e) => handleInputChange('killPrice', parseFloat(e.target.value) || 0)}
+                                    <label className="block text-sm font-medium text-gray-300 mb-1">Instant Offer</label>
+                    <input
+                      type="number"
+                      value={editData.instantOffer || ''}
+                      onChange={(e) => handleInputChange('instantOffer', parseFloat(e.target.value) || 0)}
                   className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="0.00"
                 />

@@ -31,5 +31,13 @@
         }
       ]
     }
-  ]
+  ],
+  "env": {
+    "REACT_APP_ENVIRONMENT": "production"
+  },
+  "build": {
+    "env": {
+      "REACT_APP_ENVIRONMENT": "production"
+    }
+  }
 } 

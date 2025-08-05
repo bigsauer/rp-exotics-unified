@@ -332,6 +332,15 @@ const BeautifulDarkLanding = () => {
       route: '/transport',
             show: isAdmin || currentUser?.role === 'sales',
       feature: 'Transport tracking • Delivery coordination • Logistics management • Route optimization'
+    },
+    { 
+      title: 'Performance Tracking',
+      description: 'Monitor sales performance, deal metrics, and team productivity',
+      icon: TrendingUp,
+      gradient: 'from-emerald-500 to-teal-500',
+      route: '/admin/performance',
+      show: isAdmin,
+      feature: 'Sales metrics • Team performance • Revenue tracking • Deal analytics'
     }
     ];
 

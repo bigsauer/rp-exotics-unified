@@ -15,6 +15,7 @@ import {
   RefreshCw
 } from 'lucide-react';
 import { useAuth } from './AuthContext';
+import { API_BASE } from '../config/environment';
 import { toast } from 'react-toastify';
 
 const DocumentSignatureWorkflow = ({ dealId, documentType, onComplete }) => {
@@ -28,7 +29,7 @@ const DocumentSignatureWorkflow = ({ dealId, documentType, onComplete }) => {
   const [error, setError] = useState(null);
   const [showApiKey, setShowApiKey] = useState(false);
 
-  const API_BASE = process.env.REACT_APP_API_URL || 'https://astonishing-chicken-production.up.railway.app';
+
 
   // Step 1: Finance person signs the document
   const handleFinanceSign = async () => {

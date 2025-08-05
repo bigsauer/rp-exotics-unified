@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { API_BASE, envConfig } from '../config/environment';
 
 const AuthContext = createContext();
 
@@ -7,8 +8,9 @@ export function AuthProvider({ children }) {
   const [token, setToken] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Utility to get backend API URL
-  const API_BASE = process.env.REACT_APP_API_URL || 'https://astonishing-chicken-production.up.railway.app';
+  // Log environment info for debugging
+  console.log('[AUTH] Environment:', envConfig.environment);
+  console.log('[AUTH] API Base URL:', API_BASE);
 
   // Check if the current token is valid
   const checkSession = async (authToken) => {

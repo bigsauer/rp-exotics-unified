@@ -134,7 +134,10 @@ const NewDealEntry = ({ setDeals }) => {
   const [saving, setSaving] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
 
-  const [sendSellerUpload, setSendSellerUpload] = useState(false);
+  const [showSellerUpload, setShowSellerUpload] = useState(false);
+  const [sellerEmail, setSellerEmail] = useState('');
+  const [sellerUploadLink, setSellerUploadLink] = useState('');
+  const [sellerUploadSent, setSellerUploadSent] = useState(false);
   // Remove documentTypes and documentTypeSelections state
   // Add notes state for each file
   const [documentNotes, setDocumentNotes] = useState([]); // Array of {fileIndex, note}
@@ -547,11 +550,7 @@ const NewDealEntry = ({ setDeals }) => {
     }
     
     // Handle currency formatting for financial fields
-    if (['purchasePrice', 'listPrice', 'instantOffer', 'brokerageFee', 'payoffBalance', 'amountDueToCustomer', 'amountDueToRP'].includes(field)) {
-      processedValue = formatCurrency(value);
-    }
-    // Handle wholesale price formatting (exclude for wholesale D2D buy deals)
-    if (field === 'wholesalePrice' && !(formData.dealType === 'wholesale-d2d' && formData.dealType2SubType === 'buy')) {
+    if (['purchasePrice', 'listPrice', 'instantOffer', 'wholesalePrice', 'brokerageFee', 'payoffBalance', 'amountDueToCustomer', 'amountDueToRP'].includes(field)) {
       processedValue = formatCurrency(value);
     }
     
@@ -921,7 +920,7 @@ const NewDealEntry = ({ setDeals }) => {
         purchasePrice: parseFloat(dataToUse.purchasePrice) || 0,
         listPrice: parseFloat(dataToUse.listPrice) || 0,
         instantOffer: parseFloat(dataToUse.instantOffer) || 0,
-        wholesalePrice: (dataToUse.dealType === 'wholesale-d2d' && dataToUse.dealType2SubType === 'buy') ? 0 : parseFloat(dataToUse.wholesalePrice) || 0,
+        wholesalePrice: parseFloat(dataToUse.wholesalePrice) || 0,
         dealType: dataToUse.dealType,
         dealType2SubType: dataToUse.dealType2SubType, // <-- Ensure this is sent
         dealType2: (() => {
@@ -1039,7 +1038,7 @@ const NewDealEntry = ({ setDeals }) => {
       console.log('[DEBUG] Full dealData:', dealData);
       
       console.log('[HANDLE SAVE] Making API call to create deal...');
-      console.log('[HANDLE SAVE] API URL:', `${API_BASE}/api/sales/deals`);
+      console.log('[HANDLE SAVE] API URL:', `${API_BASE}/api/deals`);
       console.log('[HANDLE SAVE] Headers:', buildHeaders());
       console.log('[HANDLE SAVE] Deal data:', dealData);
       
@@ -1111,8 +1110,8 @@ const NewDealEntry = ({ setDeals }) => {
         }
       }
       
-      // Create deal using the sales tracker endpoint for broker fee tracking
-      const dealResponse = await fetch(`${API_BASE}/api/sales/deals`, {
+      // Create deal (this would be your existing deal creation endpoint)
+      const dealResponse = await fetch(`${API_BASE}/api/deals`, {
         method: 'POST',
         headers: buildHeaders(),
         body: JSON.stringify(dealData),
@@ -1284,43 +1283,6 @@ const NewDealEntry = ({ setDeals }) => {
         console.error('[DEAL SUBMIT] Error in document generation block:', docGenError);
         toast.error('Deal submitted but document generation failed. Please contact support.');
       }
-
-      // Automatically send seller upload link if checkbox is checked
-      // Skip for retail-d2d buy deals as they don't need seller document uploads
-      if (sendSellerUpload && formData.sellerEmail?.trim()) {
-        if (formData.dealType === 'retail-d2d' && formData.dealType2SubType === 'buy') {
-          console.log('[DEAL SUBMIT] Skipping seller upload email for retail-d2d buy deal (not needed)');
-        } else {
-          try {
-            console.log('[DEAL SUBMIT] Sending seller upload link for deal:', dealResult.deal._id);
-          
-          const uploadResponse = await fetch(`${API_BASE}/api/seller-upload/generate-link`, {
-            method: 'POST',
-            headers: buildHeaders(),
-            body: JSON.stringify({
-              dealId: dealResult.deal._id,
-              sellerEmail: formData.sellerEmail.trim(),
-              vehicleInfo: `${formData.year} ${formData.make} ${formData.model}`,
-              vin: formData.vin
-            }),
-            credentials: 'include'
-          });
-
-          const uploadData = await uploadResponse.json();
-          
-          if (uploadData.success) {
-            console.log('[DEAL SUBMIT] Seller upload link sent successfully');
-            toast.success('Seller document upload link sent successfully!');
-          } else {
-            console.error('[DEAL SUBMIT] Failed to send seller upload link:', uploadData.message);
-            toast.error('Deal submitted but seller upload link failed to send. Please contact support.');
-          }
-        } catch (uploadError) {
-          console.error('[DEAL SUBMIT] Error sending seller upload link:', uploadError);
-          toast.error('Deal submitted but seller upload link failed to send. Please contact support.');
-        }
-      }
-      }
       
       
       
@@ -1434,7 +1396,45 @@ ${currentUser.name}`;
     window.open(mailtoLink);
   };
 
+  const handleSendSellerUploadLink = async () => {
+    if (!sellerEmail || !sellerEmail.trim()) {
+      alert('Please enter a valid email address');
+      return;
+    }
 
+    // Check if deal has been created
+    if (!formData._id || formData._id === 'temp') {
+      toast.error('Please save the deal first before sending the upload link');
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_BASE}/api/seller-upload/generate-link`, {
+        method: 'POST',
+        headers: buildHeaders(),
+        body: JSON.stringify({
+          dealId: formData._id, // Use the real deal ID
+          sellerEmail: sellerEmail.trim(),
+          vehicleInfo: `${formData.year} ${formData.make} ${formData.model}`,
+          vin: formData.vin
+        }),
+        credentials: 'include'
+      });
+
+      const data = await response.json();
+      
+      if (data.success) {
+        setSellerUploadLink(data.uploadLink);
+        setSellerUploadSent(true);
+        toast.success('Document upload link sent to seller successfully!');
+      } else {
+        toast.error(data.message || 'Failed to send upload link');
+      }
+    } catch (error) {
+      console.error('Error sending seller upload link:', error);
+      toast.error('Failed to send upload link. Please try again.');
+    }
+  };
 
   // Remove handleCompleteDeal and use handleSave for final submission
   // Update button text and alerts
@@ -1548,11 +1548,9 @@ ${currentUser.name}`;
           </label>
         ) : (
           <div className="relative">
-            {(['purchasePrice', 'listPrice', 'instantOffer', 'brokerageFee', 'payoffBalance', 'amountDueToCustomer', 'amountDueToRP'].includes(field) || 
-              (field === 'wholesalePrice' && !(formData.dealType === 'wholesale-d2d' && formData.dealType2SubType === 'buy'))) && (
+            {['purchasePrice', 'listPrice', 'instantOffer', 'wholesalePrice', 'brokerageFee', 'payoffBalance', 'amountDueToCustomer', 'amountDueToRP'].includes(field) && (
               <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-sm">$</div>
             )}
-            
             <input
               type={type}
               value={formData[field] || ''}
@@ -1560,11 +1558,10 @@ ${currentUser.name}`;
                 handleInputChange(field, e.target.value);
               }}
               placeholder={`Enter ${label.toLowerCase()}...`}
-              pattern={type === 'tel' ? '[0-9+\\-\\(\\)\\s]*' : undefined}
+                              pattern={type === 'tel' ? '[0-9+\\-\\(\\)\\s]*' : undefined}
               className={`w-full bg-white/10 border rounded-lg px-3 py-2 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors ${
                 formErrors[field] ? 'border-red-500' : 'border-white/20 hover:border-white/30'
-              } ${field === 'vin' ? 'pr-20' : ''} ${(['purchasePrice', 'listPrice', 'instantOffer', 'brokerageFee', 'payoffBalance', 'amountDueToCustomer', 'amountDueToRP'].includes(field) || 
-                (field === 'wholesalePrice' && !(formData.dealType === 'wholesale-d2d' && formData.dealType2SubType === 'buy'))) ? 'pl-8' : ''}`}
+              } ${field === 'vin' ? 'pr-20' : ''} ${['purchasePrice', 'listPrice', 'instantOffer', 'wholesalePrice', 'brokerageFee', 'payoffBalance', 'amountDueToCustomer', 'amountDueToRP'].includes(field) ? 'pl-8' : ''}`}
             />
             
             {field === 'vin' && formData.vin.length === 17 && (
@@ -1705,11 +1702,7 @@ ${currentUser.name}`;
                         <>
                           ⚠️ <strong>Required:</strong> Please select "Buy" or "Sale" for {formData.dealType} deals:
                           <br />• Select <strong>"Buy"</strong> if RP Exotics is purchasing from {formData.dealType === 'wholesale-d2d' ? 'another dealer' : formData.dealType === 'retail-d2d' ? 'another dealer (to list for retail)' : 'another party'}
-                          {formData.dealType !== 'retail-d2d' && (
-                            <>
-                              <br />• Select <strong>"Sale"</strong> if RP Exotics is selling to another party
-                            </>
-                          )}
+                          <br />• Select <strong>"Sale"</strong> if RP Exotics is selling to another party
                         </>
                       ) : formData.dealType2SubType === 'buy' ? (
                         <>
@@ -1733,11 +1726,7 @@ ${currentUser.name}`;
                         <>
                           💡 <strong>Important:</strong> Please select the correct option for {formData.dealType} deals:
                           <br />• Select <strong>"Buy"</strong> if RP Exotics is purchasing from {formData.dealType === 'wholesale-d2d' ? 'another dealer' : formData.dealType === 'retail-d2d' ? 'another dealer (to list for retail)' : 'another party'}
-                          {formData.dealType !== 'retail-d2d' && (
-                            <>
-                              <br />• Select <strong>"Sale"</strong> if RP Exotics is selling to another party
-                            </>
-                          )}
+                          <br />• Select <strong>"Sale"</strong> if RP Exotics is selling to another party
                         </>
                       )}
                     </p>
@@ -1797,7 +1786,7 @@ ${currentUser.name}`;
         return dealTypeFields.showFinancials ? (
           <div className="bg-white/5 rounded-xl p-6 border border-white/10">
             <h3 className="text-lg font-medium text-white mb-4">Financial Information</h3>
-            {formData.dealType2SubType === 'sale' && formData.dealType !== 'wholesale-d2d' ? (
+            {formData.dealType2SubType === 'sale' ? (
               <div className="space-y-6">
                 {renderFormField(dynamicLabels.purchasePriceLabel, 'purchasePrice', 'number', null, true, DollarSign)}
                 {renderFormField('Brokerage Fee', 'brokerageFee', 'number')}
@@ -1844,7 +1833,7 @@ ${currentUser.name}`;
                 <div className="space-y-6">
                   {renderFormField(dynamicLabels.purchasePriceLabel, 'purchasePrice', 'number', null, true, DollarSign)}
                   {renderFormField('Instant Offer', 'instantOffer', 'number')}
-                  {/* Wholesale Price removed for wholesale D2D buy deals */}
+                  {renderFormField('Wholesale Price', 'wholesalePrice', 'number')}
                   {/* List Price excluded for wholesale D2D buy deals */}
                   {/* Only show Commission Rate for consign deals, otherwise keep layout clean */}
                   {['consign-a','consign-b','consign-c','consign-rdnc'].includes(formData.dealType2SubType)
@@ -1858,11 +1847,25 @@ ${currentUser.name}`;
                 </div>
               </div>
             ) : formData.dealType === 'wholesale-d2d' && formData.dealType2SubType === 'sale' ? (
-              // Financial info for wholesale D2D sale deals - single column layout with 3 fields stacked
-              <div className="space-y-6">
-                {renderFormField(dynamicLabels.purchasePriceLabel, 'purchasePrice', 'number', null, true, DollarSign)}
-                {renderFormField('Brokerage Fee', 'brokerageFee', 'number')}
-                {renderFormField('Brokerage Fee Paid To', 'brokerageFeePaidTo', 'text')}
+              // Financial info for wholesale D2D sale deals - exclude amount due fields
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Left column */}
+                <div className="space-y-6">
+                  {renderFormField(dynamicLabels.purchasePriceLabel, 'purchasePrice', 'number', null, true, DollarSign)}
+                  {renderFormField('Instant Offer', 'instantOffer', 'number')}
+                  {renderFormField('Wholesale Price', 'wholesalePrice', 'number')}
+                  {renderFormField('List Price', 'listPrice', 'number')}
+                  {/* Only show Commission Rate for consign deals, otherwise keep layout clean */}
+                  {['consign-a','consign-b','consign-c','consign-rdnc'].includes(formData.dealType2SubType)
+                    ? renderFormField('Commission Rate (%)', 'commissionRate', 'number')
+                    : null}
+                </div>
+                {/* Right column */}
+                <div className="space-y-6">
+                  {renderFormField('Brokerage Fee', 'brokerageFee', 'number')}
+                  {renderFormField('Brokerage Fee Paid To', 'brokerageFeePaidTo', 'text')}
+                  {renderFormField(dynamicLabels.payoffBalanceLabel, 'payoffBalance', 'number')}
+                </div>
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -1989,21 +1992,58 @@ ${currentUser.name}`;
                   <div className="mt-6 p-4 bg-blue-900/20 border border-blue-700/30 rounded-lg">
                     <div className="flex items-center justify-between mb-3">
                       <h4 className="text-sm font-medium text-blue-300">📄 Seller Document Upload</h4>
+                      {sellerUploadSent && (
+                        <span className="text-green-400 text-xs flex items-center">
+                          <CheckCircle className="h-3 w-3 mr-1" />
+                          Sent
+                        </span>
+                      )}
                     </div>
                     
                     <div className="space-y-3">
-                      <label className="flex items-center space-x-2 cursor-pointer">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-1">
+                          Seller Email Address
+                        </label>
                         <input
-                          type="checkbox"
-                          checked={sendSellerUpload}
-                          onChange={(e) => setSendSellerUpload(e.target.checked)}
-                          className="rounded bg-white/10 border-white/20 text-blue-500 focus:ring-blue-500"
+                          type="email"
+                          value={sellerEmail}
+                          onChange={(e) => setSellerEmail(e.target.value)}
+                          placeholder="Enter seller's email address..."
+                          className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
                         />
-                        <span className="text-gray-300 text-sm">Send document upload link to seller when deal is submitted</span>
-                      </label>
+                      </div>
+
+                      <button
+                        onClick={handleSendSellerUploadLink}
+                        disabled={!sellerEmail.trim() || sellerUploadSent}
+                        className="flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 text-white rounded-lg transition-colors disabled:opacity-50"
+                      >
+                        <Send className="h-4 w-4 mr-2" />
+                        {sellerUploadSent ? 'Link Sent' : 'Send Document Upload Link'}
+                      </button>
+
+                      {sellerUploadLink && (
+                        <div className="bg-green-900/20 border border-green-700/30 rounded-lg p-3">
+                          <div className="flex items-center space-x-2">
+                            <input
+                              type="text"
+                              value={sellerUploadLink}
+                              readOnly
+                              className="flex-1 bg-white/10 border border-white/20 rounded px-3 py-2 text-white text-sm"
+                            />
+                            <button
+                              onClick={() => navigator.clipboard.writeText(sellerUploadLink)}
+                              className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded transition-colors text-sm"
+                            >
+                              Copy
+                            </button>
+                          </div>
+                        </div>
+                      )}
 
                       <p className="text-gray-400 text-xs">
-                        Check the box above to automatically send a secure upload link to the seller when the deal is submitted.
+                        Send a secure upload link to the seller for document submission.
                       </p>
                     </div>
                   </div>
@@ -2036,148 +2076,156 @@ ${currentUser.name}`;
             <div className="bg-white/5 rounded-xl p-6 border border-white/10">
               <h3 className="text-lg font-medium text-white mb-4">{dynamicLabels.sellerSectionTitle}</h3>
               {isRetailPP ? (
-                <>
-                  {/* Retail PP - 2x2 grid layout */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="md:col-span-2">
-                      {renderFormField(dynamicLabels.sellerLabel, 'sellerName', 'text', null, true, User)}
-                    </div>
-                    {renderFormField('Phone', 'sellerPhone', 'tel', null, false, Phone)}
-                    {renderFormField('Email', 'sellerEmail', 'email', null, false, Mail)}
-                    {renderFormField('Address', 'sellerAddress', 'text', null, false, MapPin)}
+                // Retail PP - 2x2 grid layout
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="md:col-span-2">
+                    {renderFormField(dynamicLabels.sellerLabel, 'sellerName', 'text', null, true, User)}
                   </div>
+                  {renderFormField('Phone', 'sellerPhone', 'tel', null, false, Phone)}
+                  {renderFormField('Email', 'sellerEmail', 'email', null, false, Mail)}
+                  {renderFormField('Address', 'sellerAddress', 'text', null, false, MapPin)}
+                </div>
 
-                  {/* Seller Document Upload for Retail PP */}
-                  {shouldShowSellerUpload() && (
-                    <div className="mt-6 p-4 bg-blue-900/20 border border-blue-700/30 rounded-lg">
-                      <div className="flex items-center justify-between mb-3">
-                        <h4 className="text-sm font-medium text-blue-300">📄 Seller Document Upload</h4>
-                      </div>
-                      
-                      <div className="space-y-3">
-                        <label className="flex items-center space-x-2 cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={sendSellerUpload}
-                            onChange={(e) => setSendSellerUpload(e.target.checked)}
-                            className="rounded bg-white/10 border-white/20 text-blue-500 focus:ring-blue-500"
-                          />
-                          <span className="text-gray-300 text-sm">Send document upload link to seller when deal is submitted</span>
-                        </label>
-
-                        <p className="text-gray-400 text-xs">
-                          Check the box above to automatically send a secure upload link to the seller when the deal is submitted.
-                        </p>
-                      </div>
+                {/* Seller Document Upload Button for Retail PP */}
+                {shouldShowSellerUpload() && (
+                  <div className="mt-6 p-4 bg-blue-900/20 border border-blue-700/30 rounded-lg">
+                    <div className="flex items-center justify-between mb-3">
+                      <h4 className="text-sm font-medium text-blue-300">📄 Seller Document Upload</h4>
+                      {sellerUploadSent && (
+                        <span className="text-green-400 text-xs flex items-center">
+                          <CheckCircle className="h-3 w-3 mr-1" />
+                          Sent
+                        </span>
+                      )}
                     </div>
-                  )}
-                </>
-              ) : (
-                <>
-                  {/* Other deal types - original layout */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="md:col-span-2">
-                      {renderFormField(dynamicLabels.sellerLabel, 'sellerName', 'text', null, true, User)}
-                    </div>
-                    {!isRetailPP && formData.dealType !== 'retail-d2d' && !(formData.dealType === 'wholesale-d2d' && formData.dealType2SubType === 'buy') && renderFormField(dynamicLabels.companyLabel, 'sellerCompany', 'text')}
-                    {renderFormField('Phone', 'sellerPhone', 'tel', null, false, Phone)}
-                    {renderFormField('Email', 'sellerEmail', 'email', null, false, Mail)}
-                    {renderFormField(dynamicLabels.addressLabel, 'sellerAddress', 'text', null, false, MapPin)}
                     
-                    {/* Show license number for retail-d2d and wholesale d2d deals */}
-                    {(formData.dealType === 'retail-d2d' || formData.dealType === 'wholesale-d2d') && (
-                      <>
-                        <div>
-                          <label htmlFor="seller-license-number" className="block text-sm font-medium text-gray-300 mb-1">Dealer License Number</label>
-                          <input
-                            type="text"
-                            id="seller-license-number"
-                            value={formData.sellerLicenseNumber || ''}
-                            onChange={e => handleInputChange('sellerLicenseNumber', e.target.value)}
-                            className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                          />
-                        </div>
-                        
-                        {/* Dealer Tier for retail-d2d deals - only for sale deals, not buy deals */}
-                        {formData.dealType === 'retail-d2d' && formData.dealType2SubType === 'sale' && (
-                          <div>
-                            <label htmlFor="seller-tier" className="block text-sm font-medium text-gray-300 mb-1">Dealer Tier</label>
-                            <select
-                              id="seller-tier"
-                              value={formData.sellerTier || 'Tier 1'}
-                              onChange={e => handleInputChange('sellerTier', e.target.value)}
-                              className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                            >
-                              <option value="Tier 1">Tier 1: Pay Upon Title</option>
-                              <option value="Tier 2">Tier 2: Pay Prior to Release</option>
-                            </select>
-                          </div>
-                        )}
-                      
-                      {/* Tier Selection - only for sale deals, not buy deals */}
-                      {formData.dealType2SubType === 'sale' && formData.dealType === 'wholesale-d2d' && (
-                        <div className="md:col-span-2">
-                          <label className="block text-sm font-medium text-white mb-2">
-                            Dealer Tier
-                          </label>
-                          <div className="flex space-x-4">
+                    <div className="space-y-3">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-1">
+                          Seller Email Address
+                        </label>
+                        <input
+                          type="email"
+                          value={sellerEmail}
+                          onChange={(e) => setSellerEmail(e.target.value)}
+                          placeholder="Enter seller's email address..."
+                          className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+                        />
+                      </div>
+
+                      <button
+                        onClick={handleSendSellerUploadLink}
+                        disabled={!sellerEmail.trim() || sellerUploadSent}
+                        className="flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 text-white rounded-lg transition-colors disabled:opacity-50"
+                      >
+                        <Send className="h-4 w-4 mr-2" />
+                        {sellerUploadSent ? 'Link Sent' : 'Send Document Upload Link'}
+                      </button>
+
+                      {sellerUploadLink && (
+                        <div className="bg-green-900/20 border border-green-700/30 rounded-lg p-3">
+                          <div className="flex items-center space-x-2">
+                            <input
+                              type="text"
+                              value={sellerUploadLink}
+                              readOnly
+                              className="flex-1 bg-white/10 border border-white/20 rounded px-3 py-2 text-white text-sm"
+                            />
                             <button
-                              type="button"
-                              onClick={() => handleInputChange('sellerTier', 'Tier 1')}
-                              className={`px-4 py-2 rounded-lg border transition-colors ${
-                                formData.sellerTier === 'Tier 1'
-                                  ? 'bg-red-600 border-red-500 text-white'
-                                  : 'bg-white/10 border-white/20 text-white hover:bg-white/20'
-                              }`}
+                              onClick={() => navigator.clipboard.writeText(sellerUploadLink)}
+                              className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded transition-colors text-sm"
                             >
-                              Tier 1 - Pay Upon Title
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleInputChange('sellerTier', 'Tier 2')}
-                              className={`px-4 py-2 rounded-lg border transition-colors ${
-                                formData.sellerTier === 'Tier 2'
-                                  ? 'bg-green-600 border-green-500 text-white'
-                                  : 'bg-white/10 border-white/20 text-white hover:bg-white/20'
-                              }`}
-                            >
-                              Tier 2 - Pay Prior to Release
+                              Copy
                             </button>
                           </div>
-                          <p className="text-xs text-gray-400 mt-1">
-                            Tier 1: Pay Upon Title. Tier 2: Pay Prior to Release.
-                          </p>
                         </div>
                       )}
-                      </>
-                    )}
-                  </div>
 
-                  {/* Seller Document Upload for Other Deal Types */}
-                  {shouldShowSellerUpload() && (
-                    <div className="mt-6 p-4 bg-blue-900/20 border border-blue-700/30 rounded-lg">
-                      <div className="flex items-center justify-between mb-3">
-                        <h4 className="text-sm font-medium text-blue-300">📄 Seller Document Upload</h4>
+                      <p className="text-gray-400 text-xs">
+                        Send a secure upload link to the seller for document submission.
+                      </p>
+                    </div>
+                  </div>
+                )}
+              ) : (
+                // Other deal types - original layout
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="md:col-span-2">
+                    {renderFormField(dynamicLabels.sellerLabel, 'sellerName', 'text', null, true, User)}
+                  </div>
+                  {!isRetailPP && formData.dealType !== 'retail-d2d' && !(formData.dealType === 'wholesale-d2d' && formData.dealType2SubType === 'buy') && renderFormField(dynamicLabels.companyLabel, 'sellerCompany', 'text')}
+                  {renderFormField('Phone', 'sellerPhone', 'tel', null, false, Phone)}
+                  {renderFormField('Email', 'sellerEmail', 'email', null, false, Mail)}
+                  {renderFormField(dynamicLabels.addressLabel, 'sellerAddress', 'text', null, false, MapPin)}
+                  
+                  {/* Show license number for retail-d2d and wholesale d2d deals */}
+                  {(formData.dealType === 'retail-d2d' || formData.dealType === 'wholesale-d2d') && (
+                    <>
+                      <div>
+                        <label htmlFor="seller-license-number" className="block text-sm font-medium text-gray-300 mb-1">Dealer License Number</label>
+                        <input
+                          type="text"
+                          id="seller-license-number"
+                          value={formData.sellerLicenseNumber || ''}
+                          onChange={e => handleInputChange('sellerLicenseNumber', e.target.value)}
+                          className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        />
                       </div>
                       
-                      <div className="space-y-3">
-                        <label className="flex items-center space-x-2 cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={sendSellerUpload}
-                            onChange={(e) => setSendSellerUpload(e.target.checked)}
-                            className="rounded bg-white/10 border-white/20 text-blue-500 focus:ring-blue-500"
-                          />
-                          <span className="text-gray-300 text-sm">Send document upload link to seller when deal is submitted</span>
+                      {/* Dealer Tier for retail-d2d deals - only for sale deals, not buy deals */}
+                      {formData.dealType === 'retail-d2d' && formData.dealType2SubType === 'sale' && (
+                        <div>
+                          <label htmlFor="seller-tier" className="block text-sm font-medium text-gray-300 mb-1">Dealer Tier</label>
+                          <select
+                            id="seller-tier"
+                            value={formData.sellerTier || 'Tier 1'}
+                            onChange={e => handleInputChange('sellerTier', e.target.value)}
+                            className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          >
+                            <option value="Tier 1">Tier 1: Pay Upon Title</option>
+                            <option value="Tier 2">Tier 2: Pay Prior to Release</option>
+                          </select>
+                        </div>
+                      )}
+                    
+                    {/* Tier Selection - only for sale deals, not buy deals */}
+                    {formData.dealType2SubType === 'sale' && formData.dealType === 'wholesale-d2d' && (
+                      <div className="md:col-span-2">
+                        <label className="block text-sm font-medium text-white mb-2">
+                          Dealer Tier
                         </label>
-
-                        <p className="text-gray-400 text-xs">
-                          Check the box above to automatically send a secure upload link to the seller when the deal is submitted.
+                        <div className="flex space-x-4">
+                          <button
+                            type="button"
+                            onClick={() => handleInputChange('sellerTier', 'Tier 1')}
+                            className={`px-4 py-2 rounded-lg border transition-colors ${
+                              formData.sellerTier === 'Tier 1'
+                                ? 'bg-red-600 border-red-500 text-white'
+                                : 'bg-white/10 border-white/20 text-white hover:bg-white/20'
+                            }`}
+                          >
+                            Tier 1 - Pay Upon Title
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleInputChange('sellerTier', 'Tier 2')}
+                            className={`px-4 py-2 rounded-lg border transition-colors ${
+                              formData.sellerTier === 'Tier 2'
+                                ? 'bg-green-600 border-green-500 text-white'
+                                : 'bg-white/10 border-white/20 text-white hover:bg-white/20'
+                            }`}
+                          >
+                            Tier 2 - Pay Prior to Release
+                          </button>
+                        </div>
+                        <p className="text-xs text-gray-400 mt-1">
+                          Tier 1: Pay Upon Title. Tier 2: Pay Prior to Release.
                         </p>
                       </div>
-                    </div>
+                    )}
+                    </>
                   )}
-                </>
+                </div>
               )}
               
               {/* Buyer Section for Wholesale D2D Deals */}
@@ -2251,6 +2299,161 @@ ${currentUser.name}`;
                   </div>
                 </div>
               )}
+      
+              {/* Lien Status Section for Wholesale Flip with Private Seller */}
+              {formData.dealType === 'wholesale-flip' && formData.sellerType === 'private' && (
+                <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4 mt-6">
+                  <h4 className="text-blue-300 font-semibold mb-2 flex items-center">
+                    <Shield className="h-4 w-4 mr-2 text-blue-400" />
+                    Title Lien Status
+                  </h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <span className="text-gray-300 text-sm">Lien Status</span>
+                      <select 
+                        value={formData.lienStatus} 
+                        onChange={e => handleInputChange('lienStatus', e.target.value)} 
+                        className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="none">No Lien</option>
+                        <option value="lien_on_title">Lien on Title</option>
+                      </select>
+                    </div>
+                    {formData.lienStatus === 'lien_on_title' && (
+                      <div>
+                        <span className="text-gray-300 text-sm">Lien Payoff Completion ETA</span>
+                        <LienPayoffDatePicker
+                          value={formData.lienEta ? new Date(formData.lienEta) : null}
+                          onChange={(date) => handleInputChange('lienEta', date ? date.toISOString() : '')}
+                          placeholder="Select lien payoff date..."
+                        />
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Seller Document Upload Button for Other Deal Types */}
+              {shouldShowSellerUpload() && (
+                <div className="mt-6 p-4 bg-blue-900/20 border border-blue-700/30 rounded-lg">
+                  <div className="flex items-center justify-between mb-3">
+                    <h4 className="text-sm font-medium text-blue-300">📄 Seller Document Upload</h4>
+                    {sellerUploadSent && (
+                      <span className="text-green-400 text-xs flex items-center">
+                        <CheckCircle className="h-3 w-3 mr-1" />
+                        Sent
+                      </span>
+                    )}
+                  </div>
+                  
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-1">
+                        Seller Email Address
+                      </label>
+                      <input
+                        type="email"
+                        value={sellerEmail}
+                        onChange={(e) => setSellerEmail(e.target.value)}
+                        placeholder="Enter seller's email address..."
+                        className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+                      />
+                    </div>
+
+                    <button
+                      onClick={handleSendSellerUploadLink}
+                      disabled={!sellerEmail.trim() || sellerUploadSent}
+                      className="flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 text-white rounded-lg transition-colors disabled:opacity-50"
+                    >
+                      <Send className="h-4 w-4 mr-2" />
+                      {sellerUploadSent ? 'Link Sent' : 'Send Document Upload Link'}
+                    </button>
+
+                    {sellerUploadLink && (
+                      <div className="bg-green-900/20 border border-green-700/30 rounded-lg p-3">
+                        <div className="flex items-center space-x-2">
+                          <input
+                            type="text"
+                            value={sellerUploadLink}
+                            readOnly
+                            className="flex-1 bg-white/10 border border-white/20 rounded px-3 py-2 text-white text-sm"
+                          />
+                          <button
+                            onClick={() => navigator.clipboard.writeText(sellerUploadLink)}
+                            className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded transition-colors text-sm"
+                          >
+                            Copy
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    <p className="text-gray-400 text-xs">
+                      Send a secure upload link to the seller for document submission.
+                    </p>
+                  </div>
+                </div>
+              )}
+              
+              {/* Document Upload Section - Hide for retail-pp deals, retail-d2d deals, and wholesale d2d buy deals */}
+                  {formData.dealType !== 'retail-pp' && formData.dealType !== 'retail-d2d' && !(formData.dealType === 'wholesale-d2d' && formData.dealType2SubType === 'buy') && (
+                <div className="bg-white/5 rounded-xl p-6 border border-white/10 mt-6">
+                <h3 className="text-lg font-medium text-white mb-4">Additional Information</h3>
+                <div className="space-y-6">
+                  {renderFormField('Vehicle Description', 'vehicleDescription', 'textarea', null, false, Info)}
+                  {renderFormField('General Notes', 'generalNotes', 'textarea', null, false, Info)}
+                  
+                  {/* File upload area */}
+                  <div>
+                    <label className="block text-sm font-medium text-white mb-2">Upload Documents/Photos</label>
+                    <input
+                      type="file"
+                      multiple
+                      accept="image/*,application/pdf,.doc,.docx"
+                      onChange={handleDocumentUpload}
+                      className="block w-full text-sm text-gray-300 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-700"
+                      style={{ display: 'block' }}
+                      key={`file-input-step4-${formData.documents?.length || 0}`}
+                    />
+                    <p className="text-gray-400 text-xs mt-1">You can select multiple files at once</p>
+                    {formData.documents && formData.documents.length > 0 && (
+                      <p className="text-blue-400 text-xs mt-1">
+                        Currently uploaded: {formData.documents.length} file{formData.documents.length !== 1 ? 's' : ''}
+                      </p>
+                    )}
+                    {/* Preview uploaded files */}
+                    {formData.documents && formData.documents.length > 0 && (
+                      <div className="mt-3 space-y-2">
+                        {formData.documents.map((file, i) => (
+                          <div key={i} className="flex items-center space-x-3 bg-white/10 rounded p-2">
+                            {file.type && file.type.startsWith('image') ? (
+                              <img src={URL.createObjectURL(file)} alt={file.name} className="h-12 w-12 object-cover rounded" />
+                            ) : (
+                              <span className="inline-block w-12 h-12 bg-gray-700 text-white flex items-center justify-center rounded">PDF</span>
+                            )}
+                            <span className="text-white text-sm truncate max-w-xs">{file.name}</span>
+                            <input
+                              type="text"
+                              value={documentNotes.find(sel => sel.fileIndex === i)?.note || ''}
+                              onChange={e => handleDocumentNoteChange(i, e.target.value)}
+                              placeholder="Add a note (optional)"
+                              className="bg-white/10 border rounded-lg px-2 py-1 text-white text-sm"
+                            />
+                            <button
+                              type="button"
+                              className="ml-auto text-red-400 hover:text-red-600 text-xs font-medium"
+                              onClick={() => handleRemoveDocument(i)}
+                            >
+                              Remove
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+              )}
             </div>
           );
         }
@@ -2300,45 +2503,20 @@ ${currentUser.name}`;
                     type="file"
                     multiple
                     onChange={handleDocumentUpload}
-                    className="block w-full text-sm text-gray-300 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-700"
+                    className="block w-full text-sm text-gray-300 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-700 cursor-pointer"
+                    accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
                     style={{ display: 'block' }}
-                    key={`file-input-step4-${formData.documents?.length || 0}`}
+                    key={`file-input-${formData.documents?.length || 0}`}
                   />
-                  <p className="text-gray-400 text-xs mt-1">You can select multiple files at once</p>
-                  {formData.documents && formData.documents.length > 0 && (
-                    <p className="text-blue-400 text-xs mt-1">
-                      Currently uploaded: {formData.documents.length} file{formData.documents.length !== 1 ? 's' : ''}
-                    </p>
-                  )}
-                  {/* Preview uploaded files */}
-                  {formData.documents && formData.documents.length > 0 && (
-                    <div className="mt-3 space-y-2">
-                      {formData.documents.map((file, i) => (
-                        <div key={i} className="flex items-center space-x-3 bg-white/10 rounded p-2">
-                          {file.type && file.type.startsWith('image') ? (
-                            <img src={URL.createObjectURL(file)} alt={file.name} className="h-12 w-12 object-cover rounded" />
-                          ) : (
-                            <span className="inline-block w-12 h-12 bg-gray-700 text-white flex items-center justify-center rounded">PDF</span>
-                          )}
-                          <span className="text-white text-sm truncate max-w-xs">{file.name}</span>
-                          <input
-                            type="text"
-                            value={documentNotes.find(sel => sel.fileIndex === i)?.note || ''}
-                            onChange={e => handleDocumentNoteChange(i, e.target.value)}
-                            placeholder="Add a note (optional)"
-                            className="bg-white/10 border rounded-lg px-2 py-1 text-white text-sm"
-                          />
-                          <button
-                            type="button"
-                            className="ml-auto text-red-400 hover:text-red-600 text-xs font-medium"
-                            onClick={() => handleRemoveDocument(i)}
-                          >
-                            Remove
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
+                  <div className="mt-3 text-center">
+                    <p className="text-gray-400 text-sm">PDF, DOC, DOCX, JPG, PNG (Max 10MB each)</p>
+                    <p className="text-gray-400 text-xs mt-1">You can select multiple files at once</p>
+                    {formData.documents && formData.documents.length > 0 && (
+                      <p className="text-blue-400 text-xs mt-1">
+                        Currently uploaded: {formData.documents.length} file{formData.documents.length !== 1 ? 's' : ''}
+                      </p>
+                    )}
+                  </div>
                 </div>
               </div>
 
@@ -2569,8 +2747,8 @@ ${currentUser.name}`;
                         ...formData,
                         sellerName: 'RP Exotics',
                         sellerType: 'dealer',
-                                  sellerPhone: '(314) 970-2427',
-          sellerEmail: 'info@rpexotics.com',
+                        sellerPhone: '(314) 970-2427',
+                        sellerEmail: 'titling@rpexotics.com',
                         sellerAddress: '1155 N Warson Rd, Saint Louis, MO 63132',
                         sellerLicenseNumber: 'D4865',
                         sellerTier: 'Tier 1'

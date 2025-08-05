@@ -643,6 +643,19 @@ const DealStatusPage = () => {
                         <p className="text-white font-bold text-lg">${deal.payoffBalance?.toLocaleString() || 'N/A'}</p>
                       </div>
                     )}
+
+                    {/* Lien Payoff ETA */}
+                    {deal.titleInfo?.lienEta && (
+                      <div className="bg-white/5 rounded-lg p-4 border border-white/10">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-gray-400 text-sm">Lien Payoff ETA</span>
+                          <Calendar className="h-4 w-4 text-blue-400" />
+                        </div>
+                        <p className="text-white font-bold text-lg">
+                          {new Date(deal.titleInfo.lienEta).toLocaleDateString()}
+                        </p>
+                      </div>
+                    )}
                   </div>
 
 
@@ -732,6 +745,12 @@ const DealStatusPage = () => {
                               <div className="flex justify-between">
                                 <span className="text-gray-400">Deal Type 2:</span>
                                 <span className="text-white capitalize">{dealType2DisplayMap[deal.dealType2SubType] || deal.dealType2SubType || 'N/A'}</span>
+                              </div>
+                            )}
+                            {deal.titleInfo?.lienEta && (
+                              <div className="flex justify-between">
+                                <span className="text-gray-400">Lien Payoff ETA:</span>
+                                <span className="text-white">{new Date(deal.titleInfo.lienEta).toLocaleDateString()}</span>
                               </div>
                             )}
                           </div>
