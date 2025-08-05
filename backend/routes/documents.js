@@ -142,19 +142,20 @@ router.post('/generate/:dealId', auth, async (req, res) => {
     
     // Handle SalesDeal records which don't have seller information
     if (deal.constructor.modelName === 'SalesDeal') {
-      console.log('[DOC GEN] Processing SalesDeal - no seller information available');
+      console.log('[DOC GEN] Processing SalesDeal - using customer information as seller');
+      const customer = deal.customer || {};
       seller = {
-        name: 'N/A',
-        email: '',
-        phone: '',
-        address: '',
-        licenseNumber: '',
-        tier: '',
-        type: 'N/A'
+        name: customer.name || 'N/A',
+        email: customer.contact?.email || '',
+        phone: customer.contact?.phone || '',
+        address: customer.contact?.address || '',
+        licenseNumber: '', // Customers don't have license numbers
+        tier: 'Tier 1', // Default tier for customers
+        type: customer.type || 'individual',
+        contact: customer.contact || {}
       };
       
-      // Note: Deal type determination for SalesDeal records is handled later in the code
-      // when creating the dealData object (lines 199-210)
+      console.log('[DOC GEN] SalesDeal seller from customer:', JSON.stringify(seller, null, 2));
     } else {
       // Always attempt dealer DB lookup if seller.name exists and any key field is missing
       if (seller.name && (!seller.licenseNumber || !seller.addressString)) {
@@ -255,6 +256,29 @@ router.post('/generate/:dealId', auth, async (req, res) => {
       }
     }
     
+    // Handle buyer information for SalesDeal records
+    let buyer = deal.buyer;
+    if (deal.constructor.modelName === 'SalesDeal') {
+      // For SalesDeal records, RP Exotics is typically the buyer
+      buyer = {
+        name: 'RP Exotics',
+        type: 'dealer',
+        licenseNumber: 'D4865',
+        tier: 'Tier 1',
+        contact: {
+          address: {
+            street: '1155 N Warson Rd',
+            city: 'Saint Louis',
+            state: 'MO',
+            zip: '63132'
+          },
+          phone: '(314) 970-2427',
+          email: 'titling@rpexotics.com'
+        }
+      };
+      console.log('[DOC GEN] SalesDeal buyer set to RP Exotics:', JSON.stringify(buyer, null, 2));
+    }
+    
     const dealData = {
       year: deal.year,
       make: deal.make,
@@ -274,7 +298,7 @@ router.post('/generate/:dealId', auth, async (req, res) => {
       dealType2SubType: req.body.dealType2SubType || deal.dealType2SubType || 'buy',
       sellerInfo,
       seller: deal.seller,
-      buyer: deal.buyer,
+      buyer: buyer,
       financial: completeFinancial, // Use the complete financial object
       commissionRate: req.body.commissionRate !== undefined ? req.body.commissionRate : (deal.financial?.commissionRate || 0),
       payoffBalance: req.body.payoffBalance !== undefined ? req.body.payoffBalance : (deal.financial?.payoffBalance || 0),
@@ -1330,6 +1354,42 @@ router.post('/generate/:dealId', auth, async (req, res) => {
         name: req.body.buyerName || deal.buyer?.name || 'N/A',
         type: req.body.buyerType || deal.buyer?.type || 'private'
       };
+      
+      // Handle SalesDeal records for vehicle record creation
+      if (deal.constructor.modelName === 'SalesDeal') {
+        const customer = deal.customer || {};
+        vehicleRecordSeller = {
+          name: customer.name || 'N/A',
+          type: customer.type || 'individual',
+          licenseNumber: '', // Customers don't have license numbers
+          tier: 'Tier 1',
+          contact: {
+            address: customer.contact?.address || '',
+            phone: customer.contact?.phone || 'N/A',
+            email: customer.contact?.email || 'N/A'
+          }
+        };
+        
+        vehicleRecordBuyer = {
+          name: 'RP Exotics',
+          type: 'dealer',
+          licenseNumber: 'D4865',
+          tier: 'Tier 1',
+          contact: {
+            address: {
+              street: '1155 N Warson Rd',
+              city: 'Saint Louis',
+              state: 'MO',
+              zip: '63132'
+            },
+            phone: '(314) 970-2427',
+            email: 'titling@rpexotics.com'
+          }
+        };
+        
+        console.log('[DOC GEN] SalesDeal vehicle record - seller (customer):', JSON.stringify(vehicleRecordSeller, null, 2));
+        console.log('[DOC GEN] SalesDeal vehicle record - buyer (RP Exotics):', JSON.stringify(vehicleRecordBuyer, null, 2));
+      }
       
       // For wholesale D2D buy: RP Exotics is the buyer, selling dealer is the seller
       if (dealData.dealType === 'wholesale-d2d' && ((req.body.dealType2 || dealData.dealType2) === 'Buy' || (req.body.dealType2SubType || dealData.dealType2SubType || deal.dealType2SubType) === 'buy')) {
