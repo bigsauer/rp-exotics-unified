@@ -13,25 +13,16 @@ const cloudStorage = require('../services/cloudStorage');
 
 // Handle OPTIONS preflight requests for document generation
 router.options('*', (req, res) => {
-  console.log('[DOCS CORS DEBUG] OPTIONS request received for:', req.originalUrl);
-  console.log('[DOCS CORS DEBUG] Origin:', req.headers.origin);
-  
   res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
   res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   res.header('Access-Control-Allow-Credentials', 'true');
   res.status(200).end();
-  
-  console.log('[DOCS CORS DEBUG] OPTIONS response sent');
 });
 
 // Generate document and create vehicle record for a deal
 // 🚀 Performance optimized with browser pooling, template caching, and parallel generation
 router.post('/generate/:dealId', auth, async (req, res) => {
-  console.log('[DOCS CORS DEBUG] POST /generate/:dealId request received');
-  console.log('[DOCS CORS DEBUG] Origin:', req.headers.origin);
-  console.log('[DOCS CORS DEBUG] Deal ID:', req.params.dealId);
-  
   let deal = null; // Declare deal variable outside try block
   try {
     const { dealId } = req.params;

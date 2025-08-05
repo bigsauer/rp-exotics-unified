@@ -89,24 +89,15 @@ const securityMiddleware = (req, res, next) => {
 
 // Handle OPTIONS preflight requests for seller upload
 router.options('*', (req, res) => {
-  console.log('[SELLER UPLOAD CORS DEBUG] OPTIONS request received for:', req.originalUrl);
-  console.log('[SELLER UPLOAD CORS DEBUG] Origin:', req.headers.origin);
-  
   res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
   res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   res.header('Access-Control-Allow-Credentials', 'true');
   res.status(200).end();
-  
-  console.log('[SELLER UPLOAD CORS DEBUG] OPTIONS response sent');
 });
 
 // Generate seller upload link
 router.post('/generate-link', authenticateToken, async (req, res) => {
-  console.log('[SELLER UPLOAD CORS DEBUG] POST /generate-link request received');
-  console.log('[SELLER UPLOAD CORS DEBUG] Origin:', req.headers.origin);
-  console.log('[SELLER UPLOAD CORS DEBUG] Request body:', req.body);
-  
   try {
     const { dealId, sellerEmail, vehicleInfo, vin } = req.body;
 

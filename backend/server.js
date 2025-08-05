@@ -65,10 +65,6 @@ app.use(express.urlencoded({ extended: true }));
 
 // Add comprehensive CORS headers to all responses - MOVED EARLIER
 app.use((req, res, next) => {
-  console.log('[CORS DEBUG] Request received:', req.method, req.originalUrl);
-  console.log('[CORS DEBUG] Origin:', req.headers.origin);
-  console.log('[CORS DEBUG] User-Agent:', req.headers['user-agent']);
-  
   // Add CORS headers to all responses
   res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
@@ -77,12 +73,10 @@ app.use((req, res, next) => {
   
   // Handle preflight requests
   if (req.method === 'OPTIONS') {
-    console.log('[CORS DEBUG] Handling OPTIONS preflight request');
     res.status(200).end();
     return;
   }
   
-  console.log('[CORS DEBUG] CORS headers added, proceeding to next middleware');
   next();
 });
 
