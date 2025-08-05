@@ -79,11 +79,41 @@ const authenticateToken = async (req, res, next) => {
 // Middleware to check if user has back office access
 const requireBackOfficeAccess = (req, res, next) => {
   try {
-    console.log('[AUTH] requireBackOfficeAccess for user:', req.user && { id: req.user._id, email: req.user.email, role: req.user.role, isActive: req.user.isActive });
-    if (!req.user || (req.user.role !== 'admin' && req.user.role !== 'finance' && req.user.role !== 'sales')) {
-      console.warn('[AUTH] Access denied for user:', req.user && { id: req.user._id, email: req.user.email, role: req.user.role });
-      return res.status(403).json({ error: 'Access denied' });
+    console.log('[AUTH] requireBackOfficeAccess for user:', req.user && { 
+      id: req.user._id, 
+      email: req.user.email, 
+      role: req.user.role, 
+      isActive: req.user.isActive,
+      permissions: req.user.permissions 
+    });
+    
+    if (!req.user) {
+      console.warn('[AUTH] No user object found in request');
+      return res.status(401).json({ error: 'Authentication required' });
     }
+    
+    // Check if user has the required role
+    const hasValidRole = req.user.role === 'admin' || req.user.role === 'finance' || req.user.role === 'sales';
+    
+    // Also check if user has backoffice permissions
+    const hasBackofficePermission = req.user.permissions && req.user.permissions.backoffice && req.user.permissions.backoffice.access;
+    
+    if (!hasValidRole && !hasBackofficePermission) {
+      console.warn('[AUTH] Access denied for user:', { 
+        id: req.user._id, 
+        email: req.user.email, 
+        role: req.user.role,
+        permissions: req.user.permissions 
+      });
+      return res.status(403).json({ 
+        error: 'Access denied', 
+        message: 'Back office access required',
+        userRole: req.user.role,
+        userPermissions: req.user.permissions
+      });
+    }
+    
+    console.log('[AUTH] Back office access granted for user:', req.user.email);
     next();
   } catch (error) {
     console.error('Back office access check error:', error);
