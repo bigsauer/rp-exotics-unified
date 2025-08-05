@@ -5,6 +5,7 @@ const SalesDeal = require('../models/SalesDeal');
 const VehicleRecord = require('../models/VehicleRecord');
 const User = require('../models/User');
 const documentGenerator = require('../services/documentGenerator');
+const emailService = require('../services/emailService');
 const { authenticateToken: auth } = require('../middleware/auth');
 const fs = require('fs-extra');
 const path = require('path');
@@ -1909,6 +1910,48 @@ router.post('/generate/:dealId', auth, async (req, res) => {
     } catch (saveError) {
       console.error('[DOC GEN] ❌ Error saving deal with completed status:', saveError);
       // Don't throw here, just log the error
+    }
+    
+    // Send email receipt for document generation
+    try {
+      console.log('[EMAIL] 📧 Sending deal receipt email for document generation to:', req.user.email);
+      
+      // Prepare generated documents for email
+      const generatedDocuments = documentResults.map(doc => ({
+        name: doc.documentType === 'retail_pp_buy' ? 'Purchase Agreement' :
+              doc.documentType === 'vehicle_record_pdf' ? 'Vehicle Record' :
+              doc.documentType === 'wholesale_bos' ? 'Bill of Sale' :
+              doc.documentType === 'wholesale_pp_buy' ? 'Purchase Agreement' :
+              'Document',
+        filePath: doc.filePath,
+        fileName: doc.fileName
+      }));
+      
+      // Send email receipt
+      const emailResult = await emailService.sendDealReceipt(
+        req.user.email,
+        {
+          vin: deal.vin,
+          rpStockNumber: deal.rpStockNumber || deal.stockNumber,
+          year: deal.year,
+          make: deal.make,
+          model: deal.model,
+          dealType: dealData.dealType || deal.dealType,
+          salesperson: dealData.salesperson || deal.salesperson || user.displayName,
+          seller: dealData.seller || deal.seller,
+          buyer: dealData.buyer || deal.buyer
+        },
+        generatedDocuments
+      );
+      
+      if (emailResult.success) {
+        console.log('[EMAIL] ✅ Deal receipt email sent successfully for document generation');
+      } else {
+        console.log('[EMAIL] ⚠️ Failed to send deal receipt email for document generation:', emailResult.error);
+      }
+    } catch (emailError) {
+      console.error('[EMAIL] ❌ Error sending deal receipt email for document generation:', emailError);
+      // Don't fail the document generation if email fails
     }
     
     console.log('🔍 [DOC GEN DEBUG] ===========================================');
