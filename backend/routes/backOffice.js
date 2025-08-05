@@ -88,6 +88,7 @@ router.get('/deals', async (req, res) => {
     }
 
     // Fetch deals from both Deal and SalesDeal collections
+    console.log('[BACKOFFICE] 🔍 DEBUG: Fetching deals with query:', JSON.stringify(query, null, 2));
     const [deals, salesDeals] = await Promise.all([
       Deal.find(query)
         .populate('assignedTo', 'profile.displayName email')
@@ -104,6 +105,23 @@ router.get('/deals', async (req, res) => {
         .skip((parseInt(page) - 1) * parseInt(limit))
         .lean()
     ]);
+    console.log('[BACKOFFICE] 📊 DEBUG: Found deals:', {
+      regularDeals: deals.length,
+      salesDeals: salesDeals.length,
+      total: deals.length + salesDeals.length
+    });
+    console.log('[BACKOFFICE] 📋 DEBUG: Sample deals:', deals.slice(0, 2).map(d => ({
+      id: d._id,
+      vehicle: d.vehicle,
+      vin: d.vin,
+      stockNumber: d.stockNumber
+    })));
+    console.log('[BACKOFFICE] 📋 DEBUG: Sample salesDeals:', salesDeals.slice(0, 2).map(d => ({
+      id: d._id,
+      vehicle: d.vehicle,
+      vin: d.vin,
+      stockNumber: d.stockNumber
+    })));
 
     // Combine and sort all deals
     const allDeals = [...deals, ...salesDeals].sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));

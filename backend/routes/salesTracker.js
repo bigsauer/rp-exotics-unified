@@ -529,7 +529,16 @@ router.post('/deals', authenticateToken, async (req, res) => {
 
     // Create VehicleRecord entry for finance page integration
     try {
-      console.log('[SALES DEAL] Creating VehicleRecord for finance page integration...');
+      console.log('[SALES DEAL] 🔍 DEBUG: Starting VehicleRecord creation process...');
+      console.log('[SALES DEAL] 📋 DEBUG: Deal data for VehicleRecord creation:', {
+        id: deal._id,
+        vin: deal.vin,
+        stockNumber: deal.stockNumber,
+        rpStockNumber: deal.rpStockNumber,
+        vehicle: deal.vehicle,
+        customer: deal.customer?.name,
+        financial: deal.financial
+      });
       
       // Parse address string to object format
       const parseAddress = (addrString) => {
@@ -613,16 +622,33 @@ router.post('/deals', authenticateToken, async (req, res) => {
       });
 
       // Save the VehicleRecord
+      console.log('[SALES DEAL] 🔍 DEBUG: About to save VehicleRecord...');
       await vehicleRecord.save();
       console.log(`[SALES DEAL] ✅ VehicleRecord created for finance page: ${vehicleRecord.recordId}`);
+      console.log('[SALES DEAL] 📋 DEBUG: VehicleRecord details after save:', {
+        recordId: vehicleRecord.recordId,
+        id: vehicleRecord._id,
+        vin: vehicleRecord.vin,
+        stockNumber: vehicleRecord.stockNumber,
+        rpStockNumber: vehicleRecord.rpStockNumber,
+        dealId: vehicleRecord.dealId,
+        dealType: vehicleRecord.dealType
+      });
 
       // Link VehicleRecord to SalesDeal
+      console.log('[SALES DEAL] 🔍 DEBUG: About to link VehicleRecord to SalesDeal...');
       deal.vehicleRecordId = vehicleRecord._id;
       await deal.save();
       console.log(`[SALES DEAL] ✅ SalesDeal linked to VehicleRecord: ${vehicleRecord._id}`);
+      console.log('[SALES DEAL] 📋 DEBUG: SalesDeal updated with vehicleRecordId:', deal.vehicleRecordId);
 
     } catch (vehicleRecordError) {
       console.error('[SALES DEAL] ❌ Error creating VehicleRecord:', vehicleRecordError);
+      console.error('[SALES DEAL] 🔍 DEBUG: Full error details:', {
+        message: vehicleRecordError.message,
+        stack: vehicleRecordError.stack,
+        name: vehicleRecordError.name
+      });
       // Don't fail the deal creation if VehicleRecord creation fails
     }
 

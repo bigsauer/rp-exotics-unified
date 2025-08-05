@@ -28,7 +28,8 @@
     "pdf-lib": "^1.17.1",
     "pdfkit": "^0.17.1",
     "puppeteer": "^24.13.0",
-    "resend": "^4.7.0"
+    "resend": "^4.7.0",
+    "supertest": "^7.1.4"
   },
   "devDependencies": {
     "nodemon": "^2.0.20"
