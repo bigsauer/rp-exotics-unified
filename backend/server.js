@@ -55,6 +55,23 @@ app.use(cors({
 
 app.options('*', cors()); // Explicitly handle all OPTIONS preflight requests
 
+// Add comprehensive CORS headers to all responses
+app.use((req, res, next) => {
+  // Add CORS headers to all responses
+  res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.header('Access-Control-Allow-Credentials', 'true');
+  
+  // Handle preflight requests
+  if (req.method === 'OPTIONS') {
+    res.status(200).end();
+    return;
+  }
+  
+  next();
+});
+
 app.use((req, res, next) => {
   console.log(`[DEBUG][SERVER] ${req.method} ${req.originalUrl} - Headers:`, req.headers);
   next();
