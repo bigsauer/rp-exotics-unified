@@ -2,6 +2,8 @@ const express = require('express');
 const router = express.Router();
 const { authenticateToken } = require('../middleware/auth');
 const Deal = require('../models/Deal');
+const SalesDeal = require('../models/SalesDeal');
+const UploadToken = require('../models/UploadToken');
 const cloudStorage = require('../services/cloudStorage');
 const emailService = require('../services/emailService');
 const crypto = require('crypto');
@@ -131,18 +133,27 @@ router.post('/generate-link', authenticateToken, async (req, res) => {
     const frontendUrl = process.env.NODE_ENV === 'production' ? 'https://slipstreamdocs.com' : (process.env.FRONTEND_URL || 'https://slipstreamdocs.com');
     const uploadLink = `${frontendUrl}/seller-upload/${uploadToken}`;
 
-    // Store the upload token and deal info with enhanced security
-    global.sellerUploadTokens = global.sellerUploadTokens || new Map();
-    global.sellerUploadTokens.set(uploadToken, {
+    // Determine which model the deal belongs to
+    let dealModel = 'Deal';
+    const salesDeal = await SalesDeal.findById(dealId);
+    if (salesDeal) {
+      dealModel = 'SalesDeal';
+    }
+
+    // Store the upload token in the database for persistence
+    const uploadTokenRecord = new UploadToken({
+      token: uploadToken,
       dealId,
+      dealModel,
       sellerEmail: sellerEmail.toLowerCase(), // Normalize email
       vehicleInfo,
       vin: vin.toUpperCase(), // Normalize VIN
-      createdAt: new Date(),
       expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
-      uploadAttempts: 0,
       maxUploadAttempts: 3 // Limit upload attempts per token
     });
+
+    await uploadTokenRecord.save();
+    console.log(`[UPLOAD TOKEN] ✅ Created persistent upload token: ${uploadToken} for deal: ${dealId}`);
 
     // Send email to seller with enhanced security
     const emailSubject = `📄 Document Upload Request - ${vehicleInfo}`;
@@ -406,38 +417,28 @@ router.post('/upload/:token', securityMiddleware, upload.array('documents', 10),
       });
     }
 
-    // Verify upload token with enhanced validation
-    global.sellerUploadTokens = global.sellerUploadTokens || new Map();
-    const uploadInfo = global.sellerUploadTokens.get(token);
+    // Verify upload token from database with enhanced validation
+    const uploadTokenRecord = await UploadToken.findValidToken(token);
 
-    if (!uploadInfo) {
+    if (!uploadTokenRecord) {
       return res.status(404).json({
         success: false,
-        message: 'Invalid or expired upload link'
+        message: 'Invalid or expired upload link. This link may have expired or the server was restarted. Please request a new upload link.'
       });
     }
 
-    if (new Date() > uploadInfo.expiresAt) {
-      global.sellerUploadTokens.delete(token);
+    // Check if token is still valid
+    if (!uploadTokenRecord.isValid()) {
       return res.status(410).json({
         success: false,
-        message: 'Upload link has expired'
-      });
-    }
-
-    // Check upload attempt limits
-    if (uploadInfo.uploadAttempts >= uploadInfo.maxUploadAttempts) {
-      global.sellerUploadTokens.delete(token);
-      return res.status(429).json({
-        success: false,
-        message: 'Maximum upload attempts reached for this link'
+        message: 'Upload link has expired or maximum attempts reached. Please request a new upload link.'
       });
     }
 
     // Increment upload attempts
-    uploadInfo.uploadAttempts++;
+    await uploadTokenRecord.incrementAttempts();
 
-    const { dealId, sellerEmail, vehicleInfo, vin } = uploadInfo;
+    const { dealId, sellerEmail, vehicleInfo, vin } = uploadTokenRecord;
 
     // Additional file validation
     const totalSize = files.reduce((sum, file) => sum + file.size, 0);
@@ -628,7 +629,9 @@ router.post('/upload/:token', securityMiddleware, upload.array('documents', 10),
     }
 
     // Clean up the token after successful upload
-    global.sellerUploadTokens.delete(token);
+    uploadTokenRecord.isActive = false;
+    await uploadTokenRecord.save();
+    console.log(`[UPLOAD TOKEN] ✅ Deactivated token after successful upload: ${token}`);
 
     res.json({
       success: true,
@@ -673,28 +676,26 @@ router.get('/verify/:token', securityMiddleware, async (req, res) => {
       });
     }
 
-    global.sellerUploadTokens = global.sellerUploadTokens || new Map();
-    console.log('[SELLER UPLOAD] Available tokens:', Array.from(global.sellerUploadTokens.keys()));
-    const uploadInfo = global.sellerUploadTokens.get(token);
+    // Verify upload token from database
+    const uploadTokenRecord = await UploadToken.findValidToken(token);
 
-    if (!uploadInfo) {
-      console.log('[SELLER UPLOAD] Token not found in global map');
+    if (!uploadTokenRecord) {
+      console.log('[SELLER UPLOAD] Token not found in database');
       return res.status(404).json({
         success: false,
         message: 'Invalid or expired upload link. This link may have expired or the server was restarted. Please request a new upload link.'
       });
     }
 
-    if (new Date() > uploadInfo.expiresAt) {
-      global.sellerUploadTokens.delete(token);
+    if (!uploadTokenRecord.isValid()) {
       return res.status(410).json({
         success: false,
-        message: 'Upload link has expired'
+        message: 'Upload link has expired or maximum attempts reached. Please request a new upload link.'
       });
     }
 
     // Check if max upload attempts reached
-    if (uploadInfo.uploadAttempts >= uploadInfo.maxUploadAttempts) {
+    if (uploadTokenRecord.uploadAttempts >= uploadTokenRecord.maxUploadAttempts) {
       return res.status(429).json({
         success: false,
         message: 'Maximum upload attempts reached for this link'
@@ -704,11 +705,11 @@ router.get('/verify/:token', securityMiddleware, async (req, res) => {
     res.json({
       success: true,
       uploadInfo: {
-        vehicleInfo: uploadInfo.vehicleInfo,
-        vin: uploadInfo.vin,
-        sellerEmail: uploadInfo.sellerEmail,
-        remainingAttempts: uploadInfo.maxUploadAttempts - uploadInfo.uploadAttempts,
-        expiresAt: uploadInfo.expiresAt
+        vehicleInfo: uploadTokenRecord.vehicleInfo,
+        vin: uploadTokenRecord.vin,
+        sellerEmail: uploadTokenRecord.sellerEmail,
+        remainingAttempts: uploadTokenRecord.maxUploadAttempts - uploadTokenRecord.uploadAttempts,
+        expiresAt: uploadTokenRecord.expiresAt
       }
     });
 
