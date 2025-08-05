@@ -270,7 +270,7 @@ router.post('/generate/:dealId', auth, async (req, res) => {
       console.log('[DOC GEN] SalesDeal buyer set to RP Exotics:', JSON.stringify(buyer, null, 2));
     }
     
-    const dealData = {
+    let dealData = {
       year: deal.year,
       make: deal.make,
       model: deal.model,
