@@ -1290,10 +1290,12 @@ const NewDealEntry = ({ setDeals }) => {
       }
 
       // Automatically send seller upload link if checkbox is checked
-      // Skip for retail-d2d buy deals as they don't need seller document uploads
+      // Skip for retail-d2d buy deals and wholesale-d2d sale deals as they don't need seller document uploads
       if (sendSellerUpload && formData.sellerEmail?.trim()) {
         if (formData.dealType === 'retail-d2d' && formData.dealType2SubType === 'buy') {
           console.log('[DEAL SUBMIT] Skipping seller upload email for retail-d2d buy deal (not needed)');
+        } else if (formData.dealType === 'wholesale-d2d' && formData.dealType2SubType === 'sale') {
+          console.log('[DEAL SUBMIT] Skipping seller upload email for wholesale-d2d sale deal (RP Exotics is seller, no upload needed)');
         } else {
           try {
             console.log('[DEAL SUBMIT] Sending seller upload link for deal:', dealResult.deal._id);
