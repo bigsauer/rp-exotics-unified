@@ -1607,15 +1607,35 @@ router.post('/generate/:dealId', auth, async (req, res) => {
         console.log(`[DOC GEN] 🔍 Verifying VehicleRecord was saved to database...`);
         const savedVehicleRecord = await VehicleRecord.findById(vehicleRecord._id);
         if (savedVehicleRecord) {
-          console.log(`[DOC GEN] ✅ VehicleRecord verified in database:`, {
-            id: savedVehicleRecord._id,
-            recordId: savedVehicleRecord.recordId,
-            vin: savedVehicleRecord.vin,
-            stockNumber: savedVehicleRecord.stockNumber,
-            dealType: savedVehicleRecord.dealType,
-            dealType2: savedVehicleRecord.dealType2,
-            createdAt: savedVehicleRecord.createdAt
-          });
+                  console.log(`[DOC GEN] ✅ VehicleRecord verified in database:`, {
+          id: savedVehicleRecord._id,
+          recordId: savedVehicleRecord.recordId,
+          vin: savedVehicleRecord.vin,
+          stockNumber: savedVehicleRecord.stockNumber,
+          dealId: savedVehicleRecord.dealId,
+          dealType: savedVehicleRecord.dealType,
+          dealType2: savedVehicleRecord.dealType2,
+          createdAt: savedVehicleRecord.createdAt
+        });
+        
+        // Verify the dealId reference
+        console.log(`[DOC GEN] 🔍 Verifying dealId reference...`);
+        console.log(`[DOC GEN] - VehicleRecord dealId: ${savedVehicleRecord.dealId}`);
+        console.log(`[DOC GEN] - Original deal ID: ${deal._id}`);
+        console.log(`[DOC GEN] - DealId match: ${savedVehicleRecord.dealId.toString() === deal._id.toString()}`);
+        
+        // Check if the deal exists
+        const referencedDeal = await Deal.findById(savedVehicleRecord.dealId);
+        if (!referencedDeal) {
+          const referencedSalesDeal = await SalesDeal.findById(savedVehicleRecord.dealId);
+          if (referencedSalesDeal) {
+            console.log(`[DOC GEN] ✅ Deal reference verified in SalesDeal collection`);
+          } else {
+            console.log(`[DOC GEN] ❌ Deal reference NOT found in either collection!`);
+          }
+        } else {
+          console.log(`[DOC GEN] ✅ Deal reference verified in Deal collection`);
+        }
         } else {
           console.log(`[DOC GEN] ❌ VehicleRecord NOT found in database after save!`);
         }
