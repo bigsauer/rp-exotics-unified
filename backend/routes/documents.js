@@ -1603,6 +1603,23 @@ router.post('/generate/:dealId', auth, async (req, res) => {
         console.log('🔍 [DOC GEN DEBUG] ✅ Vehicle record saved successfully');
         console.log(`[DOC GEN] ✅ New vehicle record saved successfully: ${vehicleRecord._id}`);
         
+        // Verify the VehicleRecord was actually saved to database
+        console.log(`[DOC GEN] 🔍 Verifying VehicleRecord was saved to database...`);
+        const savedVehicleRecord = await VehicleRecord.findById(vehicleRecord._id);
+        if (savedVehicleRecord) {
+          console.log(`[DOC GEN] ✅ VehicleRecord verified in database:`, {
+            id: savedVehicleRecord._id,
+            recordId: savedVehicleRecord.recordId,
+            vin: savedVehicleRecord.vin,
+            stockNumber: savedVehicleRecord.stockNumber,
+            dealType: savedVehicleRecord.dealType,
+            dealType2: savedVehicleRecord.dealType2,
+            createdAt: savedVehicleRecord.createdAt
+          });
+        } else {
+          console.log(`[DOC GEN] ❌ VehicleRecord NOT found in database after save!`);
+        }
+        
         console.log('🔍 [DOC GEN DEBUG] ===========================================');
         console.log('🔍 [DOC GEN DEBUG] NEW VEHICLE RECORD SAVED SUCCESSFULLY');
         console.log('🔍 [DOC GEN DEBUG] ===========================================');
@@ -2490,6 +2507,40 @@ router.get('/vehicle-records', auth, async (req, res) => {
       generatedDocuments: record.generatedDocuments.length,
       createdAt: record.createdAt
     })));
+    
+    // Enhanced debugging for finance page issue
+    console.log(`[VehicleRecords API] 🔍 ENHANCED DEBUGGING:`);
+    console.log(`[VehicleRecords API] - Query executed:`, JSON.stringify(query, null, 2));
+    console.log(`[VehicleRecords API] - Pagination: skip=${skip}, limit=${limit}`);
+    console.log(`[VehicleRecords API] - Total records in database: ${total}`);
+    console.log(`[VehicleRecords API] - Records returned: ${vehicleRecords.length}`);
+    
+    // Check for the specific record from logs
+    const specificRecordId = 'VR-MDZBFFL2-R79QO';
+    const specificVin = 'ZFF96NMA6R0310402';
+    const specificStockNumber = 'RP1754445292278';
+    
+    const specificRecord = await VehicleRecord.findOne({
+      $or: [
+        { recordId: specificRecordId },
+        { vin: specificVin },
+        { stockNumber: specificStockNumber }
+      ]
+    });
+    
+    if (specificRecord) {
+      console.log(`[VehicleRecords API] ✅ Found specific record:`, {
+        id: specificRecord._id,
+        recordId: specificRecord.recordId,
+        vin: specificRecord.vin,
+        stockNumber: specificRecord.stockNumber,
+        dealType: specificRecord.dealType,
+        createdAt: specificRecord.createdAt
+      });
+    } else {
+      console.log(`[VehicleRecords API] ❌ Specific record NOT found in database`);
+      console.log(`[VehicleRecords API] - Looking for: recordId=${specificRecordId}, vin=${specificVin}, stockNumber=${specificStockNumber}`);
+    }
 
     res.json({
       success: true,
