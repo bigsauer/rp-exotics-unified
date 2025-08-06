@@ -25,6 +25,8 @@ const FinanceDashboard = () => {
     setLoading(true);
     const API_BASE = process.env.REACT_APP_API_URL;
     console.log('[DEBUG][FinanceDashboard] API_BASE:', API_BASE);
+    console.log('[DEBUG][FinanceDashboard] Starting data fetch...');
+    console.log('[DEBUG][FinanceDashboard] Current time:', new Date().toISOString());
     Promise.all([
       fetch(`${API_BASE}/api/documents/vehicle-records`, {
         credentials: 'include',
@@ -35,6 +37,19 @@ const FinanceDashboard = () => {
           return res.json();
         })
         .then(recordsData => {
+          console.log('[DEBUG][FinanceDashboard] Vehicle records data received:', {
+            success: recordsData.success,
+            dataLength: recordsData.data?.length || 0,
+            pagination: recordsData.pagination,
+            sampleRecords: recordsData.data?.slice(0, 3).map(r => ({
+              id: r._id,
+              recordId: r.recordId,
+              vin: r.vin,
+              stockNumber: r.stockNumber,
+              dealType: r.dealType,
+              createdAt: r.createdAt
+            }))
+          });
           if (isMounted && recordsData.success) {
             setVehicleRecords(recordsData.data);
           }
@@ -63,6 +78,16 @@ const FinanceDashboard = () => {
           return res.json();
         })
         .then(data => {
+          console.log('[DEBUG][FinanceDashboard] Deals data received:', {
+            dealsLength: data.deals?.length || data.data?.length || 0,
+            sampleDeals: (data.deals || data.data || []).slice(0, 3).map(d => ({
+              id: d._id,
+              vin: d.vin,
+              stockNumber: d.stockNumber,
+              dealType: d.dealType,
+              createdAt: d.createdAt
+            }))
+          });
           if (isMounted) setSubmittedDeals(data.deals || data.data || []);
         })
         .catch(() => { if (isMounted) setSubmittedDeals([]); }),
